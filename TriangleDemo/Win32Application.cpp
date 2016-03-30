@@ -25,7 +25,7 @@ int Win32Application::Run (
 	pSample->ParseCommandLineArgs(argv, argc);
 	LocalFree(argv);
 
-	// Initialize the window class.
+	//-- Initialize the window class:
 	WNDCLASSEX windowClass = { 0 };
 	windowClass.cbSize = sizeof(WNDCLASSEX);
 	windowClass.style = CS_HREDRAW | CS_VREDRAW;
@@ -35,11 +35,14 @@ int Win32Application::Run (
 	windowClass.lpszClassName = L"DXSampleClass";
 	RegisterClassEx(&windowClass);
 
+    //-- Center window:
     RECT windowRect;
-    windowRect.left = 0L;
-    windowRect.top = 0L;
-    windowRect.right = static_cast<LONG>(pSample->GetWidth());
-    windowRect.bottom = static_cast<LONG>(pSample->GetHeight());
+    GetClientRect(GetDesktopWindow(), &windowRect);
+    long width = static_cast<LONG>(pSample->GetWidth());
+    long height = static_cast<LONG>(pSample->GetHeight());
+    windowRect.left = (windowRect.right / 2) - (width / 2);
+    windowRect.top = (windowRect.bottom / 2) - (height / 2);
+
 	AdjustWindowRect(&windowRect, WS_OVERLAPPEDWINDOW, FALSE);
 
 	// Create the window and store a handle to it.
@@ -47,10 +50,10 @@ int Win32Application::Run (
 		windowClass.lpszClassName,
 		pSample->GetTitle(),
 		WS_OVERLAPPEDWINDOW,
-		CW_USEDEFAULT,
-		CW_USEDEFAULT,
-		windowRect.right - windowRect.left,
-		windowRect.bottom - windowRect.top,
+		windowRect.left,
+		windowRect.top,
+        width,
+        height,
 		nullptr,		// We have no parent window.
 		nullptr,		// We aren't using menus.
 		hInstance,

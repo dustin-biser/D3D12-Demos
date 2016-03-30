@@ -80,12 +80,6 @@ void TriangleDemo::LoadPipeline()
         );
 	}
 
-    //D3D12_FEATURE_DATA_D3D12_OPTIONS options;
-    //ThrowIfFailed (
-    //    m_device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &options, sizeof(options))
-    //);
-
-
 	// Describe and create the command queue.
 	D3D12_COMMAND_QUEUE_DESC queueDesc = {};
 	queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
@@ -116,9 +110,15 @@ void TriangleDemo::LoadPipeline()
 		));
 
 	// This sample does not support full screen transitions.
-	ThrowIfFailed(factory->MakeWindowAssociation(Win32Application::GetHwnd(), DXGI_MWA_NO_ALT_ENTER));
+	ThrowIfFailed (
+        factory->MakeWindowAssociation(Win32Application::GetHwnd(), DXGI_MWA_NO_ALT_ENTER)
+    );
 
-	ThrowIfFailed(swapChain.As(&m_swapChain));
+	ThrowIfFailed (
+        // Acquire the IDXGISwapChain3 interface.  The reference to this interface is
+        // stored in m_swapChain.
+        swapChain.As(&m_swapChain)
+    );
 	m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
 
 	// Create descriptor heaps.
@@ -128,27 +128,36 @@ void TriangleDemo::LoadPipeline()
 		rtvHeapDesc.NumDescriptors = FrameCount;
 		rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 		rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-		ThrowIfFailed(m_device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&m_rtvHeap)));
+		ThrowIfFailed (
+            m_device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&m_rtvHeap))
+        );
 
-		m_rtvDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+		m_rtvDescriptorSize =
+            m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	}
 
 	// Create frame resources.
 	{
-		CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_rtvHeap->GetCPUDescriptorHandleForHeapStart());
+		CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle (
+            m_rtvHeap->GetCPUDescriptorHandleForHeapStart()
+        );
 
 		// Create a RenderTargetView for each frame.
 		for (UINT n = 0; n < FrameCount; n++)
 		{
-			ThrowIfFailed(m_swapChain->GetBuffer(n, IID_PPV_ARGS(&m_renderTargets[n])));
+			ThrowIfFailed (
+                m_swapChain->GetBuffer(n, IID_PPV_ARGS(&m_renderTargets[n]))
+            );
 			m_device->CreateRenderTargetView(m_renderTargets[n].Get(), nullptr, rtvHandle);
 			rtvHandle.Offset(1, m_rtvDescriptorSize);
 		}
 	}
 
-	ThrowIfFailed(m_device->CreateCommandAllocator (
-        D3D12_COMMAND_LIST_TYPE_DIRECT,
-        IID_PPV_ARGS(&m_commandAllocator))
+	ThrowIfFailed (
+        m_device->CreateCommandAllocator (
+            D3D12_COMMAND_LIST_TYPE_DIRECT,
+            IID_PPV_ARGS(&m_commandAllocator)
+        )
     );
 }
 
@@ -159,11 +168,15 @@ void TriangleDemo::LoadAssets()
 	// Create an empty root signature.
 	{
 		CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
-		rootSignatureDesc.Init(0, nullptr, 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+		rootSignatureDesc.Init(0, nullptr, 0, nullptr,
+            D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
 		ComPtr<ID3DBlob> signature;
 		ComPtr<ID3DBlob> error;
-		ThrowIfFailed(D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &signature, &error));
+		ThrowIfFailed (
+            D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, 
+                &signature, &error)
+        );
 		ThrowIfFailed(m_device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_rootSignature)));
 	}
 
@@ -216,15 +229,29 @@ void TriangleDemo::LoadAssets()
 		psoDesc.NumRenderTargets = 1;
 		psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
 		psoDesc.SampleDesc.Count = 1;
-		ThrowIfFailed(m_device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pipelineState)));
+		ThrowIfFailed(
+            m_device->CreateGraphicsPipelineState(
+                &psoDesc, 
+                IID_PPV_ARGS(&m_pipelineState))
+        );
 	}
 
 	// Create the command list.
-	ThrowIfFailed(m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_commandAllocator.Get(), m_pipelineState.Get(), IID_PPV_ARGS(&m_commandList)));
+	ThrowIfFailed (
+        m_device->CreateCommandList (
+            0, 
+            D3D12_COMMAND_LIST_TYPE_DIRECT, 
+            m_commandAllocator.Get(),
+            m_pipelineState.Get(), 
+            IID_PPV_ARGS(&m_commandList)
+        )
+    );
 
 	// Command lists are created in the recording state, but there is nothing
 	// to record yet. The main loop expects it to be closed, so close it now.
-	ThrowIfFailed(m_commandList->Close());
+	ThrowIfFailed(
+        m_commandList->Close()
+    );
 
 	// Create the vertex buffer.
 	{
