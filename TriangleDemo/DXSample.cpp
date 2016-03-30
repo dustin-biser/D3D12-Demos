@@ -14,6 +14,7 @@
 
 using namespace Microsoft::WRL;
 
+//---------------------------------------------------------------------------------------
 DXSample::DXSample(UINT width, UINT height, std::wstring name) :
 	m_width(width),
 	m_height(height),
@@ -27,21 +28,29 @@ DXSample::DXSample(UINT width, UINT height, std::wstring name) :
 	m_aspectRatio = static_cast<float>(width) / static_cast<float>(height);
 }
 
+
+//---------------------------------------------------------------------------------------
 DXSample::~DXSample()
 {
+
 }
 
+
+//---------------------------------------------------------------------------------------
 // Helper function for resolving the full path of assets.
 std::wstring DXSample::GetAssetFullPath(LPCWSTR assetName)
 {
 	return m_assetsPath + assetName;
 }
 
+
+//---------------------------------------------------------------------------------------
 // Helper function for acquiring the first available hardware adapter that supports Direct3D 12.
 // If no such adapter can be found, *ppAdapter will be set to nullptr.
-_Use_decl_annotations_
-void DXSample::GetHardwareAdapter(IDXGIFactory2* pFactory, IDXGIAdapter1** ppAdapter)
-{
+void DXSample::GetHardwareAdapter (
+    IDXGIFactory2 * pFactory,
+    IDXGIAdapter1 ** ppAdapter
+) {
 	ComPtr<IDXGIAdapter1> adapter;
 	*ppAdapter = nullptr;
 
@@ -60,7 +69,8 @@ void DXSample::GetHardwareAdapter(IDXGIFactory2* pFactory, IDXGIAdapter1** ppAda
 
 		// Check to see if the adapter supports Direct3D 12, but don't create the
 		// actual device yet.
-		if (SUCCEEDED(D3D12CreateDevice(adapter.Get(), D3D_FEATURE_LEVEL_11_0, _uuidof(ID3D12Device), nullptr)))
+		if (SUCCEEDED(D3D12CreateDevice(adapter.Get(),
+            D3D_FEATURE_LEVEL_11_0, _uuidof(ID3D12Device), nullptr)))
 		{
 			break;
 		}
@@ -68,10 +78,12 @@ void DXSample::GetHardwareAdapter(IDXGIFactory2* pFactory, IDXGIAdapter1** ppAda
         ++adapterIndex;
 	}
 
+    // Return first hardware adapter found, that supports the specified D3D feature set
 	*ppAdapter = adapter.Detach();
 
 }
 
+//---------------------------------------------------------------------------------------
 // Helper function for setting the window's title text.
 void DXSample::SetCustomWindowText(LPCWSTR text)
 {
@@ -79,8 +91,9 @@ void DXSample::SetCustomWindowText(LPCWSTR text)
 	SetWindowText(Win32Application::GetHwnd(), windowText.c_str());
 }
 
+
+//---------------------------------------------------------------------------------------
 // Helper function for parsing any supplied command line args.
-_Use_decl_annotations_
 void DXSample::ParseCommandLineArgs(WCHAR* argv[], int argc)
 {
 	for (int i = 1; i < argc; ++i)

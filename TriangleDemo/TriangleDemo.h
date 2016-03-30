@@ -25,7 +25,11 @@ using Microsoft::WRL::ComPtr;
 class TriangleDemo : public DXSample
 {
 public:
-	TriangleDemo(UINT width, UINT height, std::wstring name);
+	TriangleDemo (
+        UINT width,
+        UINT height,
+        std::wstring name
+    );
 
 	virtual void OnInit();
 	virtual void OnUpdate();
@@ -33,6 +37,7 @@ public:
 	virtual void OnDestroy();
 
 private:
+    /// Number of buffered frames
 	static const UINT FrameCount = 2;
 
 	struct Vertex

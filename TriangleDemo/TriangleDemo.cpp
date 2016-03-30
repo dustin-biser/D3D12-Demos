@@ -12,39 +12,46 @@
 #include "stdafx.h"
 #include "TriangleDemo.h"
 
-TriangleDemo::TriangleDemo(UINT width, UINT height, std::wstring name) :
-	DXSample(width, height, name),
-	m_frameIndex(0),
-	m_viewport(),
-	m_scissorRect(),
-	m_rtvDescriptorSize(0)
+
+//---------------------------------------------------------------------------------------
+TriangleDemo::TriangleDemo (
+    UINT width, 
+    UINT height,
+    std::wstring name
+)   
+    :   DXSample(width, height, name),
+        m_frameIndex(0),
+        m_viewport(),
+        m_scissorRect(),
+        m_rtvDescriptorSize(0)
 {
-	m_viewport.Width = static_cast<float>(width);
-	m_viewport.Height = static_cast<float>(height);
+	m_viewport.Width = float(width);
+	m_viewport.Height = float(height);
 	m_viewport.MaxDepth = 1.0f;
 
-	m_scissorRect.right = static_cast<LONG>(width);
-	m_scissorRect.bottom = static_cast<LONG>(height);
+	m_scissorRect.right = long(width);
+	m_scissorRect.bottom = long(height);
 }
 
+//---------------------------------------------------------------------------------------
 void TriangleDemo::OnInit()
 {
 	LoadPipeline();
 	LoadAssets();
 }
 
+
+//---------------------------------------------------------------------------------------
 // Load the rendering pipeline dependencies.
 void TriangleDemo::LoadPipeline()
 {
 #if defined(_DEBUG)
-	// Enable the D3D12 debug layer.
-	{
-		ComPtr<ID3D12Debug> debugController;
-		if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController))))
-		{
-			debugController->EnableDebugLayer();
-		}
-	}
+	//-- Enable the D3D12 debug layer:
+    ComPtr<ID3D12Debug> debugController;
+    if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController))))
+    {
+        debugController->EnableDebugLayer();
+    }
 #endif
 
 	ComPtr<IDXGIFactory4> factory;
@@ -66,19 +73,27 @@ void TriangleDemo::LoadPipeline()
 		ComPtr<IDXGIAdapter1> hardwareAdapter;
 		GetHardwareAdapter(factory.Get(), &hardwareAdapter);
 
-		ThrowIfFailed(D3D12CreateDevice(
-			hardwareAdapter.Get(),
-			D3D_FEATURE_LEVEL_11_0,
-			IID_PPV_ARGS(&m_device)
-			));
+		ThrowIfFailed (
+            D3D12CreateDevice(hardwareAdapter.Get(),
+			                  D3D_FEATURE_LEVEL_11_0,
+			                  IID_PPV_ARGS(&m_device))
+        );
 	}
+
+    //D3D12_FEATURE_DATA_D3D12_OPTIONS options;
+    //ThrowIfFailed (
+    //    m_device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &options, sizeof(options))
+    //);
+
 
 	// Describe and create the command queue.
 	D3D12_COMMAND_QUEUE_DESC queueDesc = {};
 	queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
 	queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
 
-	ThrowIfFailed(m_device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&m_commandQueue)));
+	ThrowIfFailed (
+        m_device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&m_commandQueue))
+    );
 
 	// Describe and create the swap chain.
 	DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
@@ -122,7 +137,7 @@ void TriangleDemo::LoadPipeline()
 	{
 		CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_rtvHeap->GetCPUDescriptorHandleForHeapStart());
 
-		// Create a RTV for each frame.
+		// Create a RenderTargetView for each frame.
 		for (UINT n = 0; n < FrameCount; n++)
 		{
 			ThrowIfFailed(m_swapChain->GetBuffer(n, IID_PPV_ARGS(&m_renderTargets[n])));
@@ -131,9 +146,13 @@ void TriangleDemo::LoadPipeline()
 		}
 	}
 
-	ThrowIfFailed(m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_commandAllocator)));
+	ThrowIfFailed(m_device->CreateCommandAllocator (
+        D3D12_COMMAND_LIST_TYPE_DIRECT,
+        IID_PPV_ARGS(&m_commandAllocator))
+    );
 }
 
+//---------------------------------------------------------------------------------------
 // Load the sample assets.
 void TriangleDemo::LoadAssets()
 {
@@ -163,16 +182,28 @@ void TriangleDemo::LoadAssets()
 		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"shaders.hlsl").c_str(), nullptr, nullptr, "VSMain", "vs_5_0", compileFlags, 0, &vertexShader, nullptr));
 		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"shaders.hlsl").c_str(), nullptr, nullptr, "PSMain", "ps_5_0", compileFlags, 0, &pixelShader, nullptr));
 
-		// Define the vertex input layout.
-		D3D12_INPUT_ELEMENT_DESC inputElementDescs[] =
-		{
-			{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-			{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
-		};
+		//-- Define the vertex input layout:
+        D3D12_INPUT_ELEMENT_DESC inputElementDescriptor[2];
+        inputElementDescriptor[0].SemanticName = "POSITION";
+        inputElementDescriptor[0].SemanticIndex = 0;
+        inputElementDescriptor[0].Format = DXGI_FORMAT_R32G32B32_FLOAT;
+        inputElementDescriptor[0].InputSlot = 0;
+        inputElementDescriptor[0].AlignedByteOffset = 0;
+        inputElementDescriptor[0].InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
+        inputElementDescriptor[0].InstanceDataStepRate = 0;
 
+        inputElementDescriptor[1].SemanticName = "COLOR";
+        inputElementDescriptor[1].SemanticIndex = 0;
+        inputElementDescriptor[1].Format = DXGI_FORMAT_R32G32B32_FLOAT;
+        inputElementDescriptor[1].InputSlot = 0;
+        inputElementDescriptor[1].AlignedByteOffset = sizeof(float) * 3;
+        inputElementDescriptor[1].InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
+        inputElementDescriptor[1].InstanceDataStepRate = 0;
+
+        
 		// Describe and create the graphics pipeline state object (PSO).
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
-		psoDesc.InputLayout = { inputElementDescs, _countof(inputElementDescs) };
+		psoDesc.InputLayout = { inputElementDescriptor, _countof(inputElementDescriptor) };
 		psoDesc.pRootSignature = m_rootSignature.Get();
 		psoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShader.Get());
 		psoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShader.Get());

@@ -14,11 +14,14 @@
 
 HWND Win32Application::m_hwnd = nullptr;
 
-int Win32Application::Run(DXSample* pSample, HINSTANCE hInstance, int nCmdShow)
-{
+int Win32Application::Run (
+    DXSample * pSample,
+    HINSTANCE hInstance,
+    int nCmdShow
+) {
 	// Parse the command line parameters
 	int argc;
-	LPWSTR* argv = CommandLineToArgvW(GetCommandLineW(), &argc);
+	LPWSTR * argv = CommandLineToArgvW(GetCommandLineW(), &argc);
 	pSample->ParseCommandLineArgs(argv, argc);
 	LocalFree(argv);
 
@@ -32,11 +35,15 @@ int Win32Application::Run(DXSample* pSample, HINSTANCE hInstance, int nCmdShow)
 	windowClass.lpszClassName = L"DXSampleClass";
 	RegisterClassEx(&windowClass);
 
-	RECT windowRect = { 0, 0, static_cast<LONG>(pSample->GetWidth()), static_cast<LONG>(pSample->GetHeight()) };
+    RECT windowRect;
+    windowRect.left = 0L;
+    windowRect.top = 0L;
+    windowRect.right = static_cast<LONG>(pSample->GetWidth());
+    windowRect.bottom = static_cast<LONG>(pSample->GetHeight());
 	AdjustWindowRect(&windowRect, WS_OVERLAPPEDWINDOW, FALSE);
 
 	// Create the window and store a handle to it.
-	m_hwnd = CreateWindow(
+	m_hwnd = CreateWindow (
 		windowClass.lpszClassName,
 		pSample->GetTitle(),
 		WS_OVERLAPPEDWINDOW,
@@ -47,7 +54,10 @@ int Win32Application::Run(DXSample* pSample, HINSTANCE hInstance, int nCmdShow)
 		nullptr,		// We have no parent window.
 		nullptr,		// We aren't using menus.
 		hInstance,
-		pSample);
+		pSample         // Store pointer to DXSample in the user data slot.
+                        // We'll retrieve this later within the WindowProc in order
+                        // interact with the DXSample instance.
+    );
 
 	// Initialize the sample. OnInit is defined in each child-implementation of DXSample.
 	pSample->OnInit();
@@ -61,7 +71,10 @@ int Win32Application::Run(DXSample* pSample, HINSTANCE hInstance, int nCmdShow)
 		// Process any messages in the queue.
 		if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
 		{
+            // Translate virtual-key codes into character messages.
 			TranslateMessage(&msg);
+
+            // Dispatches a message to a the registered window procedure.
 			DispatchMessage(&msg);
 		}
 	}
@@ -73,22 +86,33 @@ int Win32Application::Run(DXSample* pSample, HINSTANCE hInstance, int nCmdShow)
 }
 
 // Main message handler for the sample.
-LRESULT CALLBACK Win32Application::WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
-{
-	DXSample* pSample = reinterpret_cast<DXSample*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
+LRESULT CALLBACK Win32Application::WindowProc (
+    HWND hWnd,
+    UINT message,
+    WPARAM wParam,
+    LPARAM lParam
+) {
+    // Retrieve a pointer to the DXSample instance held by the user data field of our 
+    // window instance.
+	DXSample * pSample = reinterpret_cast<DXSample*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
 
 	switch (message)
 	{
 	case WM_CREATE:
 		{
-			// Save the DXSample* passed in to CreateWindow.
+			// Save the DXSample* passed in to CreateWindow and store it in the window's
+            // user data field so we can retrieve it later.
 			LPCREATESTRUCT pCreateStruct = reinterpret_cast<LPCREATESTRUCT>(lParam);
-			SetWindowLongPtr(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(pCreateStruct->lpCreateParams));
+			SetWindowLongPtr(hWnd, GWLP_USERDATA,
+                reinterpret_cast<LONG_PTR>(pCreateStruct->lpCreateParams));
 		}
 		return 0;
 
 	case WM_KEYDOWN:
-		if (pSample)
+        if (wParam == VK_ESCAPE) {
+            PostQuitMessage(0);
+        }
+		else if (pSample)
 		{
 			pSample->OnKeyDown(static_cast<UINT8>(wParam));
 		}
