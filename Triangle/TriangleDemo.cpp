@@ -9,7 +9,7 @@
 //
 //*********************************************************
 
-#include "stdafx.h"
+#include "pch.h"
 #include "TriangleDemo.h"
 
 
@@ -168,17 +168,29 @@ void TriangleDemo::LoadAssets()
 	// Create an empty root signature.
 	{
 		CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
-		rootSignatureDesc.Init(0, nullptr, 0, nullptr,
-            D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+		rootSignatureDesc.Init (
+            0, nullptr, 0, nullptr,
+            D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT
+        );
 
 		ComPtr<ID3DBlob> signature;
 		ComPtr<ID3DBlob> error;
 		ThrowIfFailed (
-            D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, 
-                &signature, &error)
+            D3D12SerializeRootSignature (
+                &rootSignatureDesc,
+                D3D_ROOT_SIGNATURE_VERSION_1, 
+                &signature, 
+                &error
+            )
         );
-		ThrowIfFailed(m_device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_rootSignature)));
-	}
+		ThrowIfFailed (
+            m_device->CreateRootSignature (
+                0,
+                signature->GetBufferPointer(),
+                signature->GetBufferSize(),
+                IID_PPV_ARGS(&m_rootSignature))
+            );
+	    }
 
 	// Create the pipeline state, which includes compiling and loading shaders.
 	{
@@ -192,8 +204,23 @@ void TriangleDemo::LoadAssets()
 		UINT compileFlags = 0;
 #endif
 
-		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"shaders.hlsl").c_str(), nullptr, nullptr, "VSMain", "vs_5_0", compileFlags, 0, &vertexShader, nullptr));
-		ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"shaders.hlsl").c_str(), nullptr, nullptr, "PSMain", "ps_5_0", compileFlags, 0, &pixelShader, nullptr));
+        // Compile vertex shader
+		ThrowIfFailed(
+            D3DCompileFromFile (
+                GetAssetFullPath(L"shaders.hlsl").c_str(),
+                nullptr, nullptr, "VSMain", "vs_5_0", 
+                compileFlags, 0, &vertexShader, nullptr
+            )
+        );
+
+        // Compile pixel shader
+		ThrowIfFailed (
+            D3DCompileFromFile (
+                GetAssetFullPath(L"shaders.hlsl").c_str(),
+                nullptr, nullptr, "PSMain", "ps_5_0",
+                compileFlags, 0, &pixelShader, nullptr
+            )
+        );
 
 		//-- Define the vertex input layout:
         D3D12_INPUT_ELEMENT_DESC inputElementDescriptor[2];
@@ -229,10 +256,13 @@ void TriangleDemo::LoadAssets()
 		psoDesc.NumRenderTargets = 1;
 		psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
 		psoDesc.SampleDesc.Count = 1;
+
+        // Create the Pipleine State Object (PSO).
 		ThrowIfFailed(
             m_device->CreateGraphicsPipelineState(
                 &psoDesc, 
-                IID_PPV_ARGS(&m_pipelineState))
+                IID_PPV_ARGS(&m_pipelineState)
+            )
         );
 	}
 
@@ -258,6 +288,7 @@ void TriangleDemo::LoadAssets()
 		// Define the geometry for a triangle.
 		Vertex triangleVertices[] =
 		{
+            // Positions                              Colors
 			{ { 0.0f, 0.25f * m_aspectRatio, 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f } },
 			{ { 0.25f, -0.25f * m_aspectRatio, 0.0f }, { 0.0f, 1.0f, 0.0f, 1.0f } },
 			{ { -0.25f, -0.25f * m_aspectRatio, 0.0f }, { 0.0f, 0.0f, 1.0f, 1.0f } }
@@ -269,18 +300,25 @@ void TriangleDemo::LoadAssets()
 		// recommended. Every time the GPU needs it, the upload heap will be marshalled 
 		// over. Please read up on Default Heap usage. An upload heap is used here for 
 		// code simplicity and because there are very few verts to actually transfer.
-		ThrowIfFailed(m_device->CreateCommittedResource(
-			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
-			D3D12_HEAP_FLAG_NONE,
-			&CD3DX12_RESOURCE_DESC::Buffer(vertexBufferSize),
-			D3D12_RESOURCE_STATE_GENERIC_READ,
-			nullptr,
-			IID_PPV_ARGS(&m_vertexBuffer)));
+		ThrowIfFailed (
+            m_device->CreateCommittedResource (
+                &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+                D3D12_HEAP_FLAG_NONE,
+                &CD3DX12_RESOURCE_DESC::Buffer(vertexBufferSize),
+                D3D12_RESOURCE_STATE_GENERIC_READ,
+                nullptr,
+                IID_PPV_ARGS(&m_vertexBuffer)
+            )
+         );
 
 		// Copy the triangle data to the vertex buffer.
 		UINT8* pVertexDataBegin;
 		CD3DX12_RANGE readRange(0, 0);		// We do not intend to read from this resource on the CPU.
-		ThrowIfFailed(m_vertexBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pVertexDataBegin)));
+
+        // Get pointer to beginning of resource Buffer
+		ThrowIfFailed (
+            m_vertexBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pVertexDataBegin))
+        );
 		memcpy(pVertexDataBegin, triangleVertices, sizeof(triangleVertices));
 		m_vertexBuffer->Unmap(0, nullptr);
 
@@ -292,7 +330,9 @@ void TriangleDemo::LoadAssets()
 
 	// Create synchronization objects and wait until assets have been uploaded to the GPU.
 	{
-		ThrowIfFailed(m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_fence)));
+		ThrowIfFailed (
+            m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_fence))
+        );
 		m_fenceValue = 1;
 
 		// Create an event handle to use for frame synchronization.
@@ -309,11 +349,14 @@ void TriangleDemo::LoadAssets()
 	}
 }
 
+//---------------------------------------------------------------------------------------
 // Update frame-based values.
 void TriangleDemo::OnUpdate()
 {
+
 }
 
+//---------------------------------------------------------------------------------------
 // Render the scene.
 void TriangleDemo::OnRender()
 {
@@ -325,11 +368,14 @@ void TriangleDemo::OnRender()
 	m_commandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
 
 	// Present the frame.
-	ThrowIfFailed(m_swapChain->Present(1, 0));
+	ThrowIfFailed (
+        m_swapChain->Present(1, 0)
+    );
 
 	WaitForPreviousFrame();
 }
 
+//---------------------------------------------------------------------------------------
 void TriangleDemo::OnDestroy()
 {
 	// Ensure that the GPU is no longer referencing resources that are about to be
@@ -339,6 +385,7 @@ void TriangleDemo::OnDestroy()
 	CloseHandle(m_fenceEvent);
 }
 
+//---------------------------------------------------------------------------------------
 void TriangleDemo::PopulateCommandList()
 {
 	// Command list allocators can only be reset when the associated 
@@ -375,6 +422,7 @@ void TriangleDemo::PopulateCommandList()
 	ThrowIfFailed(m_commandList->Close());
 }
 
+//---------------------------------------------------------------------------------------
 void TriangleDemo::WaitForPreviousFrame()
 {
 	// WAITING FOR THE FRAME TO COMPLETE BEFORE CONTINUING IS NOT BEST PRACTICE.
@@ -384,13 +432,17 @@ void TriangleDemo::WaitForPreviousFrame()
 
 	// Signal and increment the fence value.
 	const UINT64 fence = m_fenceValue;
-	ThrowIfFailed(m_commandQueue->Signal(m_fence.Get(), fence));
+	ThrowIfFailed (
+        m_commandQueue->Signal(m_fence.Get(), fence)
+    );
 	m_fenceValue++;
 
 	// Wait until the previous frame is finished.
 	if (m_fence->GetCompletedValue() < fence)
 	{
-		ThrowIfFailed(m_fence->SetEventOnCompletion(fence, m_fenceEvent));
+		ThrowIfFailed (
+            m_fence->SetEventOnCompletion(fence, m_fenceEvent)
+        );
 		WaitForSingleObject(m_fenceEvent, INFINITE);
 	}
 

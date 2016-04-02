@@ -8,8 +8,7 @@
 // PURPOSE, MERCHANTABILITY, OR NON-INFRINGEMENT.
 //
 //*********************************************************
-
-#include "stdafx.h"
+#include "pch.h"
 #include "Win32Application.h"
 
 HWND Win32Application::m_hwnd = nullptr;
@@ -24,6 +23,19 @@ int Win32Application::Run (
 	LPWSTR * argv = CommandLineToArgvW(GetCommandLineW(), &argc);
 	pSample->ParseCommandLineArgs(argv, argc);
 	LocalFree(argv);
+
+
+    //-- Use the following code to open a new console window and redirect stdout to it:
+    {
+        // Open a new console window
+        AllocConsole();
+
+        //-- Associate std input/output with newly opened console window:
+        freopen("CONIN$", "r", stdin);
+        freopen("CONOUT$", "w", stdout);
+        freopen("CONOUT$", "w", stderr);
+    }
+
 
 	//-- Initialize the window class:
 	WNDCLASSEX windowClass = { 0 };

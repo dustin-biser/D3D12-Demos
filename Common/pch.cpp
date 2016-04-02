@@ -9,12 +9,4 @@
 //
 //*********************************************************
 
-#include "stdafx.h"
-#include "TriangleDemo.h"
-
-_Use_decl_annotations_
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
-{
-	TriangleDemo sample(1024, 768, L"D3D12 Hello Triangle");
-	return Win32Application::Run(&sample, hInstance, nCmdShow);
-}
+#include "pch.h"

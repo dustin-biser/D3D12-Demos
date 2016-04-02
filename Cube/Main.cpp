@@ -9,4 +9,12 @@
 //
 //*********************************************************
 
-#include "stdafx.h"
+#include "pch.h"
+#include "CubeDemo.h"
+
+_Use_decl_annotations_
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
+{
+	CubeDemo sample(1024, 768, L"D3D12 Cube Demo");
+	return Win32Application::Run(&sample, hInstance, nCmdShow);
+}

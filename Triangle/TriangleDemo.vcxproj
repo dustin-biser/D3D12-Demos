@@ -58,8 +58,9 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\Dustin\Projects\C++\D3D12-Demos\Common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <CompileAsWinRT>false</CompileAsWinRT>
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -79,7 +80,7 @@
       <ShaderModel>5.1</ShaderModel>
     </FxCompile>
     <PostBuildEvent>
-      <Command>Copy /Y "$(SolutionDir)\$(ProjectName)Demo\*.hlsl" "$(TargetDir)"</Command>
+      <Command>Copy /Y "$(ProjectDir)*.hlsl" "$(TargetDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -114,22 +115,21 @@
     </FxCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="Win32Application.h" />
+    <ClInclude Include="..\Common\d3dx12.h" />
+    <ClInclude Include="..\Common\DXSample.h" />
+    <ClInclude Include="..\Common\DXSampleHelper.h" />
+    <ClInclude Include="..\Common\pch.h" />
+    <ClInclude Include="..\Common\Win32Application.h" />
     <ClInclude Include="TriangleDemo.h" />
-    <ClInclude Include="d3dx12.h" />
-    <ClInclude Include="DXSample.h" />
-    <ClInclude Include="DXSampleHelper.h" />
-    <ClInclude Include="stdafx.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Win32Application.cpp" />
-    <ClCompile Include="TriangleDemo.cpp" />
-    <ClCompile Include="DXSample.cpp" />
-    <ClCompile Include="Main.cpp" />
-    <ClCompile Include="stdafx.cpp">
+    <ClCompile Include="..\Common\DXSample.cpp" />
+    <ClCompile Include="..\Common\pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="..\Common\Win32Application.cpp" />
+    <ClCompile Include="TriangleDemo.cpp" />
+    <ClCompile Include="Main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="shaders.hlsl">
