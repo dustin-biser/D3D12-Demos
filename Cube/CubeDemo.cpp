@@ -83,14 +83,17 @@ void CubeDemo::LoadPipeline()
         );
 	}
 
-	// Describe and create the command queue.
-	D3D12_COMMAND_QUEUE_DESC queueDesc = {};
-	queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
-	queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
+	// Describe and create the direct command queue.
+    {
+        D3D12_COMMAND_QUEUE_DESC queueDesc = {};
+        queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
+        queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
 
-	ThrowIfFailed (
-        m_device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&m_commandQueue))
-    );
+        ThrowIfFailed(
+            m_device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&m_commandQueue))
+        );
+        m_commandQueue->SetName(L"DirectCommandQueue");
+    }
 
 	// Describe and create the swap chain.
 	DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
@@ -276,15 +279,16 @@ void CubeDemo::LoadAssets()
             D3D12_COMMAND_LIST_TYPE_DIRECT, 
             m_commandAllocator.Get(),
             m_pipelineState.Get(), 
-            IID_PPV_ARGS(&m_commandList)
+            IID_PPV_ARGS(&m_graphicsCommandList)
         )
     );
 
-	// Command lists are created in the recording state, but there is nothing
-	// to record yet. The main loop expects it to be closed, so close it now.
-	ThrowIfFailed(
-        m_commandList->Close()
-    );
+    // Upload heap is only needed during loading data to GPU.
+    // Note: ComPtr's are CPU objects but this resource needs to stay in scope until
+    // the command list that references it has finished executing on the GPU.
+    // We will flush the GPU at the end of this method to ensure the resource is not
+    // prematurely destroyed.
+    ComPtr<ID3D12Resource> vertexBufferUploadHeap;
 
 	// Create the vertex buffer.
 	{
@@ -299,38 +303,60 @@ void CubeDemo::LoadAssets()
 
 		const UINT vertexBufferSize = sizeof(triangleVertices);
 
+        ThrowIfFailed(
+            m_device->CreateCommittedResource (
+                &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+                D3D12_HEAP_FLAG_NONE,
+                &CD3DX12_RESOURCE_DESC::Buffer(vertexBufferSize),
+                D3D12_RESOURCE_STATE_COPY_DEST,
+                nullptr,
+                IID_PPV_ARGS(&m_vertexBuffer))
+        );
 
-		// Note: using upload heaps to transfer static data like vert buffers is not 
-		// recommended. Every time the GPU needs it, the upload heap will be marshalled 
-		// over. Please read up on Default Heap usage. An upload heap is used here for 
-		// code simplicity and because there are very few verts to actually transfer.
-		ThrowIfFailed (
-            m_device->CreateCommittedResource(
+        ThrowIfFailed(
+            m_device->CreateCommittedResource (
                 &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
                 D3D12_HEAP_FLAG_NONE,
                 &CD3DX12_RESOURCE_DESC::Buffer(vertexBufferSize),
                 D3D12_RESOURCE_STATE_GENERIC_READ,
                 nullptr,
-                IID_PPV_ARGS(&m_vertexBuffer)
-                )
-         );
-
-		// Copy the triangle data to the vertex buffer.
-		UINT8* pVertexDataBegin;
-		CD3DX12_RANGE readRange(0, 0);		// We do not intend to read from this resource on the CPU.
-
-        // Get pointer to beginning of resource Buffer
-		ThrowIfFailed (
-            m_vertexBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pVertexDataBegin))
+                IID_PPV_ARGS(&vertexBufferUploadHeap))
         );
-		memcpy(pVertexDataBegin, triangleVertices, sizeof(triangleVertices));
-		m_vertexBuffer->Unmap(0, nullptr);
+
+        // Copy data to the intermediate upload heap and then schedule a copy 
+        // from the upload heap to the vertex buffer.
+        {
+            D3D12_SUBRESOURCE_DATA vertexData = {};
+            vertexData.pData = triangleVertices;
+            vertexData.RowPitch = vertexBufferSize;
+            vertexData.SlicePitch = vertexData.RowPitch;
+
+            UpdateSubresources<1>(
+                m_graphicsCommandList.Get(),
+                m_vertexBuffer.Get(),
+                vertexBufferUploadHeap.Get(),
+                0, 0, 1,
+                &vertexData
+            );
+
+            m_graphicsCommandList->ResourceBarrier (
+                1, &CD3DX12_RESOURCE_BARRIER::Transition (
+                    m_vertexBuffer.Get(),
+                    D3D12_RESOURCE_STATE_COPY_DEST,
+                    D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER)
+            );
+        }
 
 		// Initialize the vertex buffer view.
 		m_vertexBufferView.BufferLocation = m_vertexBuffer->GetGPUVirtualAddress();
 		m_vertexBufferView.StrideInBytes = sizeof(Vertex);
 		m_vertexBufferView.SizeInBytes = vertexBufferSize;
 	}
+
+    // Close the command list and execute it to begin the initial GPU setup.
+    ThrowIfFailed(m_graphicsCommandList->Close());
+    ID3D12CommandList* ppCommandLists[] = { m_graphicsCommandList.Get() };
+    m_commandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
 
 	// Create synchronization objects and wait until assets have been uploaded to the GPU.
 	{
@@ -368,7 +394,7 @@ void CubeDemo::OnRender()
 	PopulateCommandList();
 
 	// Execute the command list.
-	ID3D12CommandList* ppCommandLists[] = { m_commandList.Get() };
+	ID3D12CommandList* ppCommandLists[] = { m_graphicsCommandList.Get() };
 	m_commandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
 
 	// Present the frame.
@@ -400,30 +426,30 @@ void CubeDemo::PopulateCommandList()
 	// However, when ExecuteCommandList() is called on a particular command 
 	// list, that command list can then be reset at any time and must be before 
 	// re-recording.
-	ThrowIfFailed(m_commandList->Reset(m_commandAllocator.Get(), m_pipelineState.Get()));
+	ThrowIfFailed(m_graphicsCommandList->Reset(m_commandAllocator.Get(), m_pipelineState.Get()));
 
 	// Set necessary state.
-	m_commandList->SetGraphicsRootSignature(m_rootSignature.Get());
-	m_commandList->RSSetViewports(1, &m_viewport);
-	m_commandList->RSSetScissorRects(1, &m_scissorRect);
+	m_graphicsCommandList->SetGraphicsRootSignature(m_rootSignature.Get());
+	m_graphicsCommandList->RSSetViewports(1, &m_viewport);
+	m_graphicsCommandList->RSSetScissorRects(1, &m_scissorRect);
 
 	// Indicate that the back buffer will be used as a render target.
-	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
+	m_graphicsCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_rtvHeap->GetCPUDescriptorHandleForHeapStart(), m_frameIndex, m_rtvDescriptorSize);
-	m_commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
+	m_graphicsCommandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
 
 	// Record commands.
 	const float clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
-	m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
-	m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	m_commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
-	m_commandList->DrawInstanced(3, 1, 0, 0);
+	m_graphicsCommandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+	m_graphicsCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	m_graphicsCommandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
+	m_graphicsCommandList->DrawInstanced(3, 1, 0, 0);
 
 	// Indicate that the back buffer will now be used to present.
-	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
+	m_graphicsCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
 
-	ThrowIfFailed(m_commandList->Close());
+	ThrowIfFailed(m_graphicsCommandList->Close());
 }
 
 //---------------------------------------------------------------------------------------
