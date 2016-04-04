@@ -213,13 +213,14 @@ void IndexRendering::LoadAssets()
 #endif
 
         // Compile vertex shader
-		ThrowIfFailed(
-            D3DCompileFromFile (
+        ThrowIfFailed(
+            D3DCompileFromFile(
                 GetAssetFullPath(L"shaders.hlsl").c_str(),
-                nullptr, nullptr, "VSMain", "vs_5_0", 
+                nullptr, nullptr, "VSMain", "vs_5_0",
                 compileFlags, 0, &vertexShader, nullptr
-            )
+           )
         );
+
 
         // Compile pixel shader
 		ThrowIfFailed (
