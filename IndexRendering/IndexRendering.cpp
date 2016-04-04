@@ -10,7 +10,7 @@
 //*********************************************************
 
 #include "pch.h"
-#include "CubeDemo.h"
+#include "IndexRendering.h"
 
 #include <vector>
 #include <iostream>
@@ -18,7 +18,7 @@ using namespace std;
 
 
 //---------------------------------------------------------------------------------------
-CubeDemo::CubeDemo (
+IndexRendering::IndexRendering (
     UINT width, 
     UINT height,
     std::wstring name
@@ -38,7 +38,7 @@ CubeDemo::CubeDemo (
 }
 
 //---------------------------------------------------------------------------------------
-void CubeDemo::OnInit()
+void IndexRendering::OnInit()
 {
 	LoadPipeline();
 	LoadAssets();
@@ -48,7 +48,7 @@ void CubeDemo::OnInit()
 
 //---------------------------------------------------------------------------------------
 // Load the rendering pipeline dependencies.
-void CubeDemo::LoadPipeline()
+void IndexRendering::LoadPipeline()
 {
 #if defined(_DEBUG)
 	//-- Enable the D3D12 debug layer:
@@ -171,7 +171,7 @@ void CubeDemo::LoadPipeline()
 
 //---------------------------------------------------------------------------------------
 // Load the sample assets.
-void CubeDemo::LoadAssets()
+void IndexRendering::LoadAssets()
 {
 	// Create an empty root signature.
 	{
@@ -392,14 +392,14 @@ void CubeDemo::LoadAssets()
 
 //---------------------------------------------------------------------------------------
 // Update frame-based values.
-void CubeDemo::OnUpdate()
+void IndexRendering::OnUpdate()
 {
 
 }
 
 //---------------------------------------------------------------------------------------
 // Render the scene.
-void CubeDemo::OnRender()
+void IndexRendering::OnRender()
 {
 	// Execute the command list.
 	std::vector<ID3D12CommandList*> commandLists;
@@ -417,7 +417,7 @@ void CubeDemo::OnRender()
 }
 
 //---------------------------------------------------------------------------------------
-void CubeDemo::OnDestroy()
+void IndexRendering::OnDestroy()
 {
 	// Ensure that the GPU is no longer referencing resources that are about to be
 	// cleaned up by the destructor.
@@ -427,7 +427,7 @@ void CubeDemo::OnDestroy()
 }
 
 //---------------------------------------------------------------------------------------
-void CubeDemo::PopulateCommandList() {
+void IndexRendering::PopulateCommandList() {
     // Command list allocators can only be reset when the associated 
     // command lists have finished execution on the GPU; apps should use 
     // fences to determine GPU execution progress.
@@ -484,7 +484,7 @@ void CubeDemo::PopulateCommandList() {
 }
 
 //---------------------------------------------------------------------------------------
-void CubeDemo::WaitForPreviousFrame()
+void IndexRendering::WaitForPreviousFrame()
 {
 	// WAITING FOR THE FRAME TO COMPLETE BEFORE CONTINUING IS NOT BEST PRACTICE.
 	// This is code implemented as such for simplicity. The D3D12HelloFrameBuffering

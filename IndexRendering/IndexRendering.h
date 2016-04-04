@@ -23,9 +23,9 @@ using namespace DirectX;
 using Microsoft::WRL::ComPtr;
 
 
-class CubeDemo : public DXSample {
+class IndexRendering : public DXSample {
 public:
-	CubeDemo (
+	IndexRendering (
         UINT width,
         UINT height,
         std::wstring name
