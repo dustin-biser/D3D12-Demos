@@ -42,6 +42,7 @@ void CubeDemo::OnInit()
 {
 	LoadPipeline();
 	LoadAssets();
+    PopulateCommandList();
 }
 
 
@@ -273,16 +274,21 @@ void CubeDemo::LoadAssets()
         );
 	}
 
-	// Create the command list.
-	ThrowIfFailed (
-        m_device->CreateCommandList (
-            0, 
-            D3D12_COMMAND_LIST_TYPE_DIRECT, 
-            m_commandAllocator.Get(),
-            m_pipelineState.Get(), 
-            IID_PPV_ARGS(&m_commandList)
-        )
-    );
+
+	// Create the command lists.
+    for (int i(0); i < FrameCount; ++i) {
+        ThrowIfFailed(
+            m_device->CreateCommandList(
+                0,
+                D3D12_COMMAND_LIST_TYPE_DIRECT,
+                m_commandAllocator.Get(),
+                m_pipelineState.Get(),
+                IID_PPV_ARGS(&m_commandList[i])
+                )
+            );
+        // Stop recording, will reset this later before issuing commands.
+        m_commandList[i]->Close();
+    }
 
     // Upload heap is only needed during loading data to GPU.
     // Note: ComPtr's are CPU objects but this resource needs to stay in scope until
@@ -332,15 +338,19 @@ void CubeDemo::LoadAssets()
             vertexData.RowPitch = vertexBufferSize;
             vertexData.SlicePitch = vertexData.RowPitch;
 
+            // Start recording
+            m_commandList[0]->Reset(m_commandAllocator.Get(), m_pipelineState.Get());
+
             UpdateSubresources<1>(
-                m_commandList.Get(),
+                m_commandList[0].Get(),
                 m_vertexBuffer.Get(),
                 vertexBufferUploadHeap.Get(),
                 0, 0, 1,
                 &vertexData
             );
 
-            m_commandList->ResourceBarrier (
+
+            m_commandList[0]->ResourceBarrier (
                 1, &CD3DX12_RESOURCE_BARRIER::Transition (
                     m_vertexBuffer.Get(),
                     D3D12_RESOURCE_STATE_COPY_DEST,
@@ -355,8 +365,8 @@ void CubeDemo::LoadAssets()
 	}
 
     // Close the command list and execute it to begin the initial GPU setup.
-    ThrowIfFailed(m_commandList->Close());
-    ID3D12CommandList* ppCommandLists[] = { m_commandList.Get() };
+    ThrowIfFailed(m_commandList[0]->Close());
+    ID3D12CommandList* ppCommandLists[] = { m_commandList[0].Get() };
     m_commandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
 
 	// Create synchronization objects and wait until assets have been uploaded to the GPU.
@@ -391,12 +401,12 @@ void CubeDemo::OnUpdate()
 // Render the scene.
 void CubeDemo::OnRender()
 {
-    // Record all the commands we need to render the scene into the command list.
-    PopulateCommandList();
-
 	// Execute the command list.
-	std::vector<ID3D12CommandList*> commandLists = { m_commandList.Get() };
-	m_commandQueue->ExecuteCommandLists(UINT(commandLists.size()), commandLists.data());
+	std::vector<ID3D12CommandList*> commandLists;
+    for (auto & cmdList : m_commandList) {
+        commandLists.push_back(cmdList.Get());
+    }
+	m_commandQueue->ExecuteCommandLists(1, &commandLists[m_frameIndex]);
 
 	// Present the frame.
 	ThrowIfFailed (
@@ -417,40 +427,60 @@ void CubeDemo::OnDestroy()
 }
 
 //---------------------------------------------------------------------------------------
-void CubeDemo::PopulateCommandList()
-{
-	// Command list allocators can only be reset when the associated 
-	// command lists have finished execution on the GPU; apps should use 
-	// fences to determine GPU execution progress.
-	ThrowIfFailed(m_commandAllocator->Reset());
+void CubeDemo::PopulateCommandList() {
+    // Command list allocators can only be reset when the associated 
+    // command lists have finished execution on the GPU; apps should use 
+    // fences to determine GPU execution progress.
+    ThrowIfFailed(m_commandAllocator->Reset());
 
-	// However, when ExecuteCommandList() is called on a particular command 
-	// list, that command list can then be reset at any time and must be before 
-	// re-recording.
-	ThrowIfFailed(m_commandList->Reset(m_commandAllocator.Get(), m_pipelineState.Get()));
+    for (int i(0); i < FrameCount; ++i) {
 
-	// Set necessary state.
-	m_commandList->SetGraphicsRootSignature(m_rootSignature.Get());
-	m_commandList->RSSetViewports(1, &m_viewport);
-	m_commandList->RSSetScissorRects(1, &m_scissorRect);
+        // However, when ExecuteCommandList() is called on a particular command 
+        // list, that command list can then be reset at any time and must be before 
+        // re-recording.
+        ThrowIfFailed(
+            m_commandList[i]->Reset(m_commandAllocator.Get(), m_pipelineState.Get())
+         );
 
-	// Indicate that the back buffer will be used as a render target.
-	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
+        // Set necessary state.
+        m_commandList[i]->SetGraphicsRootSignature(m_rootSignature.Get());
+        m_commandList[i]->RSSetViewports(1, &m_viewport);
+        m_commandList[i]->RSSetScissorRects(1, &m_scissorRect);
 
-	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_rtvHeap->GetCPUDescriptorHandleForHeapStart(), m_frameIndex, m_rtvDescriptorSize);
-	m_commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
+        // Indicate that the back buffer will be used as a render target.
+        m_commandList[i]->ResourceBarrier (1,
+            &CD3DX12_RESOURCE_BARRIER::Transition (
+                m_renderTargets[i].Get(),
+                D3D12_RESOURCE_STATE_PRESENT,
+                D3D12_RESOURCE_STATE_RENDER_TARGET
+            )
+        );
 
-	// Record commands.
-	const float clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
-	m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
-	m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	m_commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
-	m_commandList->DrawInstanced(3, 1, 0, 0);
+        CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle (
+            m_rtvHeap->GetCPUDescriptorHandleForHeapStart(),
+            i, 
+            m_rtvDescriptorSize
+        );
+        m_commandList[i]->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
 
-	// Indicate that the back buffer will now be used to present.
-	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
+        // Record commands.
+        const float clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
+        m_commandList[i]->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+        m_commandList[i]->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        m_commandList[i]->IASetVertexBuffers(0, 1, &m_vertexBufferView);
+        m_commandList[i]->DrawInstanced(3, 1, 0, 0);
 
-	ThrowIfFailed(m_commandList->Close());
+        // Indicate that the back buffer will now be used to present.
+        m_commandList[i]->ResourceBarrier (1,
+            &CD3DX12_RESOURCE_BARRIER::Transition (
+                m_renderTargets[i].Get(),
+                D3D12_RESOURCE_STATE_RENDER_TARGET,
+                D3D12_RESOURCE_STATE_PRESENT
+            )
+        );
+
+        ThrowIfFailed(m_commandList[i]->Close());
+    }
 }
 
 //---------------------------------------------------------------------------------------
