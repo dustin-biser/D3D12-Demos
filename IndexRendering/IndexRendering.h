@@ -1,13 +1,4 @@
-//*********************************************************
-//
-// Copyright (c) Microsoft. All rights reserved.
-// This code is licensed under the MIT License (MIT).
-// THIS CODE IS PROVIDED *AS IS* WITHOUT WARRANTY OF
-// ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING ANY
-// IMPLIED WARRANTIES OF FITNESS FOR A PARTICULAR
-// PURPOSE, MERCHANTABILITY, OR NON-INFRINGEMENT.
-//
-//*********************************************************
+// IndexRendering.h
 
 #pragma once
 
@@ -26,8 +17,8 @@ using Microsoft::WRL::ComPtr;
 class IndexRendering : public DXSample {
 public:
 	IndexRendering (
-        UINT width,
-        UINT height,
+        uint width,
+        uint height,
         std::wstring name
     );
 
@@ -38,7 +29,7 @@ public:
 
 private:
     /// Number of buffered frames
-	static const UINT FrameCount = 2;
+	static const uint FrameCount = 2;
 
 	struct Vertex
 	{
@@ -58,17 +49,20 @@ private:
 	ComPtr<ID3D12DescriptorHeap> m_rtvHeap;
 	ComPtr<ID3D12PipelineState> m_pipelineState;
 	ComPtr<ID3D12GraphicsCommandList> m_commandList[FrameCount];
-	UINT m_rtvDescriptorSize;
+	uint m_rtvDescriptorSize;
 
 	// App resources.
 	ComPtr<ID3D12Resource> m_vertexBuffer;
 	D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
+	ComPtr<ID3D12Resource> m_indexBuffer;
+	D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
+    uint m_indexCount;
 
 	// Synchronization objects.
-	UINT m_frameIndex;
+	uint m_frameIndex;
 	HANDLE m_fenceEvent;
 	ComPtr<ID3D12Fence> m_fence;
-	UINT64 m_fenceValue;
+	uint64 m_fenceValue;
 
 	void LoadPipeline();
 	void LoadAssets();

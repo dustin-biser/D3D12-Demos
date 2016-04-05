@@ -19,8 +19,8 @@ using namespace std;
 
 //---------------------------------------------------------------------------------------
 IndexRendering::IndexRendering (
-    UINT width, 
-    UINT height,
+    uint width, 
+    uint height,
     std::wstring name
 )   
     :   DXSample(width, height, name),
@@ -123,7 +123,7 @@ void IndexRendering::LoadPipeline()
     );
 
 	ThrowIfFailed (
-        // Acquire the IDXGISwapChain3 interface.  The reference to this interface is
+        // Acquire the IDXGISwapChain3 interface.  A reference to this interface will be
         // stored in m_swapChain.
         swapChain.As(&m_swapChain)
     );
@@ -151,7 +151,7 @@ void IndexRendering::LoadPipeline()
         );
 
 		// Create a RenderTargetView for each frame.
-		for (UINT n = 0; n < FrameCount; n++)
+		for (uint n = 0; n < FrameCount; n++)
 		{
 			ThrowIfFailed (
                 m_swapChain->GetBuffer(n, IID_PPV_ARGS(&m_renderTargets[n]))
@@ -207,9 +207,9 @@ void IndexRendering::LoadAssets()
 
 #if defined(_DEBUG)
 		// Enable better shader debugging with the graphics debugging tools.
-		UINT compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+		uint compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
 #else
-		UINT compileFlags = 0;
+		uint compileFlags = 0;
 #endif
 
         // Compile vertex shader
@@ -249,14 +249,17 @@ void IndexRendering::LoadAssets()
         inputElementDescriptor[1].InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
         inputElementDescriptor[1].InstanceDataStepRate = 0;
 
-        
+        // Describe the rasterizer state
+        CD3DX12_RASTERIZER_DESC rasterizerState(D3D12_DEFAULT);
+        rasterizerState.FrontCounterClockwise = TRUE;
+
 		// Describe and create the graphics pipeline state object (PSO).
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
 		psoDesc.InputLayout = { inputElementDescriptor, _countof(inputElementDescriptor) };
 		psoDesc.pRootSignature = m_rootSignature.Get();
 		psoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShader.Get());
 		psoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShader.Get());
-		psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+		psoDesc.RasterizerState = rasterizerState;
 		psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 		psoDesc.DepthStencilState.DepthEnable = FALSE;
 		psoDesc.DepthStencilState.StencilEnable = FALSE;
@@ -291,25 +294,39 @@ void IndexRendering::LoadAssets()
         m_commandList[i]->Close();
     }
 
-    // Upload heap is only needed during loading data to GPU.
+
+    // Upload heaps are only needed during loading data to GPU.
     // Note: ComPtr's are CPU objects but this resource needs to stay in scope until
     // the command list that references it has finished executing on the GPU.
     // We will flush the GPU at the end of this method to ensure the resource is not
     // prematurely destroyed.
     ComPtr<ID3D12Resource> vertexBufferUploadHeap;
+    ComPtr<ID3D12Resource> indexBufferUploadHeap;
 
-	// Create the vertex buffer.
+    // Create a separate command list for copying the resource data to the GPU.
+    ComPtr<ID3D12GraphicsCommandList> copyCommandList;
+    ThrowIfFailed(
+        m_device->CreateCommandList(
+            0,
+            D3D12_COMMAND_LIST_TYPE_DIRECT,
+            m_commandAllocator.Get(),
+            m_pipelineState.Get(),
+            IID_PPV_ARGS(&copyCommandList)
+         )
+    );
+
+	// Create and upload vertex buffer.
 	{
-		// Define the geometry for a triangle.
-		Vertex triangleVertices[] =
+		// Define the geometry for a square.
+		const Vertex vertices[] =
 		{
             // Positions                              Colors
-			{ { 0.0f, 0.25f * m_aspectRatio, 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f } },
+			{ { 0.25f, 0.25f * m_aspectRatio, 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f } },
 			{ { 0.25f, -0.25f * m_aspectRatio, 0.0f }, { 0.0f, 1.0f, 0.0f, 1.0f } },
-			{ { -0.25f, -0.25f * m_aspectRatio, 0.0f }, { 0.0f, 0.0f, 1.0f, 1.0f } }
+			{ { -0.25f, -0.25f * m_aspectRatio, 0.0f }, { 0.0f, 0.0f, 1.0f, 1.0f } },
+			{ { -0.25f, 0.25f * m_aspectRatio, 0.0f }, { 1.0f, 0.0f, 1.0f, 1.0f } }
 		};
-
-		const UINT vertexBufferSize = sizeof(triangleVertices);
+		const uint vertexBufferSize = sizeof(vertices);
 
         ThrowIfFailed(
             m_device->CreateCommittedResource (
@@ -334,24 +351,21 @@ void IndexRendering::LoadAssets()
         // Copy data to the intermediate upload heap and then schedule a copy 
         // from the upload heap to the vertex buffer.
         {
-            D3D12_SUBRESOURCE_DATA vertexData = {};
-            vertexData.pData = triangleVertices;
-            vertexData.RowPitch = vertexBufferSize;
-            vertexData.SlicePitch = vertexData.RowPitch;
-
-            // Start recording
-            m_commandList[0]->Reset(m_commandAllocator.Get(), m_pipelineState.Get());
+            D3D12_SUBRESOURCE_DATA vertexDataSubResource = {};
+            vertexDataSubResource.pData = vertices;
+            vertexDataSubResource.RowPitch = vertexBufferSize;
+            vertexDataSubResource.SlicePitch = vertexDataSubResource.RowPitch;
 
             UpdateSubresources<1>(
-                m_commandList[0].Get(),
+                copyCommandList.Get(),
                 m_vertexBuffer.Get(),
                 vertexBufferUploadHeap.Get(),
                 0, 0, 1,
-                &vertexData
+                &vertexDataSubResource
             );
 
 
-            m_commandList[0]->ResourceBarrier (
+            copyCommandList->ResourceBarrier (
                 1, &CD3DX12_RESOURCE_BARRIER::Transition (
                     m_vertexBuffer.Get(),
                     D3D12_RESOURCE_STATE_COPY_DEST,
@@ -365,10 +379,68 @@ void IndexRendering::LoadAssets()
 		m_vertexBufferView.SizeInBytes = vertexBufferSize;
 	}
 
+	// Create and upload index buffer.
+	{
+        std::vector<ushort> indices = { 2, 1,0, 2,0,3 };
+        m_indexCount = uint(indices.size());
+        const uint indexBufferSize = sizeof(ushort) * m_indexCount;
+
+        ThrowIfFailed(
+            m_device->CreateCommittedResource (
+                &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+                D3D12_HEAP_FLAG_NONE,
+                &CD3DX12_RESOURCE_DESC::Buffer(indexBufferSize),
+                D3D12_RESOURCE_STATE_COPY_DEST,
+                nullptr,
+                IID_PPV_ARGS(&m_indexBuffer))
+        );
+
+        ThrowIfFailed(
+            m_device->CreateCommittedResource (
+                &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+                D3D12_HEAP_FLAG_NONE,
+                &CD3DX12_RESOURCE_DESC::Buffer(indexBufferSize),
+                D3D12_RESOURCE_STATE_GENERIC_READ,
+                nullptr,
+                IID_PPV_ARGS(&indexBufferUploadHeap))
+        );
+
+        // Copy data to the intermediate upload heap and then schedule a copy 
+        // from the upload heap to the index buffer.
+        {
+            D3D12_SUBRESOURCE_DATA indexDataSubResource = {};
+            indexDataSubResource.pData = indices.data();
+            indexDataSubResource.RowPitch = indexBufferSize;
+            indexDataSubResource.SlicePitch = indexDataSubResource.RowPitch;
+
+            UpdateSubresources<1>(
+                copyCommandList.Get(),
+                m_indexBuffer.Get(),
+                indexBufferUploadHeap.Get(),
+                0, 0, 1,
+                &indexDataSubResource
+            );
+
+            copyCommandList->ResourceBarrier (
+                1, &CD3DX12_RESOURCE_BARRIER::Transition (
+                    m_indexBuffer.Get(),
+                    D3D12_RESOURCE_STATE_COPY_DEST,
+                    D3D12_RESOURCE_STATE_INDEX_BUFFER)
+            );
+        }
+
+		// Initialize the vertex buffer view.
+		m_indexBufferView.BufferLocation = m_indexBuffer->GetGPUVirtualAddress();
+        m_indexBufferView.Format = DXGI_FORMAT_R16_UINT;
+		m_indexBufferView.SizeInBytes = indexBufferSize;
+	}
+
     // Close the command list and execute it to begin the initial GPU setup.
-    ThrowIfFailed(m_commandList[0]->Close());
-    ID3D12CommandList* ppCommandLists[] = { m_commandList[0].Get() };
-    m_commandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
+    ThrowIfFailed (
+        copyCommandList->Close()
+    );
+    std::vector<ID3D12CommandList*> commandLists = { copyCommandList.Get() };
+    m_commandQueue->ExecuteCommandLists(uint(commandLists.size()), commandLists.data());
 
 	// Create synchronization objects and wait until assets have been uploaded to the GPU.
 	{
@@ -443,6 +515,7 @@ void IndexRendering::PopulateCommandList() {
             m_commandList[i]->Reset(m_commandAllocator.Get(), m_pipelineState.Get())
          );
 
+
         // Set necessary state.
         m_commandList[i]->SetGraphicsRootSignature(m_rootSignature.Get());
         m_commandList[i]->RSSetViewports(1, &m_viewport);
@@ -469,7 +542,8 @@ void IndexRendering::PopulateCommandList() {
         m_commandList[i]->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
         m_commandList[i]->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         m_commandList[i]->IASetVertexBuffers(0, 1, &m_vertexBufferView);
-        m_commandList[i]->DrawInstanced(3, 1, 0, 0);
+        m_commandList[i]->IASetIndexBuffer(&m_indexBufferView);
+        m_commandList[i]->DrawIndexedInstanced(m_indexCount, 1, 0, 0, 0);
 
         // Indicate that the back buffer will now be used to present.
         m_commandList[i]->ResourceBarrier (1,
@@ -493,7 +567,7 @@ void IndexRendering::WaitForPreviousFrame()
 	// maximize GPU utilization.
 
 	// Signal and increment the fence value.
-	const UINT64 fence = m_fenceValue;
+	const uint64 fence = m_fenceValue;
 	ThrowIfFailed (
         m_commandQueue->Signal(m_fence.Get(), fence)
     );
