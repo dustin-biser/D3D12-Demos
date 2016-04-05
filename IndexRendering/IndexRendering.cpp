@@ -108,14 +108,16 @@ void IndexRendering::LoadPipeline()
 	swapChainDesc.SampleDesc.Count = 1;
 
 	ComPtr<IDXGISwapChain1> swapChain;
-	ThrowIfFailed(factory->CreateSwapChainForHwnd(
-		m_commandQueue.Get(),		// Swap chain needs the queue so that it can force a flush on it.
-		Win32Application::GetHwnd(),
-		&swapChainDesc,
-		nullptr,
-		nullptr,
-		&swapChain
-		));
+	ThrowIfFailed(
+        factory->CreateSwapChainForHwnd(
+            m_commandQueue.Get(),		// Swap chain needs the queue so that it can force a flush on it.
+            Win32Application::GetHwnd(),
+            &swapChainDesc,
+            nullptr,
+            nullptr,
+            &swapChain
+		)
+    );
 
 	// This sample does not support full screen transitions.
 	ThrowIfFailed (
@@ -150,17 +152,23 @@ void IndexRendering::LoadPipeline()
             m_rtvHeap->GetCPUDescriptorHandleForHeapStart()
         );
 
+
+        D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
+        rtvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+        rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+
 		// Create a RenderTargetView for each frame.
 		for (uint n = 0; n < FrameCount; n++)
 		{
 			ThrowIfFailed (
                 m_swapChain->GetBuffer(n, IID_PPV_ARGS(&m_renderTargets[n]))
             );
-			m_device->CreateRenderTargetView(m_renderTargets[n].Get(), nullptr, rtvHandle);
+			m_device->CreateRenderTargetView(m_renderTargets[n].Get(), &rtvDesc, rtvHandle);
 			rtvHandle.Offset(1, m_rtvDescriptorSize);
 		}
 	}
 
+    // Create command allocator for managing command list memory
 	ThrowIfFailed (
         m_device->CreateCommandAllocator (
             D3D12_COMMAND_LIST_TYPE_DIRECT,
@@ -266,7 +274,7 @@ void IndexRendering::LoadAssets()
 		psoDesc.SampleMask = UINT_MAX;
 		psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 		psoDesc.NumRenderTargets = 1;
-		psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+		psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
 		psoDesc.SampleDesc.Count = 1;
 
         // Create the Pipleine State Object (PSO).
