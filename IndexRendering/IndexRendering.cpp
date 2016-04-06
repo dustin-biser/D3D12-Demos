@@ -67,6 +67,11 @@ void IndexRendering::LoadPipeline()
 		ComPtr<IDXGIAdapter> warpAdapter;
 		ThrowIfFailed(factory->EnumWarpAdapter(IID_PPV_ARGS(&warpAdapter)));
 
+        // Display warp adapter name.
+        DXGI_ADAPTER_DESC adapterDesc = {};
+        warpAdapter->GetDesc(&adapterDesc);
+        std::wcout << "Adapter: " << adapterDesc.Description << std::endl;
+
 		ThrowIfFailed(D3D12CreateDevice(
 			warpAdapter.Get(),
 			D3D_FEATURE_LEVEL_11_0,
@@ -78,12 +83,20 @@ void IndexRendering::LoadPipeline()
 		ComPtr<IDXGIAdapter1> hardwareAdapter;
 		GetHardwareAdapter(factory.Get(), &hardwareAdapter);
 
+        // Display hardware adapter name.
+        DXGI_ADAPTER_DESC1 adapterDesc = {};
+        hardwareAdapter->GetDesc1(&adapterDesc);
+        std::wcout << "Adapter: " << adapterDesc.Description << std::endl;
+
 		ThrowIfFailed (
-            D3D12CreateDevice(hardwareAdapter.Get(),
-			                  D3D_FEATURE_LEVEL_11_0,
-			                  IID_PPV_ARGS(&m_device))
+            D3D12CreateDevice (
+                hardwareAdapter.Get(),
+			    D3D_FEATURE_LEVEL_11_0,
+			    IID_PPV_ARGS(&m_device)
+            )
         );
 	}
+    NAME_D3D12_OBJECT(m_device);
 
 	// Describe and create the direct command queue.
     {
@@ -94,7 +107,7 @@ void IndexRendering::LoadPipeline()
         ThrowIfFailed(
             m_device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&m_commandQueue))
         );
-        m_commandQueue->SetName(L"DirectCommandQueue");
+        NAME_D3D12_OBJECT(m_commandQueue);
     }
 
 	// Describe and create the swap chain.
@@ -175,6 +188,7 @@ void IndexRendering::LoadPipeline()
             IID_PPV_ARGS(&m_commandAllocator)
         )
     );
+    NAME_D3D12_OBJECT(m_commandAllocator);
 }
 
 //---------------------------------------------------------------------------------------
