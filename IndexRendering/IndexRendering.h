@@ -48,7 +48,7 @@ private:
 	ComPtr<ID3D12RootSignature> m_rootSignature;
 	ComPtr<ID3D12DescriptorHeap> m_rtvHeap;
 	ComPtr<ID3D12PipelineState> m_pipelineState;
-	ComPtr<ID3D12GraphicsCommandList> m_commandList[FrameCount];
+	ComPtr<ID3D12GraphicsCommandList> m_drawCommandList[FrameCount];
 	uint m_rtvDescriptorSize;
 
 	// App resources.
@@ -64,8 +64,65 @@ private:
 	ComPtr<ID3D12Fence> m_fence;
 	uint64 m_fenceValue;
 
-	void LoadPipeline();
+	void LoadRenderPipelineDependencies();
 	void LoadAssets();
 	void PopulateCommandList();
 	void WaitForPreviousFrame();
-};
+
+    void CreateDevice (
+        IDXGIFactory4 * dxgiFactory
+    );
+
+    void CreateCommandQueue (
+        ID3D12Device * device
+    );
+
+    void CreateSwapChain (
+        IDXGIFactory4 * dxgiFactory,
+        ID3D12CommandQueue * commandQueue
+    );
+
+    void CreateRenderTargetView (
+        ID3D12Device * device,
+        IDXGISwapChain * swapChain
+    );
+
+    void CreateRootSignature (
+        ID3D12Device * device
+    );
+
+    void LoadShaders (
+        _Inout_ ComPtr<ID3DBlob> & vertexShader,
+        _Inout_ ComPtr<ID3DBlob> & pixelShader
+    );
+
+    void CreatePipelineState (
+        ID3D12Device * device,
+        ID3DBlob * vertexShader,
+        ID3DBlob * pixelShader
+    );
+
+    void CreateDrawCommandLists (
+        ID3D12Device * device,
+        ID3D12CommandAllocator * commandAllocator,
+        ID3D12PipelineState * pipelineState
+    );
+
+    D3D12_VERTEX_BUFFER_VIEW UploadVertexDataToDefaultHeap (
+        _In_ ID3D12Device * device,
+        _In_ ID3D12GraphicsCommandList * copyCommandList,
+        _Inout_ ComPtr<ID3D12Resource> & vertexBufferUploadHeap,
+        _Inout_ ComPtr<ID3D12Resource> & vertexBuffer
+    );
+
+    D3D12_INDEX_BUFFER_VIEW UploadIndexDataToDefaultHeap (
+        _In_ ID3D12Device * device,
+        _In_ ID3D12GraphicsCommandList * copyCommandList,
+        _Inout_ ComPtr<ID3D12Resource> & indexBufferUploadHeap,
+        _Inout_ ComPtr<ID3D12Resource> & indexBuffer
+    );
+
+    void CommitVertexDataToGPU();
+
+
+}; // end class IndexRendering
