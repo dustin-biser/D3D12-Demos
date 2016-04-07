@@ -123,6 +123,7 @@
     <ClInclude Include="..\Common\d3dx12.h" />
     <ClInclude Include="..\Common\DXSample.h" />
     <ClInclude Include="..\Common\DXSampleHelper.h" />
+    <ClInclude Include="..\Common\Fence.h" />
     <ClInclude Include="..\Common\NumericTypes.h" />
     <ClInclude Include="..\Common\pch.h" />
     <ClInclude Include="..\Common\Win32Application.h" />
@@ -130,6 +131,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Common\DXSample.cpp" />
+    <ClCompile Include="..\Common\Fence.cpp" />
     <ClCompile Include="..\Common\pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>

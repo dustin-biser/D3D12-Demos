@@ -3,6 +3,8 @@
 #pragma once
 
 #include "DXSample.h"
+#include "Fence.h"
+#include <memory>
 
 using namespace DirectX;
 
@@ -42,13 +44,15 @@ private:
 	D3D12_RECT m_scissorRect;
 	ComPtr<IDXGISwapChain3> m_swapChain;
 	ComPtr<ID3D12Device> m_device;
-	ComPtr<ID3D12Resource> m_renderTargets[FrameCount];
 	ComPtr<ID3D12CommandAllocator> m_commandAllocator;
 	ComPtr<ID3D12CommandQueue> m_commandQueue;
 	ComPtr<ID3D12RootSignature> m_rootSignature;
-	ComPtr<ID3D12DescriptorHeap> m_rtvHeap;
 	ComPtr<ID3D12PipelineState> m_pipelineState;
 	ComPtr<ID3D12GraphicsCommandList> m_drawCommandList[FrameCount];
+    ComPtr<ID3D12GraphicsCommandList> m_copyCommandList;
+
+	ComPtr<ID3D12Resource> m_renderTargets[FrameCount];
+	ComPtr<ID3D12DescriptorHeap> m_rtvHeap;
 	uint m_rtvDescriptorSize;
 
 	// App resources.
@@ -60,9 +64,7 @@ private:
 
 	// Synchronization objects.
 	uint m_frameIndex;
-	HANDLE m_fenceEvent;
-	ComPtr<ID3D12Fence> m_fence;
-	uint64 m_fenceValue;
+	std::shared_ptr<Fence> m_fence;
 
 	void LoadRenderPipelineDependencies();
 	void LoadAssets();
@@ -70,59 +72,80 @@ private:
 	void WaitForPreviousFrame();
 
     void CreateDevice (
-        IDXGIFactory4 * dxgiFactory
+        _In_ IDXGIFactory4 * dxgiFactory,
+        _In_ bool useWarpDevice,
+        _Out_ ComPtr<ID3D12Device> & device
     );
 
     void CreateCommandQueue (
-        ID3D12Device * device
+        _In_ ID3D12Device * device,
+        _Out_ ComPtr<ID3D12CommandQueue> & commandQueue
     );
 
     void CreateSwapChain (
-        IDXGIFactory4 * dxgiFactory,
-        ID3D12CommandQueue * commandQueue
+        _In_ IDXGIFactory4 * dxgiFactory,
+        _In_ ID3D12CommandQueue * commandQueue,
+        _In_ uint framebufferWidth,
+        _In_ uint framebufferHeight,
+        _Out_ ComPtr<IDXGISwapChain3> & swapChain
     );
 
     void CreateRenderTargetView (
-        ID3D12Device * device,
-        IDXGISwapChain * swapChain
+        _In_ ID3D12Device * device,
+        _In_ IDXGISwapChain * swapChain,
+        _Out_ ComPtr<ID3D12DescriptorHeap> & rtvHeap,
+        _Out_ uint & rtvDescriptorSize,
+        _Out_ ComPtr<ID3D12Resource> * renderTargets
     );
 
     void CreateRootSignature (
-        ID3D12Device * device
+        _In_ ID3D12Device * device,
+        _Out_ ComPtr<ID3D12RootSignature> & rootSignature
     );
 
     void LoadShaders (
-        _Inout_ ComPtr<ID3DBlob> & vertexShader,
-        _Inout_ ComPtr<ID3DBlob> & pixelShader
+        _Out_ ComPtr<ID3DBlob> & vertexShader,
+        _Out_ ComPtr<ID3DBlob> & pixelShader
     );
 
     void CreatePipelineState (
-        ID3D12Device * device,
-        ID3DBlob * vertexShader,
-        ID3DBlob * pixelShader
+        _In_ ID3D12Device * device,
+        _In_ ID3DBlob * vertexShader,
+        _In_ ID3DBlob * pixelShader,
+        _In_ ID3D12RootSignature * rootSignature,
+        _Out_ ComPtr<ID3D12PipelineState> & pipelineState
     );
 
     void CreateDrawCommandLists (
-        ID3D12Device * device,
-        ID3D12CommandAllocator * commandAllocator,
-        ID3D12PipelineState * pipelineState
+        _In_ ID3D12Device * device,
+        _In_ ID3D12CommandAllocator * commandAllocator,
+        _In_ uint numDrawCommandLists,
+        _Out_ ComPtr<ID3D12GraphicsCommandList> * drawCommandList
     );
 
     D3D12_VERTEX_BUFFER_VIEW UploadVertexDataToDefaultHeap (
         _In_ ID3D12Device * device,
         _In_ ID3D12GraphicsCommandList * copyCommandList,
-        _Inout_ ComPtr<ID3D12Resource> & vertexBufferUploadHeap,
-        _Inout_ ComPtr<ID3D12Resource> & vertexBuffer
+        _Out_ ComPtr<ID3D12Resource> & vertexBufferUploadHeap,
+        _Out_ ComPtr<ID3D12Resource> & vertexBuffer
     );
 
     D3D12_INDEX_BUFFER_VIEW UploadIndexDataToDefaultHeap (
         _In_ ID3D12Device * device,
         _In_ ID3D12GraphicsCommandList * copyCommandList,
-        _Inout_ ComPtr<ID3D12Resource> & indexBufferUploadHeap,
-        _Inout_ ComPtr<ID3D12Resource> & indexBuffer
+        _Out_ ComPtr<ID3D12Resource> & indexBufferUploadHeap,
+        _Out_ ComPtr<ID3D12Resource> & indexBuffer,
+        _Out_ uint & indexCount
     );
 
-    void CommitVertexDataToGPU();
+    void CreateVertexDataBuffers (
+        _In_ ID3D12Device * device,
+        _In_ ID3D12CommandQueue * commandQueue,
+        _In_ ID3D12GraphicsCommandList * copyCommandList,
+        _Out_ ComPtr<ID3D12Resource> & vertexBuffer,
+        _Out_ ComPtr<ID3D12Resource> & indexBuffer,
+        _Out_ uint & indexCount
+    );
 
 
 }; // end class IndexRendering

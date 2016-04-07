@@ -81,18 +81,22 @@ inline HRESULT ReadDataFromFile(LPCWSTR filename, byte** data, UINT* size)
 }
 
 
-// Assign a name to the object to aid with debugging.
 #if defined(_DEBUG)
-inline void SetName(ID3D12Object* pObject, LPCWSTR name)
-{
-	pObject->SetName(name);
-}
+    // Assign a name to the object to aid with debugging.
+    inline void SetName(ID3D12Object* pObject, LPCWSTR name)
+    {
+        pObject->SetName(name);
+    }
 #else
-inline void SetName(ID3D12Object*, LPCWSTR)
-{
-}
+    inline void SetName(ID3D12Object*, LPCWSTR)
+    {
+    }
 #endif
 
-// Naming helper for ComPtr<T>.
-// Assigns the name of the variable as the name of the object.
-#define NAME_D3D12_OBJECT(x) SetName(x.Get(), L#x)
+#if defined(_DEBUG)
+    // Naming helper for ComPtr<T>.
+    // Assigns the name of the variable as the name of the object.
+    #define NAME_D3D12_OBJECT(x) SetName(x.Get(), L#x)
+#else
+    #define NAME_D3D12_OBJECT(x)
+#endif

@@ -37,6 +37,7 @@ IndexRendering::IndexRendering (
 	m_scissorRect.bottom = long(height);
 }
 
+
 //---------------------------------------------------------------------------------------
 void IndexRendering::OnInit()
 {
@@ -46,10 +47,9 @@ void IndexRendering::OnInit()
 }
 
 
-
 //---------------------------------------------------------------------------------------
-// Loads the rendering pipeline dependencies such as
-// device, command queue, swap chain, and render target views.
+// Loads the rendering pipeline dependencies such as device, command queue, swap chain,
+// render target views and command allocator.
 void IndexRendering::LoadRenderPipelineDependencies()
 {
 #if defined(_DEBUG)
@@ -68,17 +68,40 @@ void IndexRendering::LoadRenderPipelineDependencies()
 
 
     // Create the device.
-    this->CreateDevice(dxgiFactory.Get());
+    this->CreateDevice (
+        dxgiFactory.Get(),
+        m_useWarpDevice,
+        m_device
+    ); NAME_D3D12_OBJECT(m_device);
 
     // Create the direct command queue.
-    this->CreateCommandQueue(m_device.Get());
+    this->CreateCommandQueue (
+        m_device.Get(),
+        m_commandQueue
+    ); NAME_D3D12_OBJECT(m_commandQueue);
 
     // Create the swap chain.
-    this->CreateSwapChain(dxgiFactory.Get(), m_commandQueue.Get());
+    this->CreateSwapChain (
+        dxgiFactory.Get(),
+        m_commandQueue.Get(),
+        m_width,
+        m_height,
+        m_swapChain
+    );
+    
+    // Set the current frame index to correspond with the current back buffer index.
+	m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
 
     // Create RTVs, one for each SwapChain buffer.
-    this->CreateRenderTargetView(m_device.Get (), m_swapChain.Get ());
-
+    this->CreateRenderTargetView (
+        m_device.Get(),
+        m_swapChain.Get(),
+        m_rtvHeap,
+        m_rtvDescriptorSize,
+        m_renderTargets
+    );
+    NAME_D3D12_OBJECT(m_renderTargets[0]);
+    NAME_D3D12_OBJECT(m_renderTargets[1]);
 
     // Create command allocator for managing command list memory
 	ThrowIfFailed (
@@ -88,13 +111,42 @@ void IndexRendering::LoadRenderPipelineDependencies()
         )
     );
     NAME_D3D12_OBJECT(m_commandAllocator);
+
+
+    // Create the draw command lists which will hold our rendering commands.
+    this->CreateDrawCommandLists (
+        m_device.Get(),
+        m_commandAllocator.Get(),
+        FrameCount,
+        m_drawCommandList
+    );
+    NAME_D3D12_OBJECT(m_drawCommandList[0]);
+    NAME_D3D12_OBJECT(m_drawCommandList[1]);
+
+
+    // Create a separate command list for copying resource data to the GPU.
+    ThrowIfFailed (
+        m_device->CreateCommandList (
+            0,
+            D3D12_COMMAND_LIST_TYPE_DIRECT,
+            m_commandAllocator.Get(),
+            nullptr,
+            IID_PPV_ARGS(&m_copyCommandList)
+         )
+    );
+    NAME_D3D12_OBJECT(m_copyCommandList);
+
+    // Create synchronization primitive and wait until assets have been uploaded to the GPU.
+    m_fence = std::make_shared<Fence>(m_device.Get());
 }
 
 //---------------------------------------------------------------------------------------
 void IndexRendering::CreateDevice (
-    IDXGIFactory4 * dxgiFactory
+    _In_ IDXGIFactory4 * dxgiFactory,
+    _In_ bool useWarpDevice,
+	_Out_ ComPtr<ID3D12Device> & device
 ) {
-	if (m_useWarpDevice)
+	if (useWarpDevice)
 	{
 		ComPtr<IDXGIAdapter> warpAdapter;
 		ThrowIfFailed (
@@ -110,7 +162,7 @@ void IndexRendering::CreateDevice (
             D3D12CreateDevice (
                 warpAdapter.Get(),
                 D3D_FEATURE_LEVEL_11_0,
-                IID_PPV_ARGS(&m_device)
+                IID_PPV_ARGS(&device)
             )
         );
 	}
@@ -128,16 +180,16 @@ void IndexRendering::CreateDevice (
             D3D12CreateDevice (
                 hardwareAdapter.Get(),
 			    D3D_FEATURE_LEVEL_11_0,
-			    IID_PPV_ARGS(&m_device)
+			    IID_PPV_ARGS(&device)
             )
         );
 	}
-    NAME_D3D12_OBJECT(m_device);
 }
 
 //---------------------------------------------------------------------------------------
 void IndexRendering::CreateCommandQueue (
-    ID3D12Device * device
+    _In_ ID3D12Device * device,
+    _Out_ ComPtr<ID3D12CommandQueue> & commandQueue
 ) {
 	// Describe and create the direct command queue.
     D3D12_COMMAND_QUEUE_DESC queueDesc = {};
@@ -145,80 +197,85 @@ void IndexRendering::CreateCommandQueue (
     queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
 
     ThrowIfFailed(
-        device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&m_commandQueue))
+        device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&commandQueue))
     );
-    NAME_D3D12_OBJECT(m_commandQueue);
 }
 
 
 //---------------------------------------------------------------------------------------
 void IndexRendering::CreateSwapChain (
-    IDXGIFactory4 * dxgiFactory,
-    ID3D12CommandQueue * commandQueue
+    _In_ IDXGIFactory4 * dxgiFactory,
+    _In_ ID3D12CommandQueue * commandQueue,
+    _In_ uint framebufferWidth,
+    _In_ uint framebufferHeight,
+    _Out_ ComPtr<IDXGISwapChain3> & swapChain
 ) {
 
 	// Describe and create the swap chain.
 	DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
 	swapChainDesc.BufferCount = FrameCount;
-	swapChainDesc.Width = m_width;
-	swapChainDesc.Height = m_height;
+	swapChainDesc.Width = framebufferWidth;
+	swapChainDesc.Height = framebufferHeight;
 	swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 	swapChainDesc.SampleDesc.Count = 1;
 
-	ComPtr<IDXGISwapChain1> swapChain;
+	ComPtr<IDXGISwapChain1> swapChain1;
 	ThrowIfFailed (
         dxgiFactory->CreateSwapChainForHwnd (
-            commandQueue,  // Swap chain needs the queue so that it can force a flush on it.
+            commandQueue, // Swap chain needs the queue so that it can force a flush on it.
             Win32Application::GetHwnd(),
             &swapChainDesc,
             nullptr,
             nullptr,
-            &swapChain
+            &swapChain1
 		)
     );
 
 	// This sample does not support full screen transitions.
 	ThrowIfFailed (
-        dxgiFactory->MakeWindowAssociation(Win32Application::GetHwnd(), DXGI_MWA_NO_ALT_ENTER)
+        dxgiFactory->MakeWindowAssociation (
+            Win32Application::GetHwnd(),
+            DXGI_MWA_NO_ALT_ENTER
+        )
     );
 
 	ThrowIfFailed (
         // Acquire the IDXGISwapChain3 interface.  A reference to this interface will be
-        // stored in m_swapChain.
-        swapChain.As(&m_swapChain)
+        // stored in swapChain.
+        swapChain1.As(&swapChain)
     );
-
-    // Set the current frame index to correspond with the current back buffer index.
-	m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
 }
 
 
 //---------------------------------------------------------------------------------------
 void IndexRendering::CreateRenderTargetView (
-    ID3D12Device * device,
-    IDXGISwapChain * swapChain
+    _In_ ID3D12Device * device,
+    _In_ IDXGISwapChain * swapChain,
+    _Out_ ComPtr<ID3D12DescriptorHeap> & rtvHeap,
+    _Out_ uint & rtvDescriptorSize,
+    _Out_ ComPtr<ID3D12Resource> * renderTargets
 ) {
-	// Create RTV descriptor heap.
+    // Describe and create a render target view (RTV) descriptor heap which will
+    // hold the RTV descriptors.
 	{
-		// Describe and create a render target view (RTV) descriptor heap.
 		D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
 		rtvHeapDesc.NumDescriptors = FrameCount;
 		rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 		rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 		ThrowIfFailed (
-            m_device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&m_rtvHeap))
+            device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&rtvHeap))
         );
 
-		m_rtvDescriptorSize =
-            m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+		rtvDescriptorSize =
+            device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	}
 
 	// Create a RTV for each swapChain buffer.
 	{
 		CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle (
-            m_rtvHeap->GetCPUDescriptorHandleForHeapStart()
+            rtvHeap->GetCPUDescriptorHandleForHeapStart()
         );
 
         // Create a RTV with sRGB format so output image is properly gamma corrected.
@@ -230,10 +287,10 @@ void IndexRendering::CreateRenderTargetView (
 		for (uint n(0); n < FrameCount; ++n)
 		{
 			ThrowIfFailed (
-                m_swapChain->GetBuffer(n, IID_PPV_ARGS(&m_renderTargets[n]))
+                swapChain->GetBuffer(n, IID_PPV_ARGS(&renderTargets[n]))
             );
-			m_device->CreateRenderTargetView(m_renderTargets[n].Get(), &rtvDesc, rtvHandle);
-			rtvHandle.Offset(1, m_rtvDescriptorSize);
+			device->CreateRenderTargetView(renderTargets[n].Get(), &rtvDesc, rtvHandle);
+			rtvHandle.Offset(1, rtvDescriptorSize);
 		}
 	}
 
@@ -244,7 +301,10 @@ void IndexRendering::CreateRenderTargetView (
 void IndexRendering::LoadAssets()
 {
 	// Create an empty root signature.
-    this->CreateRootSignature(m_device.Get());
+    this->CreateRootSignature(
+        m_device.Get(),
+        m_rootSignature
+    );
 
     // Compile and load shaders.
     ComPtr<ID3DBlob> vertexShader;
@@ -252,21 +312,30 @@ void IndexRendering::LoadAssets()
     this->LoadShaders(vertexShader, pixelShader);
 
 	// Create the pipeline state object.
-    this->CreatePipelineState(m_device.Get(), vertexShader.Get(), pixelShader.Get());
-
-    // Create the draw command lists which will hold our rendering commands.
-    this->CreateDrawCommandLists (
+    this->CreatePipelineState (
         m_device.Get(),
-        m_commandAllocator.Get(),
-        m_pipelineState.Get()
-    );
+        vertexShader.Get(),
+        pixelShader.Get(),
+        m_rootSignature.Get(),
+        m_pipelineState
+    ); NAME_D3D12_OBJECT(m_pipelineState);
 
-    this->CommitVertexDataToGPU();
+    this->CreateVertexDataBuffers (
+        m_device.Get(),
+        m_commandQueue.Get(),
+        m_copyCommandList.Get(),
+        m_vertexBuffer,
+        m_indexBuffer,
+        m_indexCount
+    );
+    NAME_D3D12_OBJECT(m_vertexBuffer);
+    NAME_D3D12_OBJECT(m_indexBuffer);
 }
 
 //---------------------------------------------------------------------------------------
 void IndexRendering::CreateRootSignature (
-    ID3D12Device * device
+    _In_ ID3D12Device * device,
+    _Out_ ComPtr<ID3D12RootSignature> & rootSignature
 ) {
     CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
     rootSignatureDesc.Init (
@@ -287,19 +356,20 @@ void IndexRendering::CreateRootSignature (
     );
 
     ThrowIfFailed (
-        m_device->CreateRootSignature (
+        device->CreateRootSignature (
             0,
             signature->GetBufferPointer(),
             signature->GetBufferSize(),
-            IID_PPV_ARGS(&m_rootSignature))
+            IID_PPV_ARGS(&rootSignature)
+        )
     );
 }
 
 
 //---------------------------------------------------------------------------------------
-void IndexRendering::LoadShaders (
-    _Inout_ ComPtr<ID3DBlob> & vertexShader,
-    _Inout_ ComPtr<ID3DBlob> & pixelShader
+void IndexRendering::LoadShaders(
+    _Out_ ComPtr<ID3DBlob> & vertexShader,
+    _Out_ ComPtr<ID3DBlob> & pixelShader
 ) {
 #if defined(_DEBUG)
         // Enable better shader debugging with the graphics debugging tools.
@@ -333,12 +403,16 @@ void IndexRendering::LoadShaders (
 
 //---------------------------------------------------------------------------------------
 void IndexRendering::CreatePipelineState(
-    ID3D12Device * device,
-    ID3DBlob * vertexShader,
-    ID3DBlob * pixelShader
+    _In_ ID3D12Device * device,
+    _In_ ID3DBlob * vertexShader,
+    _In_ ID3DBlob * pixelShader,
+    _In_ ID3D12RootSignature * rootSignature,
+    _Out_ ComPtr<ID3D12PipelineState> & pipelineState
 ) {
-    //-- Define the vertex input layout:
+    // Define the vertex input layout.
     D3D12_INPUT_ELEMENT_DESC inputElementDescriptor[2];
+
+    // Positions
     inputElementDescriptor[0].SemanticName = "POSITION";
     inputElementDescriptor[0].SemanticIndex = 0;
     inputElementDescriptor[0].Format = DXGI_FORMAT_R32G32B32_FLOAT;
@@ -347,6 +421,7 @@ void IndexRendering::CreatePipelineState(
     inputElementDescriptor[0].InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
     inputElementDescriptor[0].InstanceDataStepRate = 0;
 
+    // Colors
     inputElementDescriptor[1].SemanticName = "COLOR";
     inputElementDescriptor[1].SemanticIndex = 0;
     inputElementDescriptor[1].Format = DXGI_FORMAT_R32G32B32_FLOAT;
@@ -362,7 +437,7 @@ void IndexRendering::CreatePipelineState(
     // Describe and create the graphics pipeline state object (PSO).
     D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
     psoDesc.InputLayout = { inputElementDescriptor, _countof(inputElementDescriptor) };
-    psoDesc.pRootSignature = m_rootSignature.Get();
+    psoDesc.pRootSignature = rootSignature;
     psoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShader);
     psoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShader);
     psoDesc.RasterizerState = rasterizerState;
@@ -379,34 +454,31 @@ void IndexRendering::CreatePipelineState(
     ThrowIfFailed (
         device->CreateGraphicsPipelineState (
             &psoDesc,
-            IID_PPV_ARGS(&m_pipelineState)
+            IID_PPV_ARGS(&pipelineState)
         )
      );
 }
 
 //---------------------------------------------------------------------------------------
 void IndexRendering::CreateDrawCommandLists (
-    ID3D12Device * device,
-    ID3D12CommandAllocator * commandAllocator,
-    ID3D12PipelineState * pipelineState
+    _In_ ID3D12Device * device,
+    _In_ ID3D12CommandAllocator * commandAllocator,
+    _In_ uint numCommandLists,
+    _Out_ ComPtr<ID3D12GraphicsCommandList> * drawCommandList
 ) {
 	// Create a command lists for each swap chain buffer
-    for (int i(0); i < FrameCount; ++i) {
+    for (uint i(0); i < numCommandLists; ++i) {
         ThrowIfFailed(
             device->CreateCommandList (
                 0,
                 D3D12_COMMAND_LIST_TYPE_DIRECT,
                 commandAllocator,
-                pipelineState,
-                IID_PPV_ARGS(&m_drawCommandList[i])
+                nullptr, // Will set pipeline state later before drawing
+                IID_PPV_ARGS(&drawCommandList[i])
             )
         );
-        wchar_t buffer[25];
-        wsprintf(buffer, L"m_drawCommandList[%d]", i);
-        SetName(m_drawCommandList[i].Get(), buffer);
-
         // Stop recording, will reset this later before issuing drawing commands.
-        m_drawCommandList[i]->Close();
+        drawCommandList[i]->Close();
     }
 }
 
@@ -414,8 +486,8 @@ void IndexRendering::CreateDrawCommandLists (
 D3D12_VERTEX_BUFFER_VIEW IndexRendering::UploadVertexDataToDefaultHeap(
     _In_ ID3D12Device * device,
     _In_ ID3D12GraphicsCommandList * copyCommandList,
-    _Inout_ ComPtr<ID3D12Resource> & vertexBufferUploadHeap,
-    _Inout_ ComPtr<ID3D12Resource> & vertexBuffer
+    _Out_ ComPtr<ID3D12Resource> & vertexBufferUploadHeap,
+    _Out_ ComPtr<ID3D12Resource> & vertexBuffer
 ) {
     // Define vertices for a square.
     const Vertex vertexData[] =
@@ -492,12 +564,13 @@ D3D12_VERTEX_BUFFER_VIEW IndexRendering::UploadVertexDataToDefaultHeap(
 D3D12_INDEX_BUFFER_VIEW IndexRendering::UploadIndexDataToDefaultHeap(
     _In_ ID3D12Device * device,
     _In_ ID3D12GraphicsCommandList * copyCommandList,
-    _Inout_ ComPtr<ID3D12Resource> & indexBufferUploadHeap,
-    _Inout_ ComPtr<ID3D12Resource> & indexBuffer
+    _Out_ ComPtr<ID3D12Resource> & indexBufferUploadHeap,
+    _Out_ ComPtr<ID3D12Resource> & indexBuffer,
+    _Out_ uint & indexCount
 ) {
     std::vector<ushort> indices = { 2, 1,0, 2,0,3 };
-    m_indexCount = uint(indices.size());
-    const uint indexBufferSize = sizeof(ushort) * m_indexCount;
+    indexCount = uint(indices.size());
+    const uint indexBufferSize = sizeof(ushort) * indexCount;
 
     ThrowIfFailed(
         device->CreateCommittedResource (
@@ -556,20 +629,14 @@ D3D12_INDEX_BUFFER_VIEW IndexRendering::UploadIndexDataToDefaultHeap(
 
 
 //---------------------------------------------------------------------------------------
-void IndexRendering::CommitVertexDataToGPU()
-{
-    // Create a separate command list for copying resource data to the GPU.
-    ComPtr<ID3D12GraphicsCommandList> copyCommandList;
-    ThrowIfFailed (
-        m_device->CreateCommandList (
-            0,
-            D3D12_COMMAND_LIST_TYPE_DIRECT,
-            m_commandAllocator.Get(),
-            m_pipelineState.Get(),
-            IID_PPV_ARGS(&copyCommandList)
-         )
-    );
-
+void IndexRendering::CreateVertexDataBuffers (
+    _In_ ID3D12Device * device,
+    _In_ ID3D12CommandQueue * commandQueue,
+    _In_ ID3D12GraphicsCommandList * copyCommandList,
+    _Out_ ComPtr<ID3D12Resource> & vertexBuffer,
+    _Out_ ComPtr<ID3D12Resource> & indexBuffer,
+    _Out_ uint & indexCount
+) {
     // Upload heaps are only needed when loading data into GPU memory.
     // Note: ComPtr's are CPU objects but this resource needs to stay in scope until
     // the command list that references it has finished executing on the GPU.
@@ -580,48 +647,32 @@ void IndexRendering::CommitVertexDataToGPU()
 
     // Upload vertex data to the Default Heap and create a Vertex Buffer View of the
     // resource.
-    m_vertexBufferView = this->UploadVertexDataToDefaultHeap(
-        m_device.Get(),
-        copyCommandList.Get(),
+    m_vertexBufferView = this->UploadVertexDataToDefaultHeap (
+        device,
+        copyCommandList,
         vertexBufferUploadHeap,
-        m_vertexBuffer
-        );
+        vertexBuffer
+    );
 
     // Upload index data to the Default Heap and create an Index Buffer View of the
     // resource.
-    m_indexBufferView = this->UploadIndexDataToDefaultHeap(
-        m_device.Get(),
-        copyCommandList.Get(),
+    m_indexBufferView = this->UploadIndexDataToDefaultHeap (
+        device,
+        copyCommandList,
         indexBufferUploadHeap,
-        m_indexBuffer
-        );
+        indexBuffer,
+        indexCount
+    );
 
     // Close the command list and execute it to begin the initial GPU setup.
     ThrowIfFailed(
         copyCommandList->Close()
-        );
-    std::vector<ID3D12CommandList*> commandLists = { copyCommandList.Get() };
-    m_commandQueue->ExecuteCommandLists(uint(commandLists.size()), commandLists.data());
+    );
+    std::vector<ID3D12CommandList*> commandLists = { copyCommandList };
+    commandQueue->ExecuteCommandLists(uint(commandLists.size()), commandLists.data());
 
-
-    // Create synchronization objects and wait until assets have been uploaded to the GPU.
-    {
-        ThrowIfFailed(
-            m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_fence))
-            );
-        m_fenceValue = 1;
-
-        // Create an event handle to use for frame synchronization.
-        m_fenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
-        if (m_fenceEvent == nullptr) {
-            ThrowIfFailed(HRESULT_FROM_WIN32(GetLastError()));
-        }
-
-        // Wait for the command list to execute; we are reusing the same command 
-        // list in our main loop but for now, we just want to wait for setup to 
-        // complete before continuing.
-        WaitForPreviousFrame();
-    }
+    // Wait for the copy command list to execute.
+    WaitForPreviousFrame();
 }
 
 //---------------------------------------------------------------------------------------
@@ -656,8 +707,6 @@ void IndexRendering::OnDestroy()
 	// Ensure that the GPU is no longer referencing resources that are about to be
 	// cleaned up by the destructor.
 	WaitForPreviousFrame();
-
-	CloseHandle(m_fenceEvent);
 }
 
 //---------------------------------------------------------------------------------------
@@ -666,7 +715,9 @@ void IndexRendering::PopulateCommandList()
     // Command list allocators can only be reset when the associated 
     // command lists have finished execution on the GPU; apps should use 
     // fences to determine GPU execution progress.
-    ThrowIfFailed(m_commandAllocator->Reset());
+    ThrowIfFailed(
+        m_commandAllocator->Reset()
+    );
 
     for (int i(0); i < FrameCount; ++i) {
 
@@ -679,6 +730,7 @@ void IndexRendering::PopulateCommandList()
 
 
         // Set necessary state.
+        m_drawCommandList[i]->SetPipelineState(m_pipelineState.Get());
         m_drawCommandList[i]->SetGraphicsRootSignature(m_rootSignature.Get());
         m_drawCommandList[i]->RSSetViewports(1, &m_viewport);
         m_drawCommandList[i]->RSSetScissorRects(1, &m_scissorRect);
@@ -730,19 +782,19 @@ void IndexRendering::WaitForPreviousFrame()
 	// maximize GPU utilization.
 
 	// Signal and increment the fence value.
-	const uint64 fence = m_fenceValue;
+	const uint64 fenceValue = m_fence->value;
 	ThrowIfFailed (
-        m_commandQueue->Signal(m_fence.Get(), fence)
+        m_commandQueue->Signal(m_fence->obj.Get(), fenceValue)
     );
-	m_fenceValue++;
+	m_fence->value++;
 
 	// Wait until the previous frame is finished.
-	if (m_fence->GetCompletedValue() < fence)
+	if (m_fence->obj->GetCompletedValue() < fenceValue)
 	{
 		ThrowIfFailed (
-            m_fence->SetEventOnCompletion(fence, m_fenceEvent)
+            m_fence->obj->SetEventOnCompletion(fenceValue, m_fence->event)
         );
-		WaitForSingleObject(m_fenceEvent, INFINITE);
+		WaitForSingleObject(m_fence->event, INFINITE);
 	}
 
 	m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
