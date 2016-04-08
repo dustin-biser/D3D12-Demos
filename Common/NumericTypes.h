@@ -1,4 +1,8 @@
-// NumericTypes.h
+/*
+ * NumericTypes.h
+ *
+ * Type defines for commonly used numerical types.
+ */
 
 #pragma once
 #include <cstdint>

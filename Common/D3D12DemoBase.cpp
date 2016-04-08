@@ -1,21 +1,14 @@
-//*********************************************************
-//
-// Copyright (c) Microsoft. All rights reserved.
-// This code is licensed under the MIT License (MIT).
-// THIS CODE IS PROVIDED *AS IS* WITHOUT WARRANTY OF
-// ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING ANY
-// IMPLIED WARRANTIES OF FITNESS FOR A PARTICULAR
-// PURPOSE, MERCHANTABILITY, OR NON-INFRINGEMENT.
-//
-//*********************************************************
+/*
+ * D3D12DemoBase.cpp
+ */
 
 #include "pch.h"
-#include "DXSample.h"
+#include "D3D12DemoBase.h"
 
 using namespace Microsoft::WRL;
 
 //---------------------------------------------------------------------------------------
-DXSample::DXSample(UINT width, UINT height, std::wstring name) :
+D3D12DemoBase::D3D12DemoBase(UINT width, UINT height, std::wstring name) :
 	m_width(width),
 	m_height(height),
 	m_title(name),
@@ -30,7 +23,7 @@ DXSample::DXSample(UINT width, UINT height, std::wstring name) :
 
 
 //---------------------------------------------------------------------------------------
-DXSample::~DXSample()
+D3D12DemoBase::~D3D12DemoBase()
 {
 
 }
@@ -38,7 +31,7 @@ DXSample::~DXSample()
 
 //---------------------------------------------------------------------------------------
 // Helper function for resolving the full path of assets.
-std::wstring DXSample::GetAssetFullPath(LPCWSTR assetName)
+std::wstring D3D12DemoBase::GetAssetFullPath(LPCWSTR assetName)
 {
 	return m_assetsPath + assetName;
 }
@@ -47,7 +40,7 @@ std::wstring DXSample::GetAssetFullPath(LPCWSTR assetName)
 //---------------------------------------------------------------------------------------
 // Helper function for acquiring the first available hardware adapter that supports Direct3D 12.
 // If no such adapter can be found, *ppAdapter will be set to nullptr.
-void DXSample::GetHardwareAdapter (
+void D3D12DemoBase::GetHardwareAdapter (
     IDXGIFactory2 * pFactory,
     IDXGIAdapter1 ** ppAdapter
 ) {
@@ -85,7 +78,7 @@ void DXSample::GetHardwareAdapter (
 
 //---------------------------------------------------------------------------------------
 // Helper function for setting the window's title text.
-void DXSample::SetCustomWindowText(LPCWSTR text)
+void D3D12DemoBase::SetCustomWindowText(LPCWSTR text)
 {
 	std::wstring windowText = m_title + L": " + text;
 	SetWindowText(Win32Application::GetHwnd(), windowText.c_str());
@@ -94,7 +87,7 @@ void DXSample::SetCustomWindowText(LPCWSTR text)
 
 //---------------------------------------------------------------------------------------
 // Helper function for parsing any supplied command line args.
-void DXSample::ParseCommandLineArgs(WCHAR* argv[], int argc)
+void D3D12DemoBase::ParseCommandLineArgs(WCHAR* argv[], int argc)
 {
 	for (int i = 1; i < argc; ++i)
 	{

@@ -1,6 +1,10 @@
+/*
+ * Fence.cpp
+ */
+
 #include "pch.h"
 #include "Fence.h"
-#include "DXSampleHelper.h"
+#include "DemoUtils.h"
 
 //---------------------------------------------------------------------------------------
 Fence::Fence(ID3D12Device * device)

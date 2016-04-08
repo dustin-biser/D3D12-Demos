@@ -1,29 +1,23 @@
-//*********************************************************
-//
-// Copyright (c) Microsoft. All rights reserved.
-// This code is licensed under the MIT License (MIT).
-// THIS CODE IS PROVIDED *AS IS* WITHOUT WARRANTY OF
-// ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING ANY
-// IMPLIED WARRANTIES OF FITNESS FOR A PARTICULAR
-// PURPOSE, MERCHANTABILITY, OR NON-INFRINGEMENT.
-//
-//*********************************************************
+/*
+ * D3D12DemoBase.h
+ */
 
 #pragma once
 
-#include "DXSampleHelper.h"
+#include "DemoUtils.h"
 #include "Win32Application.h"
 
-class DXSample
+/// Base class for all D3D12 demos.
+class D3D12DemoBase
 {
 public:
-	DXSample (
+	D3D12DemoBase (
         UINT width,
         UINT height,
         std::wstring name
     );
 
-	virtual ~DXSample();
+	virtual ~D3D12DemoBase();
 
 	virtual void OnInit() = 0;
 	virtual void OnUpdate() = 0;

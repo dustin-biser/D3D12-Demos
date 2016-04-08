@@ -1,24 +1,17 @@
-//*********************************************************
-//
-// Copyright (c) Microsoft. All rights reserved.
-// This code is licensed under the MIT License (MIT).
-// THIS CODE IS PROVIDED *AS IS* WITHOUT WARRANTY OF
-// ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING ANY
-// IMPLIED WARRANTIES OF FITNESS FOR A PARTICULAR
-// PURPOSE, MERCHANTABILITY, OR NON-INFRINGEMENT.
-//
-//*********************************************************
+/*
+ * Win32Application.h
+ */
 
 #pragma once
 
-#include "DXSample.h"
+#include "D3D12DemoBase.h"
 
-class DXSample;
+class D3D12DemoBase;
 
 class Win32Application {
 public:
 	static int Run (
-        DXSample * pSample,
+        D3D12DemoBase * pSample,
         HINSTANCE hInstance,
         int nCmdShow
     );

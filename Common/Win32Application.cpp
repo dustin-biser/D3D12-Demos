@@ -1,20 +1,14 @@
-//*********************************************************
-//
-// Copyright (c) Microsoft. All rights reserved.
-// This code is licensed under the MIT License (MIT).
-// THIS CODE IS PROVIDED *AS IS* WITHOUT WARRANTY OF
-// ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING ANY
-// IMPLIED WARRANTIES OF FITNESS FOR A PARTICULAR
-// PURPOSE, MERCHANTABILITY, OR NON-INFRINGEMENT.
-//
-//*********************************************************
+/*
+ * Win32Application.cpp
+ */
+
 #include "pch.h"
 #include "Win32Application.h"
 
 HWND Win32Application::m_hwnd = nullptr;
 
 int Win32Application::Run (
-    DXSample * pSample,
+    D3D12DemoBase * pSample,
     HINSTANCE hInstance,
     int nCmdShow
 ) {
@@ -109,7 +103,7 @@ LRESULT CALLBACK Win32Application::WindowProc (
 ) {
     // Retrieve a pointer to the DXSample instance held by the user data field of our 
     // window instance.
-	DXSample * pSample = reinterpret_cast<DXSample*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
+	D3D12DemoBase * pSample = reinterpret_cast<D3D12DemoBase*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
 
 	switch (message)
 	{
