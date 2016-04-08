@@ -104,15 +104,15 @@ private:
     );
 
     void LoadShaders (
-        _Out_ ComPtr<ID3DBlob> & vertexShader,
-        _Out_ ComPtr<ID3DBlob> & pixelShader
+        _Out_ ComPtr<ID3DBlob> & vertexShaderBlob,
+        _Out_ ComPtr<ID3DBlob> & pixelShaderBlob
     );
 
     void CreatePipelineState (
         _In_ ID3D12Device * device,
-        _In_ ID3DBlob * vertexShader,
-        _In_ ID3DBlob * pixelShader,
         _In_ ID3D12RootSignature * rootSignature,
+        _In_ ID3DBlob * vertexShaderBlob,
+        _In_ ID3DBlob * pixelShaderBlob,
         _Out_ ComPtr<ID3D12PipelineState> & pipelineState
     );
 

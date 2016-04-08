@@ -306,17 +306,17 @@ void IndexRendering::LoadAssets()
         m_rootSignature
     );
 
-    // Compile and load shaders.
-    ComPtr<ID3DBlob> vertexShader;
-    ComPtr<ID3DBlob> pixelShader;
-    this->LoadShaders(vertexShader, pixelShader);
+    // Load shader byte code.
+    ComPtr<ID3DBlob> vertexShaderBlob;
+    ComPtr<ID3DBlob> pixelShaderBlob;
+    this->LoadShaders(vertexShaderBlob, pixelShaderBlob);
 
 	// Create the pipeline state object.
     this->CreatePipelineState (
         m_device.Get(),
-        vertexShader.Get(),
-        pixelShader.Get(),
         m_rootSignature.Get(),
+        vertexShaderBlob.Get(),
+        pixelShaderBlob.Get(),
         m_pipelineState
     ); NAME_D3D12_OBJECT(m_pipelineState);
 
@@ -367,46 +367,20 @@ void IndexRendering::CreateRootSignature (
 
 
 //---------------------------------------------------------------------------------------
-void IndexRendering::LoadShaders(
-    _Out_ ComPtr<ID3DBlob> & vertexShader,
-    _Out_ ComPtr<ID3DBlob> & pixelShader
+void IndexRendering::LoadShaders (
+    _Out_ ComPtr<ID3DBlob> & vertexShaderBlob,
+    _Out_ ComPtr<ID3DBlob> & pixelShaderBlob
 ) {
-#if defined(_DEBUG)
-        // Enable better shader debugging with the graphics debugging tools.
-        uint compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
-#else
-        uint compileFlags = 0;
-#endif
-
-    // Compile vertex shader
-    ThrowIfFailed (
-        D3DCompileFromFile(
-            GetAssetFullPath(L"shaders.hlsl").c_str(),
-            nullptr, nullptr, "VSMain", "vs_5_0",
-            compileFlags, 0,
-            vertexShader.ReleaseAndGetAddressOf(),
-            nullptr
-        )
-    );
-
-    // Compile pixel shader
-    ThrowIfFailed (
-        D3DCompileFromFile(
-            GetAssetFullPath(L"shaders.hlsl").c_str(),
-            nullptr, nullptr, "PSMain", "ps_5_0",
-            compileFlags, 0,
-            pixelShader.ReleaseAndGetAddressOf(),
-            nullptr
-        )
-    );
+    D3DReadFileToBlob(GetAssetFullPath(L"VertexShader.cso").c_str(), &vertexShaderBlob);
+    D3DReadFileToBlob(GetAssetFullPath(L"PixelShader.cso").c_str(), &pixelShaderBlob);
 }
 
 //---------------------------------------------------------------------------------------
 void IndexRendering::CreatePipelineState(
     _In_ ID3D12Device * device,
-    _In_ ID3DBlob * vertexShader,
-    _In_ ID3DBlob * pixelShader,
     _In_ ID3D12RootSignature * rootSignature,
+    _In_ ID3DBlob * vertexShaderBlob,
+    _In_ ID3DBlob * pixelShaderBlob,
     _Out_ ComPtr<ID3D12PipelineState> & pipelineState
 ) {
     // Define the vertex input layout.
@@ -434,12 +408,13 @@ void IndexRendering::CreatePipelineState(
     CD3DX12_RASTERIZER_DESC rasterizerState(D3D12_DEFAULT);
     rasterizerState.FrontCounterClockwise = TRUE;
 
+
     // Describe and create the graphics pipeline state object (PSO).
     D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
     psoDesc.InputLayout = { inputElementDescriptor, _countof(inputElementDescriptor) };
     psoDesc.pRootSignature = rootSignature;
-    psoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShader);
-    psoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShader);
+    psoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShaderBlob);
+    psoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShaderBlob);
     psoDesc.RasterizerState = rasterizerState;
     psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
     psoDesc.DepthStencilState.DepthEnable = FALSE;
