@@ -5,6 +5,8 @@ VisualStudioVersion = 14.0.24720.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "IndexRendering", "IndexRendering\IndexRendering.vcxproj", "{A98A8BDD-A28C-4E88-A4C7-4DB0EA130651}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FrameBuffering", "FrameBuffering\FrameBuffering.vcxproj", "{6CD9FF56-E775-4F72-A0BF-D764B76F64E6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -15,6 +17,10 @@ Global
 		{A98A8BDD-A28C-4E88-A4C7-4DB0EA130651}.Debug|x64.Build.0 = Debug|x64
 		{A98A8BDD-A28C-4E88-A4C7-4DB0EA130651}.Release|x64.ActiveCfg = Release|x64
 		{A98A8BDD-A28C-4E88-A4C7-4DB0EA130651}.Release|x64.Build.0 = Release|x64
+		{6CD9FF56-E775-4F72-A0BF-D764B76F64E6}.Debug|x64.ActiveCfg = Debug|x64
+		{6CD9FF56-E775-4F72-A0BF-D764B76F64E6}.Debug|x64.Build.0 = Debug|x64
+		{6CD9FF56-E775-4F72-A0BF-D764B76F64E6}.Release|x64.ActiveCfg = Release|x64
+		{6CD9FF56-E775-4F72-A0BF-D764B76F64E6}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
