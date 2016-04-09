@@ -2,4 +2,4 @@
 A collection of demos using various aspects of the D3D12 API.
 
 ## [IndexRendering](IndexRendering/)
-<img src="./Images/IndexRendering.png" height="96px" align="right">
+<img src="./Images/index_rendering.png" height="96px" align="right">
