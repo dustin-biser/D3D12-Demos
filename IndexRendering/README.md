@@ -1,8 +1,8 @@
 ## Index Rendering Demo
-This demo shows how to setup an index buffer, copy the index data to the GPUs
-Default Heap, and create an Index Buffer View to be used with the Input Assembler.
+This demo shows how to create an index buffer resource, copy the index data to the GPU's
+Default Heap for long term storage, and create an Index Buffer View to be used with the Input Assembler.
 
-Extra features
-* Precompiled shader
+Additional Features:
+* Precompiled shaders
 * sRGB Render Target View for gamma correction
 * CommandList resuse
