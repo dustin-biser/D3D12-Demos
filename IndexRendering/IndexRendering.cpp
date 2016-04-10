@@ -107,6 +107,7 @@ void IndexRendering::LoadRenderPipelineDependencies()
 
 
     // Create the draw command lists which will hold our rendering commands.
+	// Create one command list for each swap chain buffer.
     this->CreateDrawCommandLists (
         m_device.Get(),
         m_commandAllocator.Get(),
@@ -434,7 +435,6 @@ void IndexRendering::CreateDrawCommandLists (
     _In_ uint numCommandLists,
     _Out_ ComPtr<ID3D12GraphicsCommandList> * drawCommandList
 ) {
-	// Create a command lists for each swap chain buffer
     for (uint i(0); i < numCommandLists; ++i) {
         ThrowIfFailed(
             device->CreateCommandList (

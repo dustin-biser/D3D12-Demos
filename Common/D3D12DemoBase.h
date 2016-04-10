@@ -31,7 +31,7 @@ public:
 	// Accessors.
 	UINT GetWidth() const           { return m_width; }
 	UINT GetHeight() const          { return m_height; }
-	const WCHAR * GetTitle() const  { return m_title.c_str(); }
+	const WCHAR * GetWindowTitle() const  { return m_title.c_str(); }
 
 	void ParseCommandLineArgs (
         WCHAR * argv[],

@@ -11,7 +11,7 @@ class D3D12DemoBase;
 class Win32Application {
 public:
 	static int Run (
-        D3D12DemoBase * pSample,
+        D3D12DemoBase * demo,
         HINSTANCE hInstance,
         int nCmdShow
     );

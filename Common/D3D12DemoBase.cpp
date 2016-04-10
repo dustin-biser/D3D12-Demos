@@ -38,8 +38,8 @@ std::wstring D3D12DemoBase::GetAssetFullPath(LPCWSTR assetName)
 
 
 //---------------------------------------------------------------------------------------
-// Helper function for acquiring the first available hardware adapter that supports Direct3D 12.
-// If no such adapter can be found, *ppAdapter will be set to nullptr.
+// Helper function for acquiring the first available hardware adapter that supports
+// Direct3D 12. If no such adapter can be found, *ppAdapter will be set to nullptr.
 void D3D12DemoBase::GetHardwareAdapter (
     IDXGIFactory2 * pFactory,
     IDXGIAdapter1 ** ppAdapter
@@ -71,8 +71,10 @@ void D3D12DemoBase::GetHardwareAdapter (
         ++adapterIndex;
 	}
 
-    // Return first hardware adapter found, that supports the specified D3D feature set
-	*ppAdapter = adapter.Detach();
+    // Return first hardware adapter found, that supports the specified D3D feature set.
+    // Call Detach() so that the ComPtr does not destroy the interface object when exiting
+    // the current scope.
+    *ppAdapter = adapter.Detach(); 
 
 }
 

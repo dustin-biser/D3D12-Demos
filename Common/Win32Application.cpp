@@ -4,18 +4,27 @@
 
 #include "pch.h"
 #include "Win32Application.h"
+#include <chrono>
+#include <cwchar>
+
+
+///////////////////////////////////////////////
+// TODO - Remove this
+#include <iostream>
+///////////////////////////////////////////////
 
 HWND Win32Application::m_hwnd = nullptr;
 
+
 int Win32Application::Run (
-    D3D12DemoBase * pSample,
+    D3D12DemoBase * demo,
     HINSTANCE hInstance,
     int nCmdShow
 ) {
 	// Parse the command line parameters
 	int argc;
 	LPWSTR * argv = CommandLineToArgvW(GetCommandLineW(), &argc);
-	pSample->ParseCommandLineArgs(argv, argc);
+	demo->ParseCommandLineArgs(argv, argc);
 	LocalFree(argv);
 
 
@@ -44,8 +53,8 @@ int Win32Application::Run (
     //-- Center window:
     RECT windowRect;
     GetClientRect(GetDesktopWindow(), &windowRect);
-    long width = static_cast<LONG>(pSample->GetWidth());
-    long height = static_cast<LONG>(pSample->GetHeight());
+    long width = static_cast<LONG>(demo->GetWidth());
+    long height = static_cast<LONG>(demo->GetHeight());
     windowRect.left = (windowRect.right / 2) - (width / 2);
     windowRect.top = (windowRect.bottom / 2) - (height / 2);
 
@@ -54,7 +63,7 @@ int Win32Application::Run (
 	// Create the window and store a handle to it.
 	m_hwnd = CreateWindow (
 		windowClass.lpszClassName,
-		pSample->GetTitle(),
+		demo->GetWindowTitle(),
 		WS_OVERLAPPEDWINDOW,
 		windowRect.left,
 		windowRect.top,
@@ -63,32 +72,58 @@ int Win32Application::Run (
 		nullptr,		// We have no parent window.
 		nullptr,		// We aren't using menus.
 		hInstance,
-		pSample         // Store pointer to DXSample in the user data slot.
+		demo         // Store pointer to DXSample in the user data slot.
                         // We'll retrieve this later within the WindowProc in order
                         // interact with the DXSample instance.
     );
 
 	// Initialize the sample. OnInit is defined in each child-implementation of DXSample.
-	pSample->OnInit();
+	demo->OnInit();
 
 	ShowWindow(m_hwnd, nCmdShow);
+
+    //-- Timing information:
+    static uint32 frameCount(0);
+    static float fpsTimer(0.0f);
 
 	// Main sample loop.
 	MSG msg = {};
 	while (msg.message != WM_QUIT)
 	{
-		// Process any messages in the queue.
-		if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
-		{
-            // Translate virtual-key codes into character messages.
-			TranslateMessage(&msg);
 
-            // Dispatches a message to a the registered window procedure.
-			DispatchMessage(&msg);
-		}
+        // Start frame timer.
+        auto timerStart = std::chrono::steady_clock::now();
+            // Process any messages in the queue.
+            if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+            {
+                // Translate virtual-key codes into character messages.
+                TranslateMessage(&msg);
+
+                // Dispatches a message to a the registered window procedure.
+                DispatchMessage(&msg);
+            }
+        // End frame timer.
+        auto timerEnd = std::chrono::steady_clock::now();
+        frameCount++;
+
+        auto timeDelta = 
+            std::chrono::duration<double, std::milli>(timerEnd - timerStart).count();
+        fpsTimer += (float)timeDelta;
+
+        //-- Update window title after elapsed time:
+        if (fpsTimer > 400.0f) {
+            float fps = float(frameCount) / fpsTimer * 1000.0f;
+            wchar_t buffer[256];
+            swprintf(buffer, _countof(buffer), L"%s - %.1f FPS", demo->GetWindowTitle(), fps);
+            SetWindowText(m_hwnd, buffer);
+
+            // Reset timing info.
+            fpsTimer = 0.0f;
+            frameCount = 0;
+        }
 	}
 
-	pSample->OnDestroy();
+	demo->OnDestroy();
 
 	// Return this part of the WM_QUIT message to Windows.
 	return static_cast<char>(msg.wParam);
