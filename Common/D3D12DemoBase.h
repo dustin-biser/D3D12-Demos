@@ -39,7 +39,7 @@ public:
     );
 
 protected:
-	std::wstring GetAssetFullPath(LPCWSTR assetName);
+	std::wstring GetAssetPath(LPCWSTR assetName);
 
 	void GetHardwareAdapter (
         IDXGIFactory2 * pFactory,
@@ -59,8 +59,11 @@ protected:
 	bool m_useWarpDevice;
 
 private:
-	// Root assets path.
-	std::wstring m_assetsPath;
+	/// Path of the demo's current working directory.
+	std::wstring m_workingDirPath;
+
+	/// The shared solution asset path.
+	std::wstring m_sharedAssetPath;
 
 	// Window title.
 	std::wstring m_title;

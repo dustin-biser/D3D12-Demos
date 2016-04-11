@@ -14,9 +14,19 @@ D3D12DemoBase::D3D12DemoBase(UINT width, UINT height, std::wstring name) :
 	m_title(name),
 	m_useWarpDevice(false)
 {
-	WCHAR assetsPath[512];
-	GetAssetsPath(assetsPath, _countof(assetsPath));
-	m_assetsPath = assetsPath;
+    //-- Set working directory path:
+    {
+        WCHAR pathBuffer[512];
+        GetWorkingDir(pathBuffer, _countof(pathBuffer));
+        m_workingDirPath = std::wstring(pathBuffer);
+    }
+
+    //-- Set shared asset path:
+    {
+        WCHAR pathBuffer[512];
+        GetSolutionDir(pathBuffer, _countof(pathBuffer));
+        m_sharedAssetPath = std::wstring(pathBuffer) + L"Assets\\";
+    }
 
 	m_aspectRatio = static_cast<float>(width) / static_cast<float>(height);
 }
@@ -28,12 +38,23 @@ D3D12DemoBase::~D3D12DemoBase()
 
 }
 
-
 //---------------------------------------------------------------------------------------
 // Helper function for resolving the full path of assets.
-std::wstring D3D12DemoBase::GetAssetFullPath(LPCWSTR assetName)
+std::wstring D3D12DemoBase::GetAssetPath(LPCWSTR assetName)
 {
-	return m_assetsPath + assetName;
+    assert(assetName);
+
+    // Compiled shader code .cso files should be in the current working directory,
+    // where as all other assets (e.g. textures, meshes, etc.) should be located in
+    // the shared asset path.
+    const wchar_t * result = wcsstr(assetName, L".cso");
+    if (result) {
+        return m_workingDirPath + assetName;
+    }
+    else {
+        return m_sharedAssetPath + assetName;
+    }
+
 }
 
 

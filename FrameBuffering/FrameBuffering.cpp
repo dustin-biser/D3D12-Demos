@@ -364,8 +364,8 @@ void FrameBuffering::LoadShaders (
     _Out_ ComPtr<ID3DBlob> & vertexShaderBlob,
     _Out_ ComPtr<ID3DBlob> & pixelShaderBlob
 ) {
-    D3DReadFileToBlob(GetAssetFullPath(L"VertexShader.cso").c_str(), &vertexShaderBlob);
-    D3DReadFileToBlob(GetAssetFullPath(L"PixelShader.cso").c_str(), &pixelShaderBlob);
+    D3DReadFileToBlob(GetAssetPath(L"VertexShader.cso").c_str(), &vertexShaderBlob);
+    D3DReadFileToBlob(GetAssetPath(L"PixelShader.cso").c_str(), &pixelShaderBlob);
 }
 
 //---------------------------------------------------------------------------------------

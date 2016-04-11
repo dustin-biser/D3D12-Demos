@@ -12,7 +12,7 @@ inline void ThrowIfFailed(HRESULT hr)
 	}
 }
 
-inline void GetAssetsPath(_Out_writes_(pathSize) WCHAR* path, UINT pathSize)
+inline void GetWorkingDir(_Out_writes_(pathSize) WCHAR* path, UINT pathSize)
 {
 	if (path == nullptr)
 	{
@@ -30,6 +30,32 @@ inline void GetAssetsPath(_Out_writes_(pathSize) WCHAR* path, UINT pathSize)
 	if (lastSlash)
 	{
 		*(lastSlash + 1) = L'\0';
+	}
+}
+
+inline void GetSolutionDir(_Out_writes_(pathSize) WCHAR* path, UINT pathSize)
+{
+	if (path == nullptr)
+	{
+		throw;
+	}
+
+	DWORD size = GetModuleFileName(nullptr, path, pathSize);
+	if (size == 0 || size == pathSize)
+	{
+		// Method failed or path was truncated.
+		throw;
+	}
+
+    WCHAR* lastMatch = wcsstr(path, L"\\bin");
+	if (lastMatch)
+	{
+		*(lastMatch) = L'\0';
+	}
+    lastMatch = wcsrchr(path, L'\\');
+	if (lastMatch)
+	{
+		*(lastMatch + 1) = L'\0';
 	}
 }
 
