@@ -3,15 +3,12 @@
  */
 
 #include "pch.h"
+
 #include "Win32Application.h"
+#include <cassert>
 #include <chrono>
 #include <cwchar>
 
-
-///////////////////////////////////////////////
-// TODO - Remove this
-#include <iostream>
-///////////////////////////////////////////////
 
 HWND Win32Application::m_hwnd = nullptr;
 
@@ -21,6 +18,7 @@ int Win32Application::Run (
     HINSTANCE hInstance,
     int nCmdShow
 ) {
+    assert(demo);
 	// Parse the command line parameters
 	int argc;
 	LPWSTR * argv = CommandLineToArgvW(GetCommandLineW(), &argc);
@@ -90,31 +88,32 @@ int Win32Application::Run (
 	MSG msg = {};
 	while (msg.message != WM_QUIT)
 	{
-
         // Start frame timer.
-        auto timerStart = std::chrono::steady_clock::now();
-            // Process any messages in the queue.
-            if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
-            {
-                // Translate virtual-key codes into character messages.
-                TranslateMessage(&msg);
+        auto timerStart = std::chrono::high_resolution_clock::now();
+        // Process any messages in the queue.
+        if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+        {
+            // Translate virtual-key codes into character messages.
+            TranslateMessage(&msg);
 
-                // Dispatches a message to a the registered window procedure.
-                DispatchMessage(&msg);
-            }
+            // Dispatches a message to a the registered window procedure.
+            DispatchMessage(&msg);
+        }
+        demo->OnUpdate();
+        demo->OnRender();
         // End frame timer.
-        auto timerEnd = std::chrono::steady_clock::now();
+        auto timerEnd = std::chrono::high_resolution_clock::now();
         frameCount++;
 
         auto timeDelta = 
             std::chrono::duration<double, std::milli>(timerEnd - timerStart).count();
         fpsTimer += (float)timeDelta;
 
-        //-- Update window title after elapsed time:
+        //-- Update window title only after so many milliseconds:
         if (fpsTimer > 400.0f) {
             float fps = float(frameCount) / fpsTimer * 1000.0f;
             wchar_t buffer[256];
-            swprintf(buffer, _countof(buffer), L"%s - %.1f FPS", demo->GetWindowTitle(), fps);
+            swprintf(buffer, _countof(buffer), L"%s - %.1f fps", demo->GetWindowTitle(), fps);
             SetWindowText(m_hwnd, buffer);
 
             // Reset timing info.
@@ -170,11 +169,7 @@ LRESULT CALLBACK Win32Application::WindowProc (
 		return 0;
 
 	case WM_PAINT:
-		if (pSample)
-		{
-			pSample->OnUpdate();
-			pSample->OnRender();
-		}
+        ValidateRect(hWnd, NULL);
 		return 0;
 
 	case WM_DESTROY:

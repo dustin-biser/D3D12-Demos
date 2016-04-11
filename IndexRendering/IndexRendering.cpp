@@ -300,7 +300,7 @@ void IndexRendering::LoadAssets()
         m_rootSignature
     );
 
-    // Load shader byte code.
+    // Load shader bytecode.
     ComPtr<ID3DBlob> vertexShaderBlob;
     ComPtr<ID3DBlob> pixelShaderBlob;
     this->LoadShaders(vertexShaderBlob, pixelShaderBlob);
