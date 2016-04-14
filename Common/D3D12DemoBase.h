@@ -39,7 +39,12 @@ public:
     );
 
 protected:
+    /// Helper function for resolving the full path of assets.
 	std::wstring GetAssetPath(LPCWSTR assetName);
+
+    /// Helper function for resolving the full path of assets.
+    /// Works with basic multi-byte strings.
+	std::string GetAssetPath(const char * assetName);
 
 	void GetHardwareAdapter (
         IDXGIFactory2 * pFactory,

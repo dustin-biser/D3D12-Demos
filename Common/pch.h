@@ -32,7 +32,7 @@
 #include <string>
 #include <wrl.h>
 #include <shellapi.h>
-#include <cassert>
+#include <cstdlib>
 
 #include "NumericTypes.h"
 #include "DemoUtils.h"

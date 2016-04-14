@@ -39,7 +39,6 @@ D3D12DemoBase::~D3D12DemoBase()
 }
 
 //---------------------------------------------------------------------------------------
-// Helper function for resolving the full path of assets.
 std::wstring D3D12DemoBase::GetAssetPath(LPCWSTR assetName)
 {
     assert(assetName);
@@ -57,6 +56,29 @@ std::wstring D3D12DemoBase::GetAssetPath(LPCWSTR assetName)
 
 }
 
+
+//---------------------------------------------------------------------------------------
+std::string D3D12DemoBase::GetAssetPath(const char * assetName)
+{
+    const int BUFFER_LENGTH = 512;
+
+    wchar_t wcsBuffer[BUFFER_LENGTH]; // wide character string buffer.
+    size_t result = mbstowcs(wcsBuffer, assetName, BUFFER_LENGTH);
+    if (result == BUFFER_LENGTH) {
+        // assetName path is too long to fit in buffer.
+        throw;
+    }
+    std::wstring assetPath = this->GetAssetPath(wcsBuffer);
+
+    char mbsBuffer[BUFFER_LENGTH]; // multi-byte string buffer.
+    result = wcstombs(mbsBuffer, assetPath.c_str(), BUFFER_LENGTH);
+    if (result == BUFFER_LENGTH) {
+        // assetName path is too long to fit in buffer.
+        throw;
+    }
+
+    return std::string(mbsBuffer);
+}
 
 //---------------------------------------------------------------------------------------
 // Helper function for acquiring the first available hardware adapter that supports
