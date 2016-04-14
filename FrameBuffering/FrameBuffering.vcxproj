@@ -45,11 +45,13 @@
     <LinkIncremental>true</LinkIncremental>
     <OutDir>bin\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>obj\$(Platform)\$(Configuration)\</IntDir>
+    <IncludePath>$(SolutionDir)External\;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>bin\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>obj\$(Platform)\$(Configuration)\</IntDir>
+    <IncludePath>$(SolutionDir)External\;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -124,6 +126,8 @@
     <ClInclude Include="..\Common\D3D12DemoBase.h" />
     <ClInclude Include="..\Common\DemoUtils.h" />
     <ClInclude Include="..\Common\Fence.h" />
+    <ClInclude Include="..\Common\Mesh.hpp" />
+    <ClInclude Include="..\Common\MeshBufferAllocator.hpp" />
     <ClInclude Include="..\Common\NumericTypes.h" />
     <ClInclude Include="..\Common\pch.h" />
     <ClInclude Include="..\Common\Win32Application.h" />
@@ -132,6 +136,8 @@
   <ItemGroup>
     <ClCompile Include="..\Common\D3D12DemoBase.cpp" />
     <ClCompile Include="..\Common\Fence.cpp" />
+    <ClCompile Include="..\Common\Mesh.cpp" />
+    <ClCompile Include="..\Common\MeshBufferAllocator.cpp" />
     <ClCompile Include="..\Common\pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>

@@ -130,7 +130,7 @@ void IndexRendering::LoadRenderPipelineDependencies()
     );
     NAME_D3D12_OBJECT(m_copyCommandList);
 
-    // Create synchronization primitive and wait until assets have been uploaded to the GPU.
+    // Create synchronization primitive.
     m_fence = std::make_shared<Fence>(m_device.Get());
 }
 
@@ -454,7 +454,7 @@ void IndexRendering::CreateDrawCommandLists (
 D3D12_VERTEX_BUFFER_VIEW IndexRendering::UploadVertexDataToDefaultHeap(
     _In_ ID3D12Device * device,
     _In_ ID3D12GraphicsCommandList * copyCommandList,
-    _Out_ ComPtr<ID3D12Resource> & vertexBufferUploadHeap,
+    _Out_ ComPtr<ID3D12Resource> & vertexUploadBuffer,
     _Out_ ComPtr<ID3D12Resource> & vertexBuffer
 ) {
     // Define vertices for a square.
@@ -488,7 +488,7 @@ D3D12_VERTEX_BUFFER_VIEW IndexRendering::UploadVertexDataToDefaultHeap(
             &CD3DX12_RESOURCE_DESC::Buffer(vertexBufferSize),
             D3D12_RESOURCE_STATE_GENERIC_READ,
             nullptr,
-            IID_PPV_ARGS(&vertexBufferUploadHeap)
+            IID_PPV_ARGS(&vertexUploadBuffer)
         )
     );
 
@@ -503,7 +503,7 @@ D3D12_VERTEX_BUFFER_VIEW IndexRendering::UploadVertexDataToDefaultHeap(
         UpdateSubresources<1>(
             copyCommandList,
             vertexBuffer.Get(),
-            vertexBufferUploadHeap.Get(),
+            vertexUploadBuffer.Get(),
             0, 0, 1,
             &vertexDataSubResource
         );
@@ -532,7 +532,7 @@ D3D12_VERTEX_BUFFER_VIEW IndexRendering::UploadVertexDataToDefaultHeap(
 D3D12_INDEX_BUFFER_VIEW IndexRendering::UploadIndexDataToDefaultHeap(
     _In_ ID3D12Device * device,
     _In_ ID3D12GraphicsCommandList * copyCommandList,
-    _Out_ ComPtr<ID3D12Resource> & indexBufferUploadHeap,
+    _Out_ ComPtr<ID3D12Resource> & indexUploadBuffer,
     _Out_ ComPtr<ID3D12Resource> & indexBuffer,
     _Out_ uint & indexCount
 ) {
@@ -557,7 +557,7 @@ D3D12_INDEX_BUFFER_VIEW IndexRendering::UploadIndexDataToDefaultHeap(
             &CD3DX12_RESOURCE_DESC::Buffer(indexBufferSize),
             D3D12_RESOURCE_STATE_GENERIC_READ,
             nullptr,
-            IID_PPV_ARGS(&indexBufferUploadHeap))
+            IID_PPV_ARGS(&indexUploadBuffer))
     );
 
     // Copy data to the intermediate upload heap and then schedule a copy 
@@ -571,7 +571,7 @@ D3D12_INDEX_BUFFER_VIEW IndexRendering::UploadIndexDataToDefaultHeap(
         UpdateSubresources<1>(
             copyCommandList,
             indexBuffer.Get(),
-            indexBufferUploadHeap.Get(),
+            indexUploadBuffer.Get(),
             0, 0, 1,
             &indexDataSubResource
         );
@@ -605,20 +605,21 @@ void IndexRendering::CreateVertexDataBuffers (
     _Out_ ComPtr<ID3D12Resource> & indexBuffer,
     _Out_ uint & indexCount
 ) {
-    // Upload heaps are only needed when loading data into GPU memory.
+    // Upload buffers (which rides in the Upload Heap) are only needed when loading data
+    // into GPU memory.
     // Note: ComPtr's are CPU objects but this resource needs to stay in scope until
     // the command list that references it has finished executing on the GPU.
     // We will flush the GPU at the end of this method to ensure the resource is not
     // prematurely destroyed.
-    ComPtr<ID3D12Resource> vertexBufferUploadHeap;
-    ComPtr<ID3D12Resource> indexBufferUploadHeap;
+    ComPtr<ID3D12Resource> vertexUploadBuffer;
+    ComPtr<ID3D12Resource> indexUploadBuffer;
 
     // Upload vertex data to the Default Heap and create a Vertex Buffer View of the
     // resource.
     m_vertexBufferView = this->UploadVertexDataToDefaultHeap (
         device,
         copyCommandList,
-        vertexBufferUploadHeap,
+        vertexUploadBuffer,
         vertexBuffer
     );
 
@@ -627,7 +628,7 @@ void IndexRendering::CreateVertexDataBuffers (
     m_indexBufferView = this->UploadIndexDataToDefaultHeap (
         device,
         copyCommandList,
-        indexBufferUploadHeap,
+        indexUploadBuffer,
         indexBuffer,
         indexCount
     );

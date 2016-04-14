@@ -129,7 +129,7 @@ void FrameBuffering::LoadRenderPipelineDependencies()
     );
     NAME_D3D12_OBJECT(m_copyCommandList);
 
-    // Create synchronization primitive and wait until assets have been uploaded to the GPU.
+    // Create synchronization primitive.
     m_fence = std::make_shared<Fence>(m_device.Get());
 }
 
@@ -139,8 +139,7 @@ void FrameBuffering::CreateDevice (
     _In_ bool useWarpDevice,
 	_Out_ ComPtr<ID3D12Device> & device
 ) {
-	if (useWarpDevice)
-	{
+	if (useWarpDevice) {
 		ComPtr<IDXGIAdapter> warpAdapter;
 		ThrowIfFailed (
             dxgiFactory->EnumWarpAdapter(IID_PPV_ARGS(&warpAdapter))
@@ -159,8 +158,7 @@ void FrameBuffering::CreateDevice (
             )
         );
 	}
-	else
-	{
+	else {
 		ComPtr<IDXGIAdapter1> hardwareAdapter;
 		GetHardwareAdapter(dxgiFactory, &hardwareAdapter);
 
@@ -176,7 +174,21 @@ void FrameBuffering::CreateDevice (
 			    IID_PPV_ARGS(&device)
             )
         );
+
+        // Query Video Memory limits
+        ComPtr<IDXGIAdapter3> adapter3;
+        hardwareAdapter.As(&adapter3);
+
+        DXGI_QUERY_VIDEO_MEMORY_INFO videoMemoryInfo;
+        adapter3->QueryVideoMemoryInfo ( // Query GPU memory info
+            0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &videoMemoryInfo
+        );
+        cout << "Video Memory Info:\n"
+             << "Budget: " << videoMemoryInfo.Budget / 1.0e9 << " GB" << endl
+             << "AvailableForReservation: " << videoMemoryInfo.AvailableForReservation / 1.0e9 << " GB" << endl;
+
 	}
+
 }
 
 //---------------------------------------------------------------------------------------
@@ -389,7 +401,7 @@ void FrameBuffering::CreatePipelineState(
     inputElementDescriptor[0].InstanceDataStepRate = 0;
 
     // Colors
-    inputElementDescriptor[1].SemanticName = "COLOR";
+    inputElementDescriptor[1].SemanticName = "NORMAL";
     inputElementDescriptor[1].SemanticIndex = 0;
     inputElementDescriptor[1].Format = DXGI_FORMAT_R32G32B32_FLOAT;
     inputElementDescriptor[1].InputSlot = 0;
@@ -453,7 +465,7 @@ void FrameBuffering::CreateDrawCommandLists (
 D3D12_VERTEX_BUFFER_VIEW FrameBuffering::UploadVertexDataToDefaultHeap(
     _In_ ID3D12Device * device,
     _In_ ID3D12GraphicsCommandList * copyCommandList,
-    _Out_ ComPtr<ID3D12Resource> & vertexBufferUploadHeap,
+    _Out_ ComPtr<ID3D12Resource> & vertexUploadBuffer,
     _Out_ ComPtr<ID3D12Resource> & vertexBuffer
 ) {
     // Define vertices for a square.
@@ -466,6 +478,7 @@ D3D12_VERTEX_BUFFER_VIEW FrameBuffering::UploadVertexDataToDefaultHeap(
         { { -0.25f, 0.25f * m_aspectRatio, 0.0f }, { 1.0f, 0.0f, 1.0f, 1.0f } }
     };
     const uint vertexBufferSize = sizeof(vertexData);
+
 
     // The vertex buffer resource will live in the Default Heap, and will
     // be the copy destination.
@@ -487,7 +500,7 @@ D3D12_VERTEX_BUFFER_VIEW FrameBuffering::UploadVertexDataToDefaultHeap(
             &CD3DX12_RESOURCE_DESC::Buffer(vertexBufferSize),
             D3D12_RESOURCE_STATE_GENERIC_READ,
             nullptr,
-            IID_PPV_ARGS(&vertexBufferUploadHeap)
+            IID_PPV_ARGS(&vertexUploadBuffer)
         )
     );
 
@@ -502,7 +515,7 @@ D3D12_VERTEX_BUFFER_VIEW FrameBuffering::UploadVertexDataToDefaultHeap(
         UpdateSubresources<1>(
             copyCommandList,
             vertexBuffer.Get(),
-            vertexBufferUploadHeap.Get(),
+            vertexUploadBuffer.Get(),
             0, 0, 1,
             &vertexDataSubResource
         );
@@ -531,7 +544,7 @@ D3D12_VERTEX_BUFFER_VIEW FrameBuffering::UploadVertexDataToDefaultHeap(
 D3D12_INDEX_BUFFER_VIEW FrameBuffering::UploadIndexDataToDefaultHeap(
     _In_ ID3D12Device * device,
     _In_ ID3D12GraphicsCommandList * copyCommandList,
-    _Out_ ComPtr<ID3D12Resource> & indexBufferUploadHeap,
+    _Out_ ComPtr<ID3D12Resource> & indexUploadBuffer,
     _Out_ ComPtr<ID3D12Resource> & indexBuffer,
     _Out_ uint & indexCount
 ) {
@@ -556,7 +569,7 @@ D3D12_INDEX_BUFFER_VIEW FrameBuffering::UploadIndexDataToDefaultHeap(
             &CD3DX12_RESOURCE_DESC::Buffer(indexBufferSize),
             D3D12_RESOURCE_STATE_GENERIC_READ,
             nullptr,
-            IID_PPV_ARGS(&indexBufferUploadHeap))
+            IID_PPV_ARGS(&indexUploadBuffer))
     );
 
     // Copy data to the intermediate upload heap and then schedule a copy 
@@ -570,7 +583,7 @@ D3D12_INDEX_BUFFER_VIEW FrameBuffering::UploadIndexDataToDefaultHeap(
         UpdateSubresources<1>(
             copyCommandList,
             indexBuffer.Get(),
-            indexBufferUploadHeap.Get(),
+            indexUploadBuffer.Get(),
             0, 0, 1,
             &indexDataSubResource
         );
@@ -604,20 +617,21 @@ void FrameBuffering::CreateVertexDataBuffers (
     _Out_ ComPtr<ID3D12Resource> & indexBuffer,
     _Out_ uint & indexCount
 ) {
-    // Upload heaps are only needed when loading data into GPU memory.
+    // Upload buffers (which rides in the Upload Heap) are only needed when loading data
+    // into GPU memory.
     // Note: ComPtr's are CPU objects but this resource needs to stay in scope until
     // the command list that references it has finished executing on the GPU.
     // We will flush the GPU at the end of this method to ensure the resource is not
     // prematurely destroyed.
-    ComPtr<ID3D12Resource> vertexBufferUploadHeap;
-    ComPtr<ID3D12Resource> indexBufferUploadHeap;
+    ComPtr<ID3D12Resource> vertexUploadBuffer;
+    ComPtr<ID3D12Resource> indexUploadBuffer;
 
     // Upload vertex data to the Default Heap and create a Vertex Buffer View of the
     // resource.
     m_vertexBufferView = this->UploadVertexDataToDefaultHeap (
         device,
         copyCommandList,
-        vertexBufferUploadHeap,
+        vertexUploadBuffer,
         vertexBuffer
     );
 
@@ -626,7 +640,7 @@ void FrameBuffering::CreateVertexDataBuffers (
     m_indexBufferView = this->UploadIndexDataToDefaultHeap (
         device,
         copyCommandList,
-        indexBufferUploadHeap,
+        indexUploadBuffer,
         indexBuffer,
         indexCount
     );
