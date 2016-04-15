@@ -4,7 +4,7 @@
 
 #include "pch.h"
 
-#include "Win32Application.h"
+#include "Win32Application.hpp"
 #include <cassert>
 #include <chrono>
 #include <cwchar>

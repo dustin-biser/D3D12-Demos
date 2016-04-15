@@ -3,7 +3,7 @@
  */
 
 #include "pch.h"
-#include "IndexRendering.h"
+#include "IndexRendering.hpp"
 
 #include <vector>
 #include <iostream>

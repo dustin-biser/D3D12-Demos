@@ -1,20 +1,20 @@
 /*
- * IndexRendering.h
+ * FrameBuffering.h
  */
 
 #pragma once
 
 #include "D3D12DemoBase.h"
-#include "Fence.h"
+#include "Fence.hpp"
 #include <memory>
 
 using namespace DirectX;
 using Microsoft::WRL::ComPtr;
 
 
-class IndexRendering : public D3D12DemoBase {
+class FrameBuffering : public D3D12DemoBase {
 public:
-	IndexRendering (
+	FrameBuffering (
         uint width,
         uint height,
         std::wstring name
@@ -144,4 +144,4 @@ private:
     );
 
 
-}; // end class IndexRendering
+}; // end class FrameBuffering

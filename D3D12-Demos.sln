@@ -7,12 +7,12 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "IndexRendering", "IndexRend
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FrameBuffering", "FrameBuffering\FrameBuffering.vcxproj", "{6CD9FF56-E775-4F72-A0BF-D764B76F64E6}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Extern", "Extern", "{DBFF7590-696F-46ED-84B6-F0F8F0EB0827}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "External", "External", "{DBFF7590-696F-46ED-84B6-F0F8F0EB0827}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tinyobjloader", "tinyobjloader", "{43BD680A-C8F9-4C72-9352-954BD8EDEEEF}"
 	ProjectSection(SolutionItems) = preProject
-		Extern\tinyobjloader\tiny_obj_loader.cc = Extern\tinyobjloader\tiny_obj_loader.cc
-		Extern\tinyobjloader\tiny_obj_loader.h = Extern\tinyobjloader\tiny_obj_loader.h
+		External\tinyobjloader\tiny_obj_loader.cc = External\tinyobjloader\tiny_obj_loader.cc
+		External\tinyobjloader\tiny_obj_loader.h = External\tinyobjloader\tiny_obj_loader.h
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Assets", "Assets", "{9CAB38E3-2C88-40DF-812F-2AA93EBEE9EB}"

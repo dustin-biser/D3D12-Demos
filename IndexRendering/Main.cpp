@@ -3,7 +3,7 @@
  */
 
 #include "pch.h"
-#include "IndexRendering.h"
+#include "IndexRendering.hpp"
 
 _Use_decl_annotations_
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)

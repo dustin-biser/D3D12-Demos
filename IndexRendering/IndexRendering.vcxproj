@@ -124,12 +124,12 @@
   <ItemGroup>
     <ClInclude Include="..\Common\d3dx12.h" />
     <ClInclude Include="..\Common\D3D12DemoBase.h" />
-    <ClInclude Include="..\Common\DemoUtils.h" />
-    <ClInclude Include="..\Common\Fence.h" />
-    <ClInclude Include="..\Common\NumericTypes.h" />
+    <ClInclude Include="..\Common\DemoUtils.hpp" />
+    <ClInclude Include="..\Common\Fence.hpp" />
+    <ClInclude Include="..\Common\NumericTypes.hpp" />
     <ClInclude Include="..\Common\pch.h" />
-    <ClInclude Include="..\Common\Win32Application.h" />
-    <ClInclude Include="IndexRendering.h" />
+    <ClInclude Include="..\Common\Win32Application.hpp" />
+    <ClInclude Include="IndexRendering.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Common\D3D12DemoBase.cpp" />

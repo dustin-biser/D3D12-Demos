@@ -4,8 +4,8 @@
 
 #pragma once
 
-#include "DemoUtils.h"
-#include "Win32Application.h"
+#include "DemoUtils.hpp"
+#include "Win32Application.hpp"
 
 /// Base class for all D3D12 demos.
 class D3D12DemoBase

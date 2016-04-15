@@ -5,8 +5,8 @@
 #pragma once
 
 #include <wrl.h>
-#include "NumericTypes.h"
 #include <d3d12.h>
+#include "NumericTypes.hpp"
 
 /// Primitive class for synchronizing D3D12 Resources between CPU and GPU.
 class Fence {

@@ -3,8 +3,7 @@
  */
 
 #include "pch.h"
-#include "Fence.h"
-#include "DemoUtils.h"
+#include "Fence.hpp"
 
 //---------------------------------------------------------------------------------------
 Fence::Fence(ID3D12Device * device)

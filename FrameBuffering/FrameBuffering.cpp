@@ -3,7 +3,7 @@
  */
 
 #include "pch.h"
-#include "FrameBuffering.h"
+#include "FrameBuffering.hpp"
 
 #include <vector>
 #include <iostream>
@@ -183,7 +183,15 @@ void FrameBuffering::CreateDevice (
         adapter3->QueryVideoMemoryInfo ( // Query GPU memory info
             0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &videoMemoryInfo
         );
-        cout << "Video Memory Info:\n"
+        cout << "Video Memory:\n"
+             << "Budget: " << videoMemoryInfo.Budget / 1.0e9 << " GB" << endl
+             << "AvailableForReservation: " << videoMemoryInfo.AvailableForReservation / 1.0e9 << " GB" << endl;
+        cout << endl;
+
+        adapter3->QueryVideoMemoryInfo ( // Query system memory info
+            0, DXGI_MEMORY_SEGMENT_GROUP_NON_LOCAL, &videoMemoryInfo
+        );
+        cout << "System Memory:\n"
              << "Budget: " << videoMemoryInfo.Budget / 1.0e9 << " GB" << endl
              << "AvailableForReservation: " << videoMemoryInfo.AvailableForReservation / 1.0e9 << " GB" << endl;
 
@@ -480,8 +488,8 @@ D3D12_VERTEX_BUFFER_VIEW FrameBuffering::UploadVertexDataToDefaultHeap(
     const uint vertexBufferSize = sizeof(vertexData);
 
 
-    // The vertex buffer resource will live in the Default Heap, and will
-    // be the copy destination.
+    // Create an empty vertex buffer large enough to hold our vertex data.  This buffer
+    // will reside in the Default Heap, and will be the copy destination.
     ThrowIfFailed(
         device->CreateCommittedResource (
             &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
@@ -492,7 +500,9 @@ D3D12_VERTEX_BUFFER_VIEW FrameBuffering::UploadVertexDataToDefaultHeap(
             IID_PPV_ARGS(&vertexBuffer))
     );
 
-    // The Upload Heap will contain the raw vertex data, and will be the copy source.
+
+    // Create another empty vertex buffer large enough to hold our vertex data.  This buffer
+    // will reside in the Upload Heap, and will be the copy source.
     ThrowIfFailed(
         device->CreateCommittedResource (
             &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
@@ -504,8 +514,9 @@ D3D12_VERTEX_BUFFER_VIEW FrameBuffering::UploadVertexDataToDefaultHeap(
         )
     );
 
+
     // Copy data to the intermediate Upload Heap and then schedule a copy 
-    // from the Upload Heap to the vertex buffer resource.
+    // from the Upload Heap to the vertex buffer within the Default Heap.
     {
         D3D12_SUBRESOURCE_DATA vertexDataSubResource = {};
         vertexDataSubResource.pData = vertexData;
