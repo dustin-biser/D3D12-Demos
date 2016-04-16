@@ -51,6 +51,9 @@ private:
 	ComPtr<ID3D12DescriptorHeap> m_rtvHeap;
 	uint m_rtvDescriptorSize;
 
+    // For querying available memory budget
+    ComPtr<IDXGIAdapter3> m_adapter3;
+
 	// App resources.
 	ComPtr<ID3D12Resource> m_vertexBuffer;
 	D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;

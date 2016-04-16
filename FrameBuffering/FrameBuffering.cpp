@@ -10,6 +10,11 @@
 using namespace std;
 
 
+static void OutputMemoryBudgets (
+    _In_ ID3D12Device * device
+);
+
+
 //---------------------------------------------------------------------------------------
 FrameBuffering::FrameBuffering (
     uint width, 
@@ -176,27 +181,48 @@ void FrameBuffering::CreateDevice (
         );
 
         // Query Video Memory limits
-        ComPtr<IDXGIAdapter3> adapter3;
-        hardwareAdapter.As(&adapter3);
-
-        DXGI_QUERY_VIDEO_MEMORY_INFO videoMemoryInfo;
-        adapter3->QueryVideoMemoryInfo ( // Query GPU memory info
-            0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &videoMemoryInfo
-        );
-        cout << "Video Memory:\n"
-             << "Budget: " << videoMemoryInfo.Budget / 1.0e9 << " GB" << endl
-             << "AvailableForReservation: " << videoMemoryInfo.AvailableForReservation / 1.0e9 << " GB" << endl;
-        cout << endl;
-
-        adapter3->QueryVideoMemoryInfo ( // Query system memory info
-            0, DXGI_MEMORY_SEGMENT_GROUP_NON_LOCAL, &videoMemoryInfo
-        );
-        cout << "System Memory:\n"
-             << "Budget: " << videoMemoryInfo.Budget / 1.0e9 << " GB" << endl
-             << "AvailableForReservation: " << videoMemoryInfo.AvailableForReservation / 1.0e9 << " GB" << endl;
-
+        hardwareAdapter.As(&m_adapter3);
 	}
 
+    OutputMemoryBudgets(device.Get());
+
+}
+
+//---------------------------------------------------------------------------------------
+static void OutputMemoryBudgets (
+    _In_ ID3D12Device * device
+) {
+    assert(device);
+
+    ComPtr<IDXGIFactory4> dxgiFactory;
+    ThrowIfFailed(
+        CreateDXGIFactory1(IID_PPV_ARGS(&dxgiFactory))
+    );
+
+    LUID adapterLUID = device->GetAdapterLuid();
+    
+    IDXGIAdapter3 * pDXGIAdapter3;
+    dxgiFactory->EnumAdapterByLuid(adapterLUID, IID_PPV_ARGS(&pDXGIAdapter3));
+
+
+    DXGI_QUERY_VIDEO_MEMORY_INFO videoMemoryInfo;
+    pDXGIAdapter3->QueryVideoMemoryInfo ( // Query GPU memory info
+        0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &videoMemoryInfo
+    );
+    cout << "Video Memory:\n"
+         << "Budget: " << videoMemoryInfo.Budget << " bytes" << endl
+         << "AvailableForReservation: " << videoMemoryInfo.AvailableForReservation << " bytes" << endl
+         << "CurrantUsage: " << videoMemoryInfo.CurrentUsage << " bytes" << endl;
+    cout << endl;
+
+    pDXGIAdapter3->QueryVideoMemoryInfo ( // Query system memory info
+        0, DXGI_MEMORY_SEGMENT_GROUP_NON_LOCAL, &videoMemoryInfo
+    );
+    cout << "System Memory:\n"
+         << "Budget: " << videoMemoryInfo.Budget << " bytes" << endl
+         << "AvailableForReservation: " << videoMemoryInfo.AvailableForReservation << " bytes" << endl
+         << "CurrantUsage: " << videoMemoryInfo.CurrentUsage << " bytes" << endl;
+    cout << endl;
 }
 
 //---------------------------------------------------------------------------------------
@@ -486,7 +512,6 @@ D3D12_VERTEX_BUFFER_VIEW FrameBuffering::UploadVertexDataToDefaultHeap(
         { { -0.25f, 0.25f * m_aspectRatio, 0.0f }, { 1.0f, 0.0f, 1.0f, 1.0f } }
     };
     const uint vertexBufferSize = sizeof(vertexData);
-
 
     // Create an empty vertex buffer large enough to hold our vertex data.  This buffer
     // will reside in the Default Heap, and will be the copy destination.
