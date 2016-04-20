@@ -14,7 +14,7 @@
     <ProjectGuid>{6CD9FF56-E775-4F72-A0BF-D764B76F64E6}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>D3D12HelloTriangle</RootNamespace>
-    <ProjectName>FrameBuffering</ProjectName>
+    <ProjectName>InstanceRendering</ProjectName>
     <WindowsTargetPlatformVersion>10.0.10240.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -126,25 +126,22 @@
     <ClInclude Include="..\Common\D3D12DemoBase.h" />
     <ClInclude Include="..\Common\DemoUtils.hpp" />
     <ClInclude Include="..\Common\Fence.hpp" />
-    <ClInclude Include="..\Common\Mesh.hpp" />
-    <ClInclude Include="..\Common\MeshBufferAllocator.hpp" />
     <ClInclude Include="..\Common\NumericTypes.hpp" />
     <ClInclude Include="..\Common\pch.h" />
     <ClInclude Include="..\Common\Win32Application.hpp" />
-    <ClInclude Include="FrameBuffering.hpp" />
+    <ClInclude Include="InstanceRendering.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Common\D3D12DemoBase.cpp" />
+    <ClCompile Include="..\Common\DemoUtils.cpp" />
     <ClCompile Include="..\Common\Fence.cpp" />
-    <ClCompile Include="..\Common\Mesh.cpp" />
-    <ClCompile Include="..\Common\MeshBufferAllocator.cpp" />
     <ClCompile Include="..\Common\pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">pch.h</PrecompiledHeaderFile>
     </ClCompile>
     <ClCompile Include="..\Common\Win32Application.cpp" />
-    <ClCompile Include="FrameBuffering.cpp" />
+    <ClCompile Include="InstanceRendering.cpp" />
     <ClCompile Include="Main.cpp" />
   </ItemGroup>
   <ItemGroup>

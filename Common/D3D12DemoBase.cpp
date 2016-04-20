@@ -46,13 +46,18 @@ std::wstring D3D12DemoBase::GetAssetPath(LPCWSTR assetName)
     // Compiled shader code .cso files should be in the current working directory,
     // where as all other assets (e.g. textures, meshes, etc.) should be located in
     // the shared asset path.
-    const wchar_t * result = wcsstr(assetName, L".cso");
-    if (result) {
+    const wchar_t * stringMatch = wcsstr(assetName, L".cso");
+    if (stringMatch) {
         return m_workingDirPath + assetName;
     }
-    else {
-        return m_sharedAssetPath + assetName;
+
+    // .obj files reside in Assets\Meshes\ folder.
+    stringMatch = wcsstr(assetName, L".obj");
+    if (stringMatch) {
+        return m_sharedAssetPath + L"Meshes\\" + assetName;
     }
+
+    return m_sharedAssetPath + assetName;
 
 }
 

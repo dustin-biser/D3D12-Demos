@@ -12,53 +12,6 @@ inline void ThrowIfFailed(HRESULT hr)
 	}
 }
 
-inline void GetWorkingDir(_Out_writes_(pathSize) WCHAR* path, UINT pathSize)
-{
-	if (path == nullptr)
-	{
-		throw;
-	}
-
-	DWORD size = GetModuleFileName(nullptr, path, pathSize);
-	if (size == 0 || size == pathSize)
-	{
-		// Method failed or path was truncated.
-		throw;
-	}
-
-	WCHAR* lastSlash = wcsrchr(path, L'\\');
-	if (lastSlash)
-	{
-		*(lastSlash + 1) = L'\0';
-	}
-}
-
-inline void GetSolutionDir(_Out_writes_(pathSize) WCHAR* path, UINT pathSize)
-{
-	if (path == nullptr)
-	{
-		throw;
-	}
-
-	DWORD size = GetModuleFileName(nullptr, path, pathSize);
-	if (size == 0 || size == pathSize)
-	{
-		// Method failed or path was truncated.
-		throw;
-	}
-
-    WCHAR* lastMatch = wcsstr(path, L"\\bin");
-	if (lastMatch)
-	{
-		*(lastMatch) = L'\0';
-	}
-    lastMatch = wcsrchr(path, L'\\');
-	if (lastMatch)
-	{
-		*(lastMatch + 1) = L'\0';
-	}
-}
-
 #if defined(_DEBUG)
     // Assign a name to the object to aid with debugging.
     inline void SetName(ID3D12Object* pObject, LPCWSTR name)
@@ -78,3 +31,24 @@ inline void GetSolutionDir(_Out_writes_(pathSize) WCHAR* path, UINT pathSize)
 #else
     #define NAME_D3D12_OBJECT(x)
 #endif
+
+
+void GetWorkingDir(
+	_Out_writes_(pathSize) WCHAR* path,
+	UINT pathSize
+);
+
+
+void GetSolutionDir(
+	_Out_writes_(pathSize) WCHAR* path,
+	UINT pathSize
+);
+
+/**
+ * Query a D3D12Device to determine memory usage information.
+ */
+void QueryVideoMemoryInfo(
+	_In_ ID3D12Device * device,
+	_In_ DXGI_MEMORY_SEGMENT_GROUP memoryGroup,
+	_Out_ DXGI_QUERY_VIDEO_MEMORY_INFO & videoMemoryInfo
+);

@@ -1,9 +1,11 @@
 /*
- * FrameBuffering.cpp
+ * InstanceRendering.cpp
  */
 
 #include "pch.h"
-#include "FrameBuffering.hpp"
+#include "InstanceRendering.hpp"
+#include "MeshBufferAllocator.hpp"
+#include "Mesh.hpp"
 
 #include <vector>
 #include <iostream>
@@ -16,7 +18,7 @@ static void OutputMemoryBudgets (
 
 
 //---------------------------------------------------------------------------------------
-FrameBuffering::FrameBuffering (
+InstanceRendering::InstanceRendering (
     uint width, 
     uint height,
     std::wstring name
@@ -37,18 +39,20 @@ FrameBuffering::FrameBuffering (
 
 
 //---------------------------------------------------------------------------------------
-void FrameBuffering::OnInit()
+void InstanceRendering::OnInit()
 {
 	LoadRenderPipelineDependencies();
 	LoadAssets();
     PopulateCommandList();
+
+	OutputMemoryBudgets(m_device.Get());
 }
 
 
 //---------------------------------------------------------------------------------------
 // Loads the rendering pipeline dependencies such as device, command queue, swap chain,
 // render target views and command allocator.
-void FrameBuffering::LoadRenderPipelineDependencies()
+void InstanceRendering::LoadRenderPipelineDependencies()
 {
 #if defined(_DEBUG)
 	//-- Enable the D3D12 debug layer:
@@ -139,7 +143,7 @@ void FrameBuffering::LoadRenderPipelineDependencies()
 }
 
 //---------------------------------------------------------------------------------------
-void FrameBuffering::CreateDevice (
+void InstanceRendering::CreateDevice (
     _In_ IDXGIFactory4 * dxgiFactory,
     _In_ bool useWarpDevice,
 	_Out_ ComPtr<ID3D12Device> & device
@@ -183,9 +187,6 @@ void FrameBuffering::CreateDevice (
         // Query Video Memory limits
         hardwareAdapter.As(&m_adapter3);
 	}
-
-    OutputMemoryBudgets(device.Get());
-
 }
 
 //---------------------------------------------------------------------------------------
@@ -194,30 +195,18 @@ static void OutputMemoryBudgets (
 ) {
     assert(device);
 
-    ComPtr<IDXGIFactory4> dxgiFactory;
-    ThrowIfFailed(
-        CreateDXGIFactory1(IID_PPV_ARGS(&dxgiFactory))
-    );
-
-    LUID adapterLUID = device->GetAdapterLuid();
-    
-    IDXGIAdapter3 * pDXGIAdapter3;
-    dxgiFactory->EnumAdapterByLuid(adapterLUID, IID_PPV_ARGS(&pDXGIAdapter3));
-
-
     DXGI_QUERY_VIDEO_MEMORY_INFO videoMemoryInfo;
-    pDXGIAdapter3->QueryVideoMemoryInfo ( // Query GPU memory info
-        0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &videoMemoryInfo
-    );
+
+    // Query video memory
+	QueryVideoMemoryInfo(device, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, videoMemoryInfo);
     cout << "Video Memory:\n"
          << "Budget: " << videoMemoryInfo.Budget << " bytes" << endl
          << "AvailableForReservation: " << videoMemoryInfo.AvailableForReservation << " bytes" << endl
          << "CurrantUsage: " << videoMemoryInfo.CurrentUsage << " bytes" << endl;
     cout << endl;
 
-    pDXGIAdapter3->QueryVideoMemoryInfo ( // Query system memory info
-        0, DXGI_MEMORY_SEGMENT_GROUP_NON_LOCAL, &videoMemoryInfo
-    );
+    // Query system memory
+	QueryVideoMemoryInfo(device, DXGI_MEMORY_SEGMENT_GROUP_NON_LOCAL, videoMemoryInfo);
     cout << "System Memory:\n"
          << "Budget: " << videoMemoryInfo.Budget << " bytes" << endl
          << "AvailableForReservation: " << videoMemoryInfo.AvailableForReservation << " bytes" << endl
@@ -226,7 +215,7 @@ static void OutputMemoryBudgets (
 }
 
 //---------------------------------------------------------------------------------------
-void FrameBuffering::CreateCommandQueue (
+void InstanceRendering::CreateCommandQueue (
     _In_ ID3D12Device * device,
     _Out_ ComPtr<ID3D12CommandQueue> & commandQueue
 ) {
@@ -242,7 +231,7 @@ void FrameBuffering::CreateCommandQueue (
 
 
 //---------------------------------------------------------------------------------------
-void FrameBuffering::CreateSwapChain (
+void InstanceRendering::CreateSwapChain (
     _In_ IDXGIFactory4 * dxgiFactory,
     _In_ ID3D12CommandQueue * commandQueue,
     _In_ uint framebufferWidth,
@@ -289,7 +278,7 @@ void FrameBuffering::CreateSwapChain (
 
 
 //---------------------------------------------------------------------------------------
-void FrameBuffering::CreateRenderTargetView (
+void InstanceRendering::CreateRenderTargetView (
     _In_ ID3D12Device * device,
     _In_ IDXGISwapChain * swapChain,
     _Out_ ComPtr<ID3D12DescriptorHeap> & rtvHeap,
@@ -337,10 +326,10 @@ void FrameBuffering::CreateRenderTargetView (
 
 //---------------------------------------------------------------------------------------
 // Load the sample assets.
-void FrameBuffering::LoadAssets()
+void InstanceRendering::LoadAssets()
 {
 	// Create an empty root signature.
-    this->CreateRootSignature(
+    this->CreateRootSignature (
         m_device.Get(),
         m_rootSignature
     );
@@ -369,10 +358,12 @@ void FrameBuffering::LoadAssets()
     );
     NAME_D3D12_OBJECT(m_vertexBuffer);
     NAME_D3D12_OBJECT(m_indexBuffer);
+
 }
 
+
 //---------------------------------------------------------------------------------------
-void FrameBuffering::CreateRootSignature (
+void InstanceRendering::CreateRootSignature (
     _In_ ID3D12Device * device,
     _Out_ ComPtr<ID3D12RootSignature> & rootSignature
 ) {
@@ -406,7 +397,7 @@ void FrameBuffering::CreateRootSignature (
 
 
 //---------------------------------------------------------------------------------------
-void FrameBuffering::LoadShaders (
+void InstanceRendering::LoadShaders (
     _Out_ ComPtr<ID3DBlob> & vertexShaderBlob,
     _Out_ ComPtr<ID3DBlob> & pixelShaderBlob
 ) {
@@ -415,7 +406,7 @@ void FrameBuffering::LoadShaders (
 }
 
 //---------------------------------------------------------------------------------------
-void FrameBuffering::CreatePipelineState(
+void InstanceRendering::CreatePipelineState (
     _In_ ID3D12Device * device,
     _In_ ID3D12RootSignature * rootSignature,
     _In_ ID3DBlob * vertexShaderBlob,
@@ -447,10 +438,11 @@ void FrameBuffering::CreatePipelineState(
     CD3DX12_RASTERIZER_DESC rasterizerState(D3D12_DEFAULT);
     rasterizerState.FrontCounterClockwise = TRUE;
 
+    m_inputLayoutDesc = { inputElementDescriptor, _countof(inputElementDescriptor) };
 
     // Describe and create the graphics pipeline state object (PSO).
     D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
-    psoDesc.InputLayout = { inputElementDescriptor, _countof(inputElementDescriptor) };
+    psoDesc.InputLayout = m_inputLayoutDesc;
     psoDesc.pRootSignature = rootSignature;
     psoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShaderBlob);
     psoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShaderBlob);
@@ -474,7 +466,7 @@ void FrameBuffering::CreatePipelineState(
 }
 
 //---------------------------------------------------------------------------------------
-void FrameBuffering::CreateDrawCommandLists (
+void InstanceRendering::CreateDrawCommandLists (
     _In_ ID3D12Device * device,
     _In_ ID3D12CommandAllocator * commandAllocator,
     _In_ uint numCommandLists,
@@ -496,7 +488,7 @@ void FrameBuffering::CreateDrawCommandLists (
 }
 
 //---------------------------------------------------------------------------------------
-D3D12_VERTEX_BUFFER_VIEW FrameBuffering::UploadVertexDataToDefaultHeap(
+D3D12_VERTEX_BUFFER_VIEW InstanceRendering::UploadVertexDataToDefaultHeap(
     _In_ ID3D12Device * device,
     _In_ ID3D12GraphicsCommandList * copyCommandList,
     _Out_ ComPtr<ID3D12Resource> & vertexUploadBuffer,
@@ -577,7 +569,7 @@ D3D12_VERTEX_BUFFER_VIEW FrameBuffering::UploadVertexDataToDefaultHeap(
 
 
 //---------------------------------------------------------------------------------------
-D3D12_INDEX_BUFFER_VIEW FrameBuffering::UploadIndexDataToDefaultHeap(
+D3D12_INDEX_BUFFER_VIEW InstanceRendering::UploadIndexDataToDefaultHeap(
     _In_ ID3D12Device * device,
     _In_ ID3D12GraphicsCommandList * copyCommandList,
     _Out_ ComPtr<ID3D12Resource> & indexUploadBuffer,
@@ -645,7 +637,7 @@ D3D12_INDEX_BUFFER_VIEW FrameBuffering::UploadIndexDataToDefaultHeap(
 
 
 //---------------------------------------------------------------------------------------
-void FrameBuffering::CreateVertexDataBuffers (
+void InstanceRendering::CreateVertexDataBuffers (
     _In_ ID3D12Device * device,
     _In_ ID3D12CommandQueue * commandQueue,
     _In_ ID3D12GraphicsCommandList * copyCommandList,
@@ -694,14 +686,14 @@ void FrameBuffering::CreateVertexDataBuffers (
 
 //---------------------------------------------------------------------------------------
 // Update frame-based values.
-void FrameBuffering::OnUpdate()
+void InstanceRendering::OnUpdate()
 {
 
 }
 
 //---------------------------------------------------------------------------------------
 // Render the scene.
-void FrameBuffering::OnRender()
+void InstanceRendering::OnRender()
 {
 	// Execute the command list.
 	std::vector<ID3D12CommandList*> commandLists;
@@ -719,7 +711,7 @@ void FrameBuffering::OnRender()
 }
 
 //---------------------------------------------------------------------------------------
-void FrameBuffering::OnDestroy()
+void InstanceRendering::OnDestroy()
 {
 	// Ensure that the GPU is no longer referencing resources that are about to be
 	// cleaned up by the destructor.
@@ -727,7 +719,7 @@ void FrameBuffering::OnDestroy()
 }
 
 //---------------------------------------------------------------------------------------
-void FrameBuffering::PopulateCommandList()
+void InstanceRendering::PopulateCommandList()
 {
     // Command list allocators can only be reset when the associated 
     // command lists have finished execution on the GPU; apps should use 
@@ -791,7 +783,7 @@ void FrameBuffering::PopulateCommandList()
 }
 
 //---------------------------------------------------------------------------------------
-void FrameBuffering::WaitForPreviousFrame()
+void InstanceRendering::WaitForPreviousFrame()
 {
 	// WAITING FOR THE FRAME TO COMPLETE BEFORE CONTINUING IS NOT BEST PRACTICE.
 	// This is code implemented as such for simplicity. The D3D12HelloFrameBuffering

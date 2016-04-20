@@ -1,5 +1,5 @@
 /*
- * FrameBuffering.h
+ * InstanceRendering.hpp
  */
 
 #pragma once
@@ -12,9 +12,9 @@ using namespace DirectX;
 using Microsoft::WRL::ComPtr;
 
 
-class FrameBuffering : public D3D12DemoBase {
+class InstanceRendering : public D3D12DemoBase {
 public:
-	FrameBuffering (
+	InstanceRendering (
         uint width,
         uint height,
         std::wstring name
@@ -46,6 +46,7 @@ private:
 	ComPtr<ID3D12PipelineState> m_pipelineState;
 	ComPtr<ID3D12GraphicsCommandList> m_drawCommandList[FrameCount];
     ComPtr<ID3D12GraphicsCommandList> m_copyCommandList;
+    D3D12_INPUT_LAYOUT_DESC m_inputLayoutDesc;
 
 	ComPtr<ID3D12Resource> m_renderTargets[FrameCount];
 	ComPtr<ID3D12DescriptorHeap> m_rtvHeap;

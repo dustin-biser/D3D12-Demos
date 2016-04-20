@@ -133,6 +133,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Common\D3D12DemoBase.cpp" />
+    <ClCompile Include="..\Common\DemoUtils.cpp" />
     <ClCompile Include="..\Common\Fence.cpp" />
     <ClCompile Include="..\Common\pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
