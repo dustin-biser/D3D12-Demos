@@ -10,5 +10,5 @@ Additional Features:
 * sRGB Render Target View for gamma correction
 * CommandList resuse
 
-## [FrameBuffering](FrameBuffering/)
+## [InstanceRendering](InstanceRendering/)
 Shows how to preflight rendered frames on the CPU which will then be processed by the GPU. Fences are used to synchronize shared resources between CPU and GPU
