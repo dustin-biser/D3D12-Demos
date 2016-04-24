@@ -126,8 +126,11 @@
     <ClInclude Include="..\Common\D3D12DemoBase.h" />
     <ClInclude Include="..\Common\DemoUtils.hpp" />
     <ClInclude Include="..\Common\Fence.hpp" />
+    <ClInclude Include="..\Common\Mesh.hpp" />
+    <ClInclude Include="..\Common\MeshBufferAllocator.hpp" />
     <ClInclude Include="..\Common\NumericTypes.hpp" />
     <ClInclude Include="..\Common\pch.h" />
+    <ClInclude Include="..\Common\VertexDataAssembler.hpp" />
     <ClInclude Include="..\Common\Win32Application.hpp" />
     <ClInclude Include="InstanceRendering.hpp" />
   </ItemGroup>
@@ -135,11 +138,14 @@
     <ClCompile Include="..\Common\D3D12DemoBase.cpp" />
     <ClCompile Include="..\Common\DemoUtils.cpp" />
     <ClCompile Include="..\Common\Fence.cpp" />
+    <ClCompile Include="..\Common\Mesh.cpp" />
+    <ClCompile Include="..\Common\MeshBufferAllocator.cpp" />
     <ClCompile Include="..\Common\pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">pch.h</PrecompiledHeaderFile>
     </ClCompile>
+    <ClCompile Include="..\Common\VertexDataAssembler.cpp" />
     <ClCompile Include="..\Common\Win32Application.cpp" />
     <ClCompile Include="InstanceRendering.cpp" />
     <ClCompile Include="Main.cpp" />

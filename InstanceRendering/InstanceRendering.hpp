@@ -4,12 +4,17 @@
 
 #pragma once
 
-#include "D3D12DemoBase.h"
-#include "Fence.hpp"
 #include <memory>
 
+#include "D3D12DemoBase.h"
 using namespace DirectX;
 using Microsoft::WRL::ComPtr;
+
+//--Forward Declarations:
+class Fence;
+class Mesh;
+class MeshBufferAllocator;
+
 
 
 class InstanceRendering : public D3D12DemoBase {
@@ -29,8 +34,7 @@ private:
     /// Number of buffered frames
 	static const uint FrameCount = 2;
 
-	struct Vertex
-	{
+	struct Vertex {
 		XMFLOAT3 position;
 		XMFLOAT4 color;
 	};
@@ -46,16 +50,16 @@ private:
 	ComPtr<ID3D12PipelineState> m_pipelineState;
 	ComPtr<ID3D12GraphicsCommandList> m_drawCommandList[FrameCount];
     ComPtr<ID3D12GraphicsCommandList> m_copyCommandList;
-    D3D12_INPUT_LAYOUT_DESC m_inputLayoutDesc;
 
 	ComPtr<ID3D12Resource> m_renderTargets[FrameCount];
 	ComPtr<ID3D12DescriptorHeap> m_rtvHeap;
 	uint m_rtvDescriptorSize;
 
-    // For querying available memory budget
-    ComPtr<IDXGIAdapter3> m_adapter3;
-
 	// App resources.
+	std::shared_ptr<Mesh> m_cubeMesh;
+	std::shared_ptr<MeshBufferAllocator> m_meshBufferAllocator;
+	D3D12_INPUT_LAYOUT_DESC m_inputLayoutDesc;
+
 	ComPtr<ID3D12Resource> m_vertexBuffer;
 	D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
 	ComPtr<ID3D12Resource> m_indexBuffer;

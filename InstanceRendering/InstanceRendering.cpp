@@ -4,6 +4,7 @@
 
 #include "pch.h"
 #include "InstanceRendering.hpp"
+#include "Fence.hpp"
 #include "MeshBufferAllocator.hpp"
 #include "Mesh.hpp"
 
@@ -183,9 +184,6 @@ void InstanceRendering::CreateDevice (
 			    IID_PPV_ARGS(&device)
             )
         );
-
-        // Query Video Memory limits
-        hardwareAdapter.As(&m_adapter3);
 	}
 }
 
@@ -348,6 +346,7 @@ void InstanceRendering::LoadAssets()
         m_pipelineState
     ); NAME_D3D12_OBJECT(m_pipelineState);
 
+
     this->CreateVertexDataBuffers (
         m_device.Get(),
         m_commandQueue.Get(),
@@ -358,6 +357,9 @@ void InstanceRendering::LoadAssets()
     );
     NAME_D3D12_OBJECT(m_vertexBuffer);
     NAME_D3D12_OBJECT(m_indexBuffer);
+
+
+	m_cubeMesh = std::make_shared<Mesh>(GetAssetPath("cube.obj").c_str());
 
 }
 
@@ -425,7 +427,7 @@ void InstanceRendering::CreatePipelineState (
     inputElementDescriptor[0].InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
     inputElementDescriptor[0].InstanceDataStepRate = 0;
 
-    // Colors
+    // Normals
     inputElementDescriptor[1].SemanticName = "NORMAL";
     inputElementDescriptor[1].SemanticIndex = 0;
     inputElementDescriptor[1].Format = DXGI_FORMAT_R32G32B32_FLOAT;
@@ -433,6 +435,10 @@ void InstanceRendering::CreatePipelineState (
     inputElementDescriptor[1].AlignedByteOffset = sizeof(float) * 3;
     inputElementDescriptor[1].InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
     inputElementDescriptor[1].InstanceDataStepRate = 0;
+
+
+	// TODO - Add TexCoord InputElementDescriptor with input slot 0.
+
 
     // Describe the rasterizer state
     CD3DX12_RASTERIZER_DESC rasterizerState(D3D12_DEFAULT);
