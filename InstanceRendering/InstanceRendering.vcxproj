@@ -46,12 +46,14 @@
     <OutDir>bin\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>obj\$(Platform)\$(Configuration)\</IntDir>
     <IncludePath>$(SolutionDir)External\;$(IncludePath)</IncludePath>
+    <SourcePath>$(SourcePath)</SourcePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>bin\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>obj\$(Platform)\$(Configuration)\</IntDir>
     <IncludePath>$(SolutionDir)External\;$(IncludePath)</IncludePath>
+    <SourcePath>$(SourcePath)</SourcePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -60,9 +62,11 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>C:\Users\Dustin\Projects\C++\D3D12-Demos\Common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Assets\Shaders;$(SolutionDir)Common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <CompileAsWinRT>false</CompileAsWinRT>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <MultiProcessorCompilation>false</MultiProcessorCompilation>
+      <MinimalRebuild>true</MinimalRebuild>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -80,6 +84,7 @@
     <FxCompile>
       <EntryPointName>VSMain</EntryPointName>
       <ShaderModel>5.1</ShaderModel>
+      <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </FxCompile>
     <PostBuildEvent>
       <Command>Copy /Y "$(ProjectDir)Assets\Shaders\*.hlsl" "$(TargetDir)"</Command>
@@ -94,9 +99,13 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>C:\Users\Dustin\Projects\C++\D3D12-Demos\Common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Assets\Shaders;$(SolutionDir)Common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <CompileAsWinRT>false</CompileAsWinRT>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <MultiProcessorCompilation>false</MultiProcessorCompilation>
+      <EnableEnhancedInstructionSet>
+      </EnableEnhancedInstructionSet>
+      <FloatingPointModel>Fast</FloatingPointModel>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -116,6 +125,7 @@
     <FxCompile>
       <EntryPointName>VSMain</EntryPointName>
       <ShaderModel>5.1</ShaderModel>
+      <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </FxCompile>
     <PostBuildEvent>
       <Command>Copy /Y "$(ProjectDir)Assets\Shaders\*.hlsl" "$(TargetDir)"</Command>
@@ -124,29 +134,31 @@
   <ItemGroup>
     <ClInclude Include="..\Common\d3dx12.h" />
     <ClInclude Include="..\Common\D3D12DemoBase.h" />
+    <ClInclude Include="..\Common\DemoException.hpp" />
     <ClInclude Include="..\Common\DemoUtils.hpp" />
     <ClInclude Include="..\Common\Fence.hpp" />
-    <ClInclude Include="..\Common\Mesh.hpp" />
-    <ClInclude Include="..\Common\MeshBufferAllocator.hpp" />
+    <ClInclude Include="..\Common\MeshLoader.hpp" />
     <ClInclude Include="..\Common\NumericTypes.hpp" />
     <ClInclude Include="..\Common\pch.h" />
-    <ClInclude Include="..\Common\VertexDataAssembler.hpp" />
+    <ClInclude Include="..\Common\ResourceUploadBuffer.hpp" />
     <ClInclude Include="..\Common\Win32Application.hpp" />
+    <ClInclude Include="Assets\Shaders\ConstantBufferDefines.hpp" />
+    <ClInclude Include="Assets\Shaders\HLSL_DirectXMath_Conversion.hpp" />
     <ClInclude Include="InstanceRendering.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Common\D3D12DemoBase.cpp" />
     <ClCompile Include="..\Common\DemoUtils.cpp" />
     <ClCompile Include="..\Common\Fence.cpp" />
-    <ClCompile Include="..\Common\Mesh.cpp" />
-    <ClCompile Include="..\Common\MeshBufferAllocator.cpp" />
+    <ClCompile Include="..\Common\MeshLoader.cpp" />
     <ClCompile Include="..\Common\pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">pch.h</PrecompiledHeaderFile>
     </ClCompile>
-    <ClCompile Include="..\Common\VertexDataAssembler.cpp" />
+    <ClCompile Include="..\Common\ResourceUploadBuffer.cpp" />
     <ClCompile Include="..\Common\Win32Application.cpp" />
+    <ClCompile Include="Braynzar.cpp" />
     <ClCompile Include="InstanceRendering.cpp" />
     <ClCompile Include="Main.cpp" />
   </ItemGroup>

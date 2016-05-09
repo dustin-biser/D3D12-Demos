@@ -55,7 +55,7 @@ void IndexRendering::LoadRenderPipelineDependencies()
 #endif
 
 	ComPtr<IDXGIFactory4> dxgiFactory;
-	ThrowIfFailed (
+	CHECK_DX_RESULT (
         CreateDXGIFactory1(IID_PPV_ARGS(&dxgiFactory))
     );
 
@@ -97,7 +97,7 @@ void IndexRendering::LoadRenderPipelineDependencies()
     NAME_D3D12_OBJECT(m_renderTargets[1]);
 
     // Create command allocator for managing command list memory
-	ThrowIfFailed (
+	CHECK_DX_RESULT (
         m_device->CreateCommandAllocator (
             D3D12_COMMAND_LIST_TYPE_DIRECT,
             IID_PPV_ARGS(&m_commandAllocator)
@@ -119,7 +119,7 @@ void IndexRendering::LoadRenderPipelineDependencies()
 
 
     // Create a separate command list for copying resource data to the GPU.
-    ThrowIfFailed (
+    CHECK_DX_RESULT (
         m_device->CreateCommandList (
             0,
             D3D12_COMMAND_LIST_TYPE_DIRECT,
@@ -143,7 +143,7 @@ void IndexRendering::CreateDevice (
 	if (useWarpDevice)
 	{
 		ComPtr<IDXGIAdapter> warpAdapter;
-		ThrowIfFailed (
+		CHECK_DX_RESULT (
             dxgiFactory->EnumWarpAdapter(IID_PPV_ARGS(&warpAdapter))
         );
 
@@ -152,7 +152,7 @@ void IndexRendering::CreateDevice (
         warpAdapter->GetDesc(&adapterDesc);
         std::wcout << "Adapter: " << adapterDesc.Description << std::endl;
 
-		ThrowIfFailed (
+		CHECK_DX_RESULT (
             D3D12CreateDevice (
                 warpAdapter.Get(),
                 D3D_FEATURE_LEVEL_11_0,
@@ -170,7 +170,7 @@ void IndexRendering::CreateDevice (
         hardwareAdapter->GetDesc1(&adapterDesc);
         std::wcout << "Adapter: " << adapterDesc.Description << std::endl;
 
-		ThrowIfFailed (
+		CHECK_DX_RESULT (
             D3D12CreateDevice (
                 hardwareAdapter.Get(),
 			    D3D_FEATURE_LEVEL_11_0,
@@ -190,7 +190,7 @@ void IndexRendering::CreateCommandQueue (
     queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
     queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
 
-    ThrowIfFailed(
+    CHECK_DX_RESULT(
         device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&commandQueue))
     );
 }
@@ -216,7 +216,7 @@ void IndexRendering::CreateSwapChain (
 	swapChainDesc.SampleDesc.Count = 1;
 
 	ComPtr<IDXGISwapChain1> swapChain1;
-	ThrowIfFailed (
+	CHECK_DX_RESULT (
         dxgiFactory->CreateSwapChainForHwnd (
             commandQueue, // Swap chain needs the queue so that it can force a flush on it.
             Win32Application::GetHwnd(),
@@ -228,14 +228,14 @@ void IndexRendering::CreateSwapChain (
     );
 
 	// This sample does not support full screen transitions.
-	ThrowIfFailed (
+	CHECK_DX_RESULT (
         dxgiFactory->MakeWindowAssociation (
             Win32Application::GetHwnd(),
             DXGI_MWA_NO_ALT_ENTER
         )
     );
 
-	ThrowIfFailed (
+	CHECK_DX_RESULT (
         // Acquire the IDXGISwapChain3 interface.  A reference to this interface will be
         // stored in swapChain.
         swapChain1.As(&swapChain)
@@ -258,7 +258,7 @@ void IndexRendering::CreateRenderTargetView (
 		rtvHeapDesc.NumDescriptors = FrameCount;
 		rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 		rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-		ThrowIfFailed (
+		CHECK_DX_RESULT (
             device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&rtvHeap))
         );
 
@@ -280,7 +280,7 @@ void IndexRendering::CreateRenderTargetView (
 		// Create a RenderTargetView for each frame.
 		for (uint n(0); n < FrameCount; ++n)
 		{
-			ThrowIfFailed (
+			CHECK_DX_RESULT (
                 swapChain->GetBuffer(n, IID_PPV_ARGS(&renderTargets[n]))
             );
 			device->CreateRenderTargetView(renderTargets[n].Get(), &rtvDesc, rtvHandle);
@@ -340,7 +340,7 @@ void IndexRendering::CreateRootSignature (
     ComPtr<ID3DBlob> signature;
     ComPtr<ID3DBlob> error;
 
-    ThrowIfFailed (
+    CHECK_DX_RESULT (
         D3D12SerializeRootSignature (
             &rootSignatureDesc,
             D3D_ROOT_SIGNATURE_VERSION_1, 
@@ -349,7 +349,7 @@ void IndexRendering::CreateRootSignature (
         )
     );
 
-    ThrowIfFailed (
+    CHECK_DX_RESULT (
         device->CreateRootSignature (
             0,
             signature->GetBufferPointer(),
@@ -420,7 +420,7 @@ void IndexRendering::CreatePipelineState(
     psoDesc.SampleDesc.Count = 1;
 
     // Create the Pipeline State Object.
-    ThrowIfFailed (
+    CHECK_DX_RESULT (
         device->CreateGraphicsPipelineState (
             &psoDesc,
             IID_PPV_ARGS(&pipelineState)
@@ -436,7 +436,7 @@ void IndexRendering::CreateDrawCommandLists (
     _Out_ ComPtr<ID3D12GraphicsCommandList> * drawCommandList
 ) {
     for (uint i(0); i < numCommandLists; ++i) {
-        ThrowIfFailed(
+        CHECK_DX_RESULT(
             device->CreateCommandList (
                 0,
                 D3D12_COMMAND_LIST_TYPE_DIRECT,
@@ -470,7 +470,7 @@ D3D12_VERTEX_BUFFER_VIEW IndexRendering::UploadVertexDataToDefaultHeap(
 
     // The vertex buffer resource will live in the Default Heap, and will
     // be the copy destination.
-    ThrowIfFailed(
+    CHECK_DX_RESULT(
         device->CreateCommittedResource (
             &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
             D3D12_HEAP_FLAG_NONE,
@@ -481,7 +481,7 @@ D3D12_VERTEX_BUFFER_VIEW IndexRendering::UploadVertexDataToDefaultHeap(
     );
 
     // The Upload Heap will contain the raw vertex data, and will be the copy source.
-    ThrowIfFailed(
+    CHECK_DX_RESULT(
         device->CreateCommittedResource (
             &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
             D3D12_HEAP_FLAG_NONE,
@@ -540,7 +540,7 @@ D3D12_INDEX_BUFFER_VIEW IndexRendering::UploadIndexDataToDefaultHeap(
     indexCount = uint(indices.size());
     const uint indexBufferSize = sizeof(ushort) * indexCount;
 
-    ThrowIfFailed(
+    CHECK_DX_RESULT(
         device->CreateCommittedResource (
             &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
             D3D12_HEAP_FLAG_NONE,
@@ -550,7 +550,7 @@ D3D12_INDEX_BUFFER_VIEW IndexRendering::UploadIndexDataToDefaultHeap(
             IID_PPV_ARGS(&indexBuffer))
     );
 
-    ThrowIfFailed(
+    CHECK_DX_RESULT(
         device->CreateCommittedResource (
             &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
             D3D12_HEAP_FLAG_NONE,
@@ -634,7 +634,7 @@ void IndexRendering::CreateVertexDataBuffers (
     );
 
     // Close the command list and execute it to begin the initial GPU setup.
-    ThrowIfFailed(
+    CHECK_DX_RESULT(
         copyCommandList->Close()
     );
     std::vector<ID3D12CommandList*> commandLists = { copyCommandList };
@@ -663,7 +663,7 @@ void IndexRendering::OnRender()
 	m_commandQueue->ExecuteCommandLists(1, &commandLists[m_frameIndex]);
 
 	// Present the frame.
-	ThrowIfFailed (
+	CHECK_DX_RESULT (
         m_swapChain->Present(1, 0)
     );
 
@@ -684,7 +684,7 @@ void IndexRendering::PopulateCommandList()
     // Command list allocators can only be reset when the associated 
     // command lists have finished execution on the GPU; apps should use 
     // fences to determine GPU execution progress.
-    ThrowIfFailed(
+    CHECK_DX_RESULT(
         m_commandAllocator->Reset()
     );
 
@@ -693,7 +693,7 @@ void IndexRendering::PopulateCommandList()
         // However, when ExecuteCommandList() is called on a particular command 
         // list, that command list can then be reset at any time and must be before 
         // re-recording.
-        ThrowIfFailed(
+        CHECK_DX_RESULT(
             m_drawCommandList[i]->Reset(m_commandAllocator.Get(), m_pipelineState.Get())
          );
 
@@ -738,7 +738,7 @@ void IndexRendering::PopulateCommandList()
             )
         );
 
-        ThrowIfFailed(m_drawCommandList[i]->Close());
+        CHECK_DX_RESULT(m_drawCommandList[i]->Close());
     }
 }
 
@@ -752,7 +752,7 @@ void IndexRendering::WaitForPreviousFrame()
 
 	// Signal and increment the fence value.
 	const uint64 fenceValue = m_fence->value;
-	ThrowIfFailed (
+	CHECK_DX_RESULT (
         m_commandQueue->Signal(m_fence->obj.Get(), fenceValue)
     );
 	m_fence->value++;
@@ -760,7 +760,7 @@ void IndexRendering::WaitForPreviousFrame()
 	// Wait until the previous frame is finished.
 	if (m_fence->obj->GetCompletedValue() < fenceValue)
 	{
-		ThrowIfFailed (
+		CHECK_DX_RESULT (
             m_fence->obj->SetEventOnCompletion(fenceValue, m_fence->event)
         );
 		WaitForSingleObject(m_fence->event, INFINITE);

@@ -21,4 +21,6 @@ typedef unsigned long ulong;
 typedef unsigned int uint;
 typedef unsigned short ushort;
 
+typedef uint8_t byte;
+
 

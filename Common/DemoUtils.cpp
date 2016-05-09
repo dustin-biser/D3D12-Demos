@@ -19,7 +19,7 @@ void QueryVideoMemoryInfo (
     assert(device);
 
     ComPtr<IDXGIFactory4> dxgiFactory;
-    ThrowIfFailed(
+    CHECK_DX_RESULT(
         CreateDXGIFactory1(IID_PPV_ARGS(&dxgiFactory))
     );
 

@@ -1,53 +1,80 @@
-/*
- * DemoUtils.h
- */
-
 #pragma once
 
-inline void ThrowIfFailed(HRESULT hr)
-{
-	if (FAILED(hr))
-	{
-		throw;
-	}
-}
+#include <cassert>
+#include <cwchar>
+#include <iostream>
+
 
 #if defined(_DEBUG)
-    // Assign a name to the object to aid with debugging.
-    inline void SetName(ID3D12Object* pObject, LPCWSTR name)
-    {
-        pObject->SetName(name);
-    }
+#define CHECK_DX_RESULT(x)									 \
+	do {													 \
+		HRESULT result = (x);								 \
+		if ( FAILED(result) ) {								 \
+			std::cout << "Direct3D Error at " << __FILE__ << \
+				":" << __LINE__ << std::endl;				 \
+			assert(result == S_OK);							 \
+		}													 \
+	}														 \
+	while(0)
 #else
-    inline void SetName(ID3D12Object*, LPCWSTR)
-    {
-    }
-#endif
-
-#if defined(_DEBUG)
-    // Naming helper for ComPtr<T>.
-    // Assigns the name of the variable as the name of the object.
-    #define NAME_D3D12_OBJECT(x) SetName(x.Get(), L#x)
-#else
-    #define NAME_D3D12_OBJECT(x)
+#define CHECK_DX_RESULT(x) x;
 #endif
 
 
-void GetWorkingDir(
+#if defined(_DEBUG)
+	// Assigns a default name to a single D3D12 object to aid in identification
+	// of the object during graphics debugging.
+	// @param x - ComPtr<T> where T is a D3D12 object type.
+#define NAME_D3D12_OBJECT(x) \
+	x->SetName(L#x);
+#else
+#define NAME_D3D12_OBJECT(x)
+#endif
+
+
+#if defined(_DEBUG)
+	// Assigns default names to an array D3D12 objects to aid in identification
+	// of the objects during graphics debugging.
+	// @param x - array of ComPtr<T> where T is a D3D12 object type.
+	// @param n - size of array.
+#define NAME_D3D12_OBJECTS(x, n) \
+	do { \
+		for (unsigned int i(0); i < (n); ++i) { \
+			WCHAR buffer[256]; \
+			wsprintf(buffer, L"%ls[%u]", L#x, i); \
+			x[i]->SetName(buffer); \
+		} \
+	} while(0)
+#else
+#define NAME_D3D12_OBJECTS(x, n)
+#endif
+
+
+#if defined(_DEBUG)
+	// Sets a specific name for a single D3D12 object to aid in identification
+	// of the object during graphics debugging.
+	// @param x - ComPtr<T> where T is a D3D12 object type.
+#define D3D12_SET_NAME(x, name) \
+	x->SetName(name);
+#else
+#define D3D12_SET_NAME(x, name)
+#endif
+
+
+void GetWorkingDir (
 	_Out_writes_(pathSize) WCHAR* path,
 	UINT pathSize
 );
 
 
-void GetSolutionDir(
+void GetSolutionDir (
 	_Out_writes_(pathSize) WCHAR* path,
 	UINT pathSize
 );
 
-/**
- * Query a D3D12Device to determine memory usage information.
- */
-void QueryVideoMemoryInfo(
+
+/// Query a D3D12Device to determine memory usage information.
+void QueryVideoMemoryInfo (
 	_In_ ID3D12Device * device,
 	_In_ DXGI_MEMORY_SEGMENT_GROUP memoryGroup,
 	_Out_ DXGI_QUERY_VIDEO_MEMORY_INFO & videoMemoryInfo

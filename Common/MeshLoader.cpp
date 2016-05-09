@@ -1,7 +1,3 @@
-/**
- * MeshLoader.cpp
- */
-
 #include "pch.h"
 using Microsoft::WRL::ComPtr;
 
@@ -48,7 +44,7 @@ static void assembleVertexData (
 }
 
 //---------------------------------------------------------------------------------------
-static void acquireIndexData (
+static void loadIndexData (
 	_In_ const tinyobj::mesh_t & mesh,
 	_Inout_ std::vector<Mesh::Index> & indexData
 ) {
@@ -101,5 +97,5 @@ void MeshLoader::loadMesh (
 
 	assembleVertexData(tinyobjMesh, mesh.vertices);
 
-	acquireIndexData(tinyobjMesh, mesh.indices);
+	loadIndexData(tinyobjMesh, mesh.indices);
 }

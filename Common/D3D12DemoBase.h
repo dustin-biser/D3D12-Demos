@@ -1,7 +1,3 @@
-/*
- * D3D12DemoBase.h
- */
-
 #pragma once
 
 #include "DemoUtils.hpp"
@@ -29,8 +25,8 @@ public:
 	virtual void OnKeyUp(UINT8 /*key*/)     {}
 
 	// Accessors.
-	UINT GetWidth() const           { return m_width; }
-	UINT GetHeight() const          { return m_height; }
+	UINT GetWidth() const           { return m_windowWidth; }
+	UINT GetHeight() const          { return m_windowHeight; }
 	const WCHAR * GetWindowTitle() const  { return m_title.c_str(); }
 
 	void ParseCommandLineArgs (
@@ -56,8 +52,8 @@ protected:
     );
 
 	// Viewport dimensions.
-	UINT m_width;
-	UINT m_height;
+	UINT m_windowWidth;
+	UINT m_windowHeight;
 	float m_aspectRatio;
 
 	// Adapter info.

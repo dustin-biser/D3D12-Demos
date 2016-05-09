@@ -15,6 +15,6 @@ public:
     ~Fence();
 
     Microsoft::WRL::ComPtr<ID3D12Fence> obj;
-    uint64 value;
+    uint64 cpuValue;
     HANDLE event;
 };

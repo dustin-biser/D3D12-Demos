@@ -1,13 +1,6 @@
-/**
- * MeshLoader.hpp
- */
-
 #pragma once
 
 #include <vector>
-
-//--Forward Declarations:
-class MeshLoaderImpl;
 
 struct Mesh {
 	/// Per Mesh Vertex data
@@ -20,7 +13,10 @@ struct Mesh {
 	/// Mesh Indices are in the range (0 - 65536].
 	typedef uint16 Index;
 
+	/// Contiguous Vertex data.
 	std::vector<Vertex> vertices;
+
+	/// Contiguous Index data.
 	std::vector<Index> indices;
 };
 

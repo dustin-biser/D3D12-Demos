@@ -1,7 +1,3 @@
-/*
- * D3D12DemoBase.cpp
- */
-
 #include "pch.h"
 #include "D3D12DemoBase.h"
 
@@ -9,8 +5,8 @@ using namespace Microsoft::WRL;
 
 //---------------------------------------------------------------------------------------
 D3D12DemoBase::D3D12DemoBase(UINT width, UINT height, std::wstring name) :
-	m_width(width),
-	m_height(height),
+	m_windowWidth(width),
+	m_windowHeight(height),
 	m_title(name),
 	m_useWarpDevice(false)
 {
@@ -29,6 +25,11 @@ D3D12DemoBase::D3D12DemoBase(UINT width, UINT height, std::wstring name) :
     }
 
 	m_aspectRatio = static_cast<float>(width) / static_cast<float>(height);
+
+	// Check for DirectXMath support.
+	if (!DirectX::XMVerifyCPUSupport()) {
+		throw DemoException("Error: No support for DirectXMath.");
+	}
 }
 
 
