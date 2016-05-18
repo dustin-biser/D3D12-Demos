@@ -11,4 +11,4 @@ Additional Features:
 * CommandList resuse
 
 ## [InstanceRendering](InstanceRendering/)
-Shows how to preflight rendered frames on the CPU which will then be processed by the GPU. Fences are used to synchronize shared resources between CPU and GPU
+Makes use of a constant upload heap buffer to manage per instance data for rendering multiple instances of a single mesh.  
