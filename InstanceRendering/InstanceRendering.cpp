@@ -2,7 +2,8 @@
 using namespace DirectX;
 
 #include "InstanceRendering.hpp"
-#include "Fence.hpp"
+using Microsoft::WRL::ComPtr;
+
 #include "MeshLoader.hpp"
 
 #include <vector>
@@ -47,13 +48,19 @@ static void CreateSwapChain (
 	_In_ uint framebufferWidth,
 	_In_ uint framebufferHeight,
 	_In_ uint numBufferedFrames,
-	_Out_ ComPtr<IDXGISwapChain3> & swapChain
+	_Out_ ComPtr<IDXGISwapChain3> & swapChain,
+	_Out_ HANDLE & frameLatencyWaitableObject
 );
 
 static void OutputMemoryBudgets (
     _In_ ID3D12Device * device
 );
 
+static void WaitForFrameFence (
+	_In_ ID3D12Fence * fence,
+	_In_ uint64 completionValue,
+	_In_ HANDLE fenceEvent
+);
 
 
 //---------------------------------------------------------------------------------------
@@ -64,8 +71,9 @@ InstanceRendering::InstanceRendering (
 )   
     :   D3D12DemoBase(width, height, name),
         m_frameIndex(0),
-        m_viewport(),
-        m_scissorRect()
+		m_viewport{},       // default to all zeros.
+		m_scissorRect{},    // default to all zeros.
+		m_fenceValue{}		// default to all zeros.
 {
 	m_viewport.Width = float(width);
 	m_viewport.Height = float(height);
@@ -77,7 +85,7 @@ InstanceRendering::InstanceRendering (
 
 
 //---------------------------------------------------------------------------------------
-void InstanceRendering::OnInit()
+void InstanceRendering::InitializeDemo()
 {
 	LoadPipelineDependencies();
 
@@ -127,8 +135,9 @@ void InstanceRendering::LoadPipelineDependencies()
         m_commandQueue.Get(),
         m_windowWidth,
         m_windowHeight,
-		NumBufferedFrames,
-        m_swapChain
+		NUM_BUFFERED_FRAMES,
+        m_swapChain,
+		m_frameLatencyWaitableObject
     );
     
     // Set the frame index so it corresponds with the current back buffer index.
@@ -138,7 +147,7 @@ void InstanceRendering::LoadPipelineDependencies()
 	{
 		// Describe and create the RTV Descriptor Heap.
 		D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDescriptor = {};
-		rtvHeapDescriptor.NumDescriptors = NumBufferedFrames;
+		rtvHeapDescriptor.NumDescriptors = NUM_BUFFERED_FRAMES;
 		rtvHeapDescriptor.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 		rtvHeapDescriptor.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 		CHECK_DX_RESULT (
@@ -147,7 +156,7 @@ void InstanceRendering::LoadPipelineDependencies()
 
 		// Describe and create the CBV Descriptor Heap.
 		D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc = {};
-		cbvHeapDesc.NumDescriptors = 2 * NumBufferedFrames;
+		cbvHeapDesc.NumDescriptors = 2 * NUM_BUFFERED_FRAMES;
 		cbvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 		cbvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 		CHECK_DX_RESULT (
@@ -171,7 +180,7 @@ void InstanceRendering::LoadPipelineDependencies()
 			m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 
 		// Create a render target view for each frame.
-		for (uint n(0); n < NumBufferedFrames; ++n) {
+		for (uint n(0); n < NUM_BUFFERED_FRAMES; ++n) {
 			CHECK_DX_RESULT (
 				m_swapChain->GetBuffer(n, IID_PPV_ARGS(&m_renderTarget[n]))
 			);
@@ -182,30 +191,30 @@ void InstanceRendering::LoadPipelineDependencies()
 			// Increment rtvHandle so it points to the next RTV descriptor in the heap.
 			rtvHandle.Offset(1, rtvDescriptorSize);
 		}
-		NAME_D3D12_OBJECTS(m_renderTarget, NumBufferedFrames);
+		NAME_D3D12_OBJECT_ARRAY(m_renderTarget, NUM_BUFFERED_FRAMES);
 	}
 
     //-- Create command allocator for managing command list memory:
-	{
+	for(int i(0); i < NUM_BUFFERED_FRAMES; ++i) {
 		CHECK_DX_RESULT(
 			m_device->CreateCommandAllocator(
 				D3D12_COMMAND_LIST_TYPE_DIRECT,
-				IID_PPV_ARGS(&m_cmdAllocator)
+				IID_PPV_ARGS(&m_cmdAllocator[i])
 			)
 		);
-		NAME_D3D12_OBJECT(m_cmdAllocator);
 	}
+	NAME_D3D12_OBJECT_ARRAY(m_cmdAllocator, NUM_BUFFERED_FRAMES);
 
 
     //-- Create the draw command lists which will hold our rendering commands:
 	{
 		// Create one command list for each swap chain buffer.
-		for (uint i(0); i < NumBufferedFrames; ++i) {
+		for (uint i(0); i < NUM_BUFFERED_FRAMES; ++i) {
 			CHECK_DX_RESULT(
 				m_device->CreateCommandList(
 					0,
 					D3D12_COMMAND_LIST_TYPE_DIRECT,
-					m_cmdAllocator.Get(),
+					m_cmdAllocator[i].Get(),
 					nullptr, // Will set pipeline state later before drawing
 					IID_PPV_ARGS(&m_drawCmdList[i])
 				)
@@ -213,12 +222,25 @@ void InstanceRendering::LoadPipelineDependencies()
 			// Stop recording, will reset this later before issuing drawing commands.
 			m_drawCmdList[i]->Close();
 		}
-		NAME_D3D12_OBJECTS(m_drawCmdList, NumBufferedFrames);
+		NAME_D3D12_OBJECT_ARRAY(m_drawCmdList, NUM_BUFFERED_FRAMES);
 	}
 
+    // Create frame synchronization objects.
+	for (int i(0); i < NUM_BUFFERED_FRAMES; ++i) {
+		CHECK_DX_RESULT(
+			m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_frameFence[i]))
+		);
+		m_fenceValue[i] = 0;
 
-    // Create synchronization primitive.
-    m_fence = std::make_shared<Fence>(m_device.Get());
+		// Create an event handle to use for frame synchronization.
+		m_frameFenceEvent[i] = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+		if (m_frameFenceEvent[i] == nullptr) {
+			CHECK_DX_RESULT (
+				HRESULT_FROM_WIN32(GetLastError())
+			);
+		}
+	}
+	m_currentFenceValue = 1;  
 }
 
 
@@ -283,13 +305,14 @@ static void CreateCommandQueue (
 
 
 //---------------------------------------------------------------------------------------
-static void CreateSwapChain (
+void CreateSwapChain (
     _In_ IDXGIFactory4 * dxgiFactory,
     _In_ ID3D12CommandQueue * commandQueue,
     _In_ uint framebufferWidth,
     _In_ uint framebufferHeight,
 	_In_ uint numBufferedFrames,
-    _Out_ ComPtr<IDXGISwapChain3> & swapChain
+    _Out_ ComPtr<IDXGISwapChain3> & swapChain,
+	_Out_ HANDLE & frameLatencyWaitableObject
 ) {
 
 	// Describe and create the swap chain.
@@ -301,6 +324,8 @@ static void CreateSwapChain (
 	swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 	swapChainDesc.SampleDesc.Count = 1;
+	swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
+
 
 	ComPtr<IDXGISwapChain1> swapChain1;
 	CHECK_DX_RESULT (
@@ -321,6 +346,15 @@ static void CreateSwapChain (
             DXGI_MWA_NO_ALT_ENTER
         )
     );
+
+	ComPtr<IDXGISwapChain2> swapChain2;
+	CHECK_DX_RESULT(
+		swapChain1.As(&swapChain2)
+	);
+	swapChain2->SetMaximumFrameLatency(numBufferedFrames);
+
+	// Get the frame latency waitable objects.
+	frameLatencyWaitableObject = swapChain2->GetFrameLatencyWaitableObject();
 
 	CHECK_DX_RESULT (
         // Acquire the IDXGISwapChain3 interface.  A reference to this interface will be
@@ -506,7 +540,7 @@ void InstanceRendering::LoadAssets()
 	// Create SceneConstants ConstantBuffer storage within upload heap, duplicating
 	// storage space for each buffered frame.
 	size_t sceneConstantsSize = sizeof(SceneConstants);
-	for (int i(0); i < NumBufferedFrames; ++i) {
+	for (int i(0); i < NUM_BUFFERED_FRAMES; ++i) {
 		ZeroMemory(&m_sceneConstData[i], sceneConstantsSize);
 		m_uploadBuffer->uploadConstantBufferData(
 			reinterpret_cast<const void *>(&m_sceneConstData[i]),
@@ -519,7 +553,7 @@ void InstanceRendering::LoadAssets()
 	// Create PointLight ConstantBuffer storage within upload heap, duplicating
 	// storage space for each buffered frame.
 	size_t pointLightSize = sizeof(PointLight);
-	for (int i(0); i < NumBufferedFrames; ++i) {
+	for (int i(0); i < NUM_BUFFERED_FRAMES; ++i) {
 		ZeroMemory(&m_pointLightConstData[i], pointLightSize);
 		m_uploadBuffer->uploadConstantBufferData(
 			reinterpret_cast<const void *>(&m_pointLightConstData[i]),
@@ -531,7 +565,7 @@ void InstanceRendering::LoadAssets()
 
 
 	//-- Create CBV on the CBV-Heap that references our ConstantBuffer data.
-	for (int i(0); i < NumBufferedFrames; ++i) {
+	for (int i(0); i < NUM_BUFFERED_FRAMES; ++i) {
 		CD3DX12_CPU_DESCRIPTOR_HANDLE cbvDescHeapHandle(
 			m_cbvDescHeap->GetCPUDescriptorHandleForHeapStart()
 		);
@@ -589,10 +623,6 @@ void InstanceRendering::LoadAssets()
 			m_dsvDescHeap->GetCPUDescriptorHandleForHeapStart()
 		);
 	}
-
-
-	// Wait for resources to be copied to upload heap before continuing.
-	WaitForGPUSync();
 }
 
 
@@ -664,13 +694,6 @@ static void CreatePipelineState (
     CHECK_DX_RESULT (
         device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&pipelineState))
      );
-}
-
-//---------------------------------------------------------------------------------------
-// Update frame-based values.
-void InstanceRendering::OnUpdate()
-{
-	UpdateConstantBuffers();
 }
 
 //---------------------------------------------------------------------------------------
@@ -761,137 +784,170 @@ void InstanceRendering::UpdateConstantBuffers()
 
 
 //---------------------------------------------------------------------------------------
-// Render the scene.
-void InstanceRendering::OnRender()
+// Perform per-frame logic + rendering
+void InstanceRendering::Update()
 {
-	// Execute the command list.
-	std::vector<ID3D12CommandList*> commandLists;
-    for (auto & cmdList : m_drawCmdList) {
-        commandLists.push_back(cmdList.Get());
-    }
-	m_commandQueue->ExecuteCommandLists(1, &commandLists[m_frameIndex]);
+	WaitForFrameFence (
+		m_frameFence[m_frameIndex].Get(),
+		m_fenceValue[m_frameIndex],
+		m_frameFenceEvent[m_frameIndex]
+	);
 
-	// Present the frame.
-	CHECK_DX_RESULT (
-        m_swapChain->Present(1, 0)
-    );
+	UpdateConstantBuffers();
 
-	WaitForGPUSync();
+	if(m_vsyncEnabled) {
+		// Wait until swap chain has finished presenting all queued frames
+		WaitForSingleObject(m_frameLatencyWaitableObject, INFINITE);
+		Render();
+		Present();
+	} else if (SwapChainWaitableObjectIsSignaled()) {
+		Render();
+		Present();
+	}
 }
 
 //---------------------------------------------------------------------------------------
-void InstanceRendering::OnDestroy()
+bool InstanceRendering::SwapChainWaitableObjectIsSignaled()
 {
-	// Ensure that the GPU is no longer referencing resources that are about to be
-	// cleaned up by the destructor.
-	WaitForGPUSync();
+	return WAIT_OBJECT_0 == WaitForSingleObjectEx(m_frameLatencyWaitableObject, 0, true);
+}
+
+
+//---------------------------------------------------------------------------------------
+// Render the scene.
+void InstanceRendering::Render()
+{
+	PopulateCommandList();
+
+	// Execute command list for the current frame index
+	ID3D12CommandList * commandLists[] = { m_drawCmdList[m_frameIndex].Get() };
+	m_commandQueue->ExecuteCommandLists(_countof(commandLists), commandLists);
+}
+
+//---------------------------------------------------------------------------------------
+// Present to contents of the back-buffer, signal the frame-fence, then increment the
+// frame index so the next frame can be processed.
+void InstanceRendering::Present()
+{
+	uint syncInterval = m_vsyncEnabled ? 1 : 0;
+	CHECK_DX_RESULT(
+		m_swapChain->Present(syncInterval, 0)
+	);
+
+	m_commandQueue->Signal(m_frameFence[m_frameIndex].Get(), m_currentFenceValue);
+	m_fenceValue[m_frameIndex] = m_currentFenceValue;
+	++m_currentFenceValue;
+
+	m_frameIndex = (m_frameIndex + 1) % NUM_BUFFERED_FRAMES;
+}
+
+//---------------------------------------------------------------------------------------
+void InstanceRendering::CleanupDemo()
+{
+	m_commandQueue->Signal(m_frameFence[m_frameIndex].Get(), m_currentFenceValue);
+	m_fenceValue[m_frameIndex] = m_currentFenceValue;
+	++m_currentFenceValue;
+
+	// Wait for command queue to finish processing all buffered frames
+	for (int i = 0; i < NUM_BUFFERED_FRAMES; ++i) {
+		WaitForFrameFence(m_frameFence[i].Get(), m_fenceValue[i], m_frameFenceEvent[i]);
+	}
+
+	// Clean up event handles
+	for (auto event : m_frameFenceEvent) {
+		CloseHandle(event);
+	}
 }
 
 //---------------------------------------------------------------------------------------
 
 void InstanceRendering::PopulateCommandList()
 {
-    // Command list allocators can only be reset when the associated 
-    // command lists have finished execution on the GPU; apps should use 
-    // fences to determine GPU execution progress.
-    CHECK_DX_RESULT(
-        m_cmdAllocator->Reset()
+	auto * cmdAllocator = m_cmdAllocator[m_frameIndex].Get();
+	auto & drawCmdList = m_drawCmdList[m_frameIndex];
+
+    CHECK_DX_RESULT (
+        cmdAllocator->Reset()
     );
 
-    for (int i(0); i < NumBufferedFrames; ++i) {
+	CHECK_DX_RESULT (
+		drawCmdList->Reset(cmdAllocator, m_pipelineState.Get())
+	 );
 
-        // However, when ExecuteCommandList() is called on a particular command 
-        // list, that command list can then be reset at any time and must be before 
-        // re-recording.
-        CHECK_DX_RESULT(
-            m_drawCmdList[i]->Reset(m_cmdAllocator.Get(), m_pipelineState.Get())
-         );
+	drawCmdList->SetPipelineState(m_pipelineState.Get());
 
-        m_drawCmdList[i]->SetPipelineState(m_pipelineState.Get());
+	drawCmdList->SetGraphicsRootSignature(m_rootSignature.Get());
 
-        m_drawCmdList[i]->SetGraphicsRootSignature(m_rootSignature.Get());
+	ID3D12DescriptorHeap * ppHeaps[] = { m_cbvDescHeap.Get() };
+	drawCmdList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
+	drawCmdList->SetGraphicsRootConstantBufferView (
+		0, m_cbvDesc_SceneConstants[m_frameIndex].BufferLocation
+	);
+	drawCmdList->SetGraphicsRootConstantBufferView (
+		1, m_cbvDesc_PointLight[m_frameIndex].BufferLocation
+	);
 
-		ID3D12DescriptorHeap * ppHeaps[] = { m_cbvDescHeap.Get() };
-		m_drawCmdList[i]->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
-		m_drawCmdList[i]->SetGraphicsRootConstantBufferView (
-			0, m_cbvDesc_SceneConstants[i].BufferLocation
-		);
-		m_drawCmdList[i]->SetGraphicsRootConstantBufferView (
-			1, m_cbvDesc_PointLight[i].BufferLocation
-		);
+	drawCmdList->RSSetViewports(1, &m_viewport);
+	drawCmdList->RSSetScissorRects(1, &m_scissorRect);
 
-        m_drawCmdList[i]->RSSetViewports(1, &m_viewport);
-        m_drawCmdList[i]->RSSetScissorRects(1, &m_scissorRect);
+	// Indicate that the back buffer will be used as a render target.
+	drawCmdList->ResourceBarrier (1,
+		&CD3DX12_RESOURCE_BARRIER::Transition (
+			m_renderTarget[m_frameIndex].Get(),
+			D3D12_RESOURCE_STATE_PRESENT,
+			D3D12_RESOURCE_STATE_RENDER_TARGET
+		)
+	);
 
-        // Indicate that the back buffer will be used as a render target.
-        m_drawCmdList[i]->ResourceBarrier (1,
-            &CD3DX12_RESOURCE_BARRIER::Transition (
-                m_renderTarget[i].Get(),
-                D3D12_RESOURCE_STATE_PRESENT,
-                D3D12_RESOURCE_STATE_RENDER_TARGET
-            )
-        );
+	uint rtvDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle (
+		m_rtvDescHeap->GetCPUDescriptorHandleForHeapStart(),
+		m_frameIndex, 
+		rtvDescriptorSize
+	);
+	// Get a handle to the depth/stencil buffer
+	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(m_dsvDescHeap->GetCPUDescriptorHandleForHeapStart());
+	drawCmdList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
 
-        int descOffset = i;
-		uint rtvDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-        CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle (
-            m_rtvDescHeap->GetCPUDescriptorHandleForHeapStart(),
-            descOffset, 
-            rtvDescriptorSize
-        );
-		// Get a handle to the depth/stencil buffer
-		CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(m_dsvDescHeap->GetCPUDescriptorHandleForHeapStart());
-        m_drawCmdList[i]->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
+	// Record commands.
+	const float clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
+	drawCmdList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
 
-        // Record commands.
-        const float clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
-        m_drawCmdList[i]->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+	// clear the depth/stencil buffer
+	drawCmdList->ClearDepthStencilView (
+		m_dsvDescHeap->GetCPUDescriptorHandleForHeapStart(),
+		D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr
+	);
 
-		// clear the depth/stencil buffer
-		m_drawCmdList[i]->ClearDepthStencilView (
-			m_dsvDescHeap->GetCPUDescriptorHandleForHeapStart(),
-			D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr
-		);
+	drawCmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	drawCmdList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
+	drawCmdList->IASetIndexBuffer(&m_indexBufferView);
+	
+	UINT numIndices = static_cast<UINT>(m_indexArray.size());
+	drawCmdList->DrawIndexedInstanced(numIndices, 1, 0, 0, 0);
 
-        m_drawCmdList[i]->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-        m_drawCmdList[i]->IASetVertexBuffers(0, 1, &m_vertexBufferView);
-        m_drawCmdList[i]->IASetIndexBuffer(&m_indexBufferView);
-		
-		UINT numIndices = static_cast<UINT>(m_indexArray.size());
-        m_drawCmdList[i]->DrawIndexedInstanced(numIndices, 1, 0, 0, 0);
+	// Indicate that the back buffer will now be used to present.
+	drawCmdList->ResourceBarrier (1,
+		&CD3DX12_RESOURCE_BARRIER::Transition (
+			m_renderTarget[m_frameIndex].Get(),
+			D3D12_RESOURCE_STATE_RENDER_TARGET,
+			D3D12_RESOURCE_STATE_PRESENT
+		)
+	);
 
-        // Indicate that the back buffer will now be used to present.
-        m_drawCmdList[i]->ResourceBarrier (1,
-            &CD3DX12_RESOURCE_BARRIER::Transition (
-                m_renderTarget[i].Get(),
-                D3D12_RESOURCE_STATE_RENDER_TARGET,
-                D3D12_RESOURCE_STATE_PRESENT
-            )
-        );
-
-        CHECK_DX_RESULT(m_drawCmdList[i]->Close());
-    }
+	CHECK_DX_RESULT(drawCmdList->Close());
 }
 
 //---------------------------------------------------------------------------------------
-void InstanceRendering::WaitForGPUSync()
-{
-
-	// Signal and increment the fence value.
-	const uint64 fenceGPUValue = m_fence->cpuValue;
-	CHECK_DX_RESULT (
-        m_commandQueue->Signal(m_fence->obj.Get(), fenceGPUValue)
-    );
-	m_fence->cpuValue++;
-
-	// Wait until the previous frame is finished.
-	if (m_fence->obj->GetCompletedValue() < fenceGPUValue)
-	{
+static void WaitForFrameFence (
+	_In_ ID3D12Fence * fence,
+	_In_ uint64 completionValue,
+	_In_ HANDLE fenceEvent
+) {
+	if (fence->GetCompletedValue() < completionValue) {
 		CHECK_DX_RESULT (
-            m_fence->obj->SetEventOnCompletion(fenceGPUValue, m_fence->event)
-        );
-		WaitForSingleObject(m_fence->event, INFINITE);
+			fence->SetEventOnCompletion(completionValue, fenceEvent)
+		);
+		WaitForSingleObject(fenceEvent, INFINITE);
 	}
-
-	m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
 }

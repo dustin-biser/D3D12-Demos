@@ -26,7 +26,7 @@ int Win32Application::Run (
 	LocalFree(argv);
 
 
-    //-- Use the following code to open a new console window and redirect stdout to it:
+    //-- Open a new console window and redirect std IO streams to it:
     {
         // Open a new console window
         AllocConsole();
@@ -70,13 +70,13 @@ int Win32Application::Run (
 		nullptr,		// We have no parent window.
 		nullptr,		// We aren't using menus.
 		hInstance,
-		demo         // Store pointer to DXSample in the user data slot.
+		demo            // Store pointer to the D3D12Demo in the user data slot.
                         // We'll retrieve this later within the WindowProc in order
-                        // interact with the DXSample instance.
+                        // interact with the D3D12Demo instance.
     );
 
 	// Initialize the sample. OnInit is defined in each child-implementation of DXSample.
-	demo->OnInit();
+	demo->InitializeDemo();
 
 	ShowWindow(m_hwnd, nCmdShow);
 
@@ -99,8 +99,7 @@ int Win32Application::Run (
             // Dispatches a message to a the registered window procedure.
             DispatchMessage(&msg);
         }
-        demo->OnUpdate();
-        demo->OnRender();
+        demo->Update();
         // End frame timer.
         auto timerEnd = std::chrono::high_resolution_clock::now();
         frameCount++;
@@ -111,9 +110,10 @@ int Win32Application::Run (
 
         //-- Update window title only after so many milliseconds:
         if (fpsTimer > 400.0f) {
+			float msPerFrame = fpsTimer / float(frameCount);
             float fps = float(frameCount) / fpsTimer * 1000.0f;
             wchar_t buffer[256];
-            swprintf(buffer, _countof(buffer), L"%s - %.1f fps", demo->GetWindowTitle(), fps);
+			swprintf(buffer, _countof(buffer), L"%s - %.1f fps (%.2f ms)", demo->GetWindowTitle(), fps, msPerFrame);
             SetWindowText(m_hwnd, buffer);
 
             // Reset timing info.
@@ -122,7 +122,7 @@ int Win32Application::Run (
         }
 	}
 
-	demo->OnDestroy();
+	demo->CleanupDemo();
 
 	// Return this part of the WM_QUIT message to Windows.
 	return static_cast<char>(msg.wParam);

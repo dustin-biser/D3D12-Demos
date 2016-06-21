@@ -1,11 +1,6 @@
-/*
- * IndexRendering.h
- */
-
 #pragma once
 
 #include "D3D12DemoBase.h"
-#include "Fence.hpp"
 #include <memory>
 
 using namespace DirectX;
@@ -20,14 +15,13 @@ public:
         std::wstring name
     );
 
-	virtual void OnInit();
-	virtual void OnUpdate();
-	virtual void OnRender();
-	virtual void OnDestroy();
+	virtual void InitializeDemo();
+	virtual void Update();
+	virtual void CleanupDemo();
 
 private:
     /// Number of buffered frames
-	static const uint FrameCount = 2;
+	static const uint NUM_BUFFERED_FRAMES = 3;
 
 	struct Vertex
 	{
@@ -40,14 +34,15 @@ private:
 	D3D12_RECT m_scissorRect;
 	ComPtr<IDXGISwapChain3> m_swapChain;
 	ComPtr<ID3D12Device> m_device;
-	ComPtr<ID3D12CommandAllocator> m_commandAllocator;
+	ComPtr<ID3D12CommandAllocator> m_commandAllocator[NUM_BUFFERED_FRAMES];
 	ComPtr<ID3D12CommandQueue> m_commandQueue;
 	ComPtr<ID3D12RootSignature> m_rootSignature;
 	ComPtr<ID3D12PipelineState> m_pipelineState;
-	ComPtr<ID3D12GraphicsCommandList> m_drawCommandList[FrameCount];
+	ComPtr<ID3D12GraphicsCommandList> m_drawCommandList[NUM_BUFFERED_FRAMES];
     ComPtr<ID3D12GraphicsCommandList> m_copyCommandList;
+	ComPtr<ID3D12CommandAllocator> m_copyCommandAllocator;
 
-	ComPtr<ID3D12Resource> m_renderTargets[FrameCount];
+	ComPtr<ID3D12Resource> m_renderTargets[NUM_BUFFERED_FRAMES];
 	ComPtr<ID3D12DescriptorHeap> m_rtvHeap;
 	uint m_rtvDescriptorSize;
 
@@ -59,13 +54,27 @@ private:
     uint m_indexCount;
 
 	// Synchronization objects.
+	HANDLE m_frameLatencyWaitableObject;
 	uint m_frameIndex;
-	std::shared_ptr<Fence> m_fence;
+	HANDLE m_frameFenceEvent[NUM_BUFFERED_FRAMES];
+	Microsoft::WRL::ComPtr<ID3D12Fence> m_frameFence[NUM_BUFFERED_FRAMES];
+	UINT64 m_currentFenceValue;
+	UINT64 m_fenceValue[NUM_BUFFERED_FRAMES];
+
+	const bool m_vsyncEnabled = true;
+
+
+	void Render();
+	void Present();
 
 	void LoadRenderPipelineDependencies();
 	void LoadAssets();
 	void PopulateCommandList();
-	void WaitForPreviousFrame();
+
+	bool SwapChainWaitableObjectIsSignaled();
+
+	void WaitForGPU();
+
 
     void CreateDevice (
         _In_ IDXGIFactory4 * dxgiFactory,
@@ -110,13 +119,6 @@ private:
         _In_ ID3DBlob * vertexShaderBlob,
         _In_ ID3DBlob * pixelShaderBlob,
         _Out_ ComPtr<ID3D12PipelineState> & pipelineState
-    );
-
-    void CreateDrawCommandLists (
-        _In_ ID3D12Device * device,
-        _In_ ID3D12CommandAllocator * commandAllocator,
-        _In_ uint numDrawCommandLists,
-        _Out_ ComPtr<ID3D12GraphicsCommandList> * drawCommandList
     );
 
     D3D12_VERTEX_BUFFER_VIEW UploadVertexDataToDefaultHeap (

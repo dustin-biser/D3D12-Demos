@@ -15,10 +15,9 @@ public:
 
 	virtual ~D3D12DemoBase();
 
-	virtual void OnInit() = 0;
-	virtual void OnUpdate() = 0;
-	virtual void OnRender() = 0;
-	virtual void OnDestroy() = 0;
+	virtual void InitializeDemo() = 0;
+	virtual void Update() = 0;
+	virtual void CleanupDemo() = 0;
 
 	// Samples override the event handlers to handle specific messages.
 	virtual void OnKeyDown(UINT8 /*key*/)   {}

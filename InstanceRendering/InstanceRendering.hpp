@@ -5,14 +5,8 @@
 #include <DirectXMath.h>
 
 #include "D3D12DemoBase.h"
-using Microsoft::WRL::ComPtr;
-
 #include "ResourceUploadBuffer.hpp"
 #include "ConstantBufferDefines.hpp"
-
-
-//--Forward Declarations:
-class Fence;
 
 
 class InstanceRendering : public D3D12DemoBase {
@@ -23,10 +17,11 @@ public:
         std::wstring name
     );
 
-	virtual void OnInit();
-	virtual void OnUpdate();
-	virtual void OnRender();
-	virtual void OnDestroy();
+	virtual void InitializeDemo();
+	virtual void Update();
+	virtual void Render();
+	virtual void Present();
+	virtual void CleanupDemo();
 	
 
 private:
@@ -37,38 +32,38 @@ private:
 	typedef ushort Index;
 
     // Number of buffered frames to pre-flight on the GPU.
-	static const uint NumBufferedFrames = 3;
+	static const uint NUM_BUFFERED_FRAMES = 3;
 	uint m_frameIndex;
 
 	// Constant Buffer specific
-	ComPtr<ID3D12DescriptorHeap> m_cbvDescHeap;
-	SceneConstants m_sceneConstData[NumBufferedFrames];
-	PointLight m_pointLightConstData[NumBufferedFrames];
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_cbvDescHeap;
+	SceneConstants m_sceneConstData[NUM_BUFFERED_FRAMES];
+	PointLight m_pointLightConstData[NUM_BUFFERED_FRAMES];
 
-	D3D12_CONSTANT_BUFFER_VIEW_DESC m_cbvDesc_PointLight[NumBufferedFrames];
-	void * m_cbv_PointLight_dataPtr[NumBufferedFrames];
+	D3D12_CONSTANT_BUFFER_VIEW_DESC m_cbvDesc_PointLight[NUM_BUFFERED_FRAMES];
+	void * m_cbv_PointLight_dataPtr[NUM_BUFFERED_FRAMES];
 
-	D3D12_CONSTANT_BUFFER_VIEW_DESC m_cbvDesc_SceneConstants[NumBufferedFrames];
-	void * m_cbv_SceneConstants_dataPtr[NumBufferedFrames];
+	D3D12_CONSTANT_BUFFER_VIEW_DESC m_cbvDesc_SceneConstants[NUM_BUFFERED_FRAMES];
+	void * m_cbv_SceneConstants_dataPtr[NUM_BUFFERED_FRAMES];
 
 	// Pipeline objects.
 	D3D12_VIEWPORT m_viewport;
 	D3D12_RECT m_scissorRect;
-	ComPtr<IDXGISwapChain3> m_swapChain;
-	ComPtr<ID3D12Device> m_device;
-	ComPtr<ID3D12CommandAllocator> m_cmdAllocator;
-	ComPtr<ID3D12CommandQueue> m_commandQueue;
-	ComPtr<ID3D12RootSignature> m_rootSignature;
-	ComPtr<ID3D12PipelineState> m_pipelineState;
-	ComPtr<ID3D12GraphicsCommandList> m_drawCmdList[NumBufferedFrames];
+	Microsoft::WRL::ComPtr<IDXGISwapChain3> m_swapChain;
+	Microsoft::WRL::ComPtr<ID3D12Device> m_device;
+	Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_commandQueue;
+	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature;
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineState;
+	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> m_cmdAllocator[NUM_BUFFERED_FRAMES];
+	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_drawCmdList[NUM_BUFFERED_FRAMES];
 
 	// Render Target specific
-	ComPtr<ID3D12Resource> m_renderTarget[NumBufferedFrames];
-	ComPtr<ID3D12DescriptorHeap> m_rtvDescHeap;
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_renderTarget[NUM_BUFFERED_FRAMES];
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_rtvDescHeap;
 
 	// Depth/Stencil specific
-	ComPtr<ID3D12DescriptorHeap> m_dsvDescHeap;
-	ComPtr<ID3D12Resource> m_depthStencilBuffer;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_dsvDescHeap;
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_depthStencilBuffer;
 
 	// App resources.
 	std::vector<Vertex> m_vertexArray;
@@ -76,19 +71,30 @@ private:
 	D3D12_INPUT_LAYOUT_DESC m_inputLayoutDesc;
 	std::shared_ptr<ResourceUploadBuffer> m_uploadBuffer;
 
-	ComPtr<ID3D12Resource> m_vertexBuffer;
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_vertexBuffer;
 	D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
-	ComPtr<ID3D12Resource> m_indexBuffer;
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_indexBuffer;
 	D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
     uint m_indexCount;
 
-	// Synchronization objects.
-	std::shared_ptr<Fence> m_fence;
+	// Frame Synchronization objects.
+	HANDLE m_frameLatencyWaitableObject;
+	HANDLE m_frameFenceEvent[NUM_BUFFERED_FRAMES];
+	Microsoft::WRL::ComPtr<ID3D12Fence> m_frameFence[NUM_BUFFERED_FRAMES];
+	UINT64 m_currentFenceValue;
+	UINT64 m_fenceValue[NUM_BUFFERED_FRAMES];
+
+	const bool m_vsyncEnabled = true;
+
 
 	void LoadPipelineDependencies();
+
 	void LoadAssets();
+
 	void PopulateCommandList();
+
 	void UpdateConstantBuffers();
-	void WaitForGPUSync();
+
+	bool SwapChainWaitableObjectIsSignaled();
 
 }; // end class FrameBuffering

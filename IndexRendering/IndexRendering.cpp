@@ -1,7 +1,3 @@
-/*
- * IndexRendering.cpp
- */
-
 #include "pch.h"
 #include "IndexRendering.hpp"
 
@@ -9,6 +5,11 @@
 #include <iostream>
 using namespace std;
 
+static void WaitForFrameFence(
+	_In_ ID3D12Fence * fence,
+	_In_ uint64 completionValue,
+	_In_ HANDLE fenceEvent
+);
 
 //---------------------------------------------------------------------------------------
 IndexRendering::IndexRendering (
@@ -20,7 +21,9 @@ IndexRendering::IndexRendering (
         m_frameIndex(0),
         m_viewport(),
         m_scissorRect(),
-        m_rtvDescriptorSize(0)
+        m_rtvDescriptorSize(0),
+		m_currentFenceValue(0),
+		m_fenceValue{} // default to all zeros.
 {
 	m_viewport.Width = float(width);
 	m_viewport.Height = float(height);
@@ -32,11 +35,10 @@ IndexRendering::IndexRendering (
 
 
 //---------------------------------------------------------------------------------------
-void IndexRendering::OnInit()
+void IndexRendering::InitializeDemo()
 {
 	LoadRenderPipelineDependencies();
 	LoadAssets();
-    PopulateCommandList();
 }
 
 
@@ -77,8 +79,8 @@ void IndexRendering::LoadRenderPipelineDependencies()
     this->CreateSwapChain (
         dxgiFactory.Get(),
         m_commandQueue.Get(),
-        m_width,
-        m_height,
+        m_windowWidth,
+        m_windowHeight,
         m_swapChain
     );
     
@@ -97,25 +99,43 @@ void IndexRendering::LoadRenderPipelineDependencies()
     NAME_D3D12_OBJECT(m_renderTargets[1]);
 
     // Create command allocator for managing command list memory
-	CHECK_DX_RESULT (
-        m_device->CreateCommandAllocator (
-            D3D12_COMMAND_LIST_TYPE_DIRECT,
-            IID_PPV_ARGS(&m_commandAllocator)
-        )
-    );
-    NAME_D3D12_OBJECT(m_commandAllocator);
+	for (int i(0); i < NUM_BUFFERED_FRAMES; ++i) {
+		CHECK_DX_RESULT(
+			m_device->CreateCommandAllocator(
+				D3D12_COMMAND_LIST_TYPE_DIRECT,
+				IID_PPV_ARGS(&m_commandAllocator[i])
+			)
+		);
+	}
+    NAME_D3D12_OBJECT_ARRAY(m_commandAllocator, NUM_BUFFERED_FRAMES);
 
 
     // Create the draw command lists which will hold our rendering commands.
 	// Create one command list for each swap chain buffer.
-    this->CreateDrawCommandLists (
-        m_device.Get(),
-        m_commandAllocator.Get(),
-        FrameCount,
-        m_drawCommandList
-    );
-    NAME_D3D12_OBJECT(m_drawCommandList[0]);
-    NAME_D3D12_OBJECT(m_drawCommandList[1]);
+    for (uint i(0); i < NUM_BUFFERED_FRAMES; ++i) {
+        CHECK_DX_RESULT(
+            m_device->CreateCommandList (
+                0,
+                D3D12_COMMAND_LIST_TYPE_DIRECT,
+                m_commandAllocator[i].Get(),
+                nullptr, // Will set pipeline state later before drawing
+                IID_PPV_ARGS(&m_drawCommandList[i])
+            )
+        );
+        // Stop recording, will reset this later before issuing drawing commands.
+        m_drawCommandList[i]->Close();
+    }
+    NAME_D3D12_OBJECT_ARRAY(m_drawCommandList, NUM_BUFFERED_FRAMES);
+
+
+	// Create copy command allocator for managing memory for copy command list.
+	CHECK_DX_RESULT(
+		m_device->CreateCommandAllocator(
+			D3D12_COMMAND_LIST_TYPE_DIRECT,
+			IID_PPV_ARGS(&m_copyCommandAllocator)
+		)
+	);
+    NAME_D3D12_OBJECT(m_copyCommandAllocator);
 
 
     // Create a separate command list for copying resource data to the GPU.
@@ -123,7 +143,7 @@ void IndexRendering::LoadRenderPipelineDependencies()
         m_device->CreateCommandList (
             0,
             D3D12_COMMAND_LIST_TYPE_DIRECT,
-            m_commandAllocator.Get(),
+            m_copyCommandAllocator.Get(),
             nullptr,
             IID_PPV_ARGS(&m_copyCommandList)
          )
@@ -131,7 +151,22 @@ void IndexRendering::LoadRenderPipelineDependencies()
     NAME_D3D12_OBJECT(m_copyCommandList);
 
     // Create synchronization primitive.
-    m_fence = std::make_shared<Fence>(m_device.Get());
+	for(int i(0); i < NUM_BUFFERED_FRAMES; ++i) {
+		CHECK_DX_RESULT(
+			m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_frameFence[i]))
+		);
+		m_fenceValue[i] = 0;
+
+		// Create an event handle to use for frame synchronization.
+		m_frameFenceEvent[i] = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+		if (m_frameFenceEvent[i] == nullptr) {
+			CHECK_DX_RESULT(
+				HRESULT_FROM_WIN32(GetLastError())
+			);
+		}
+	}
+	m_currentFenceValue = 1;  
+
 }
 
 //---------------------------------------------------------------------------------------
@@ -207,13 +242,14 @@ void IndexRendering::CreateSwapChain (
 
 	// Describe and create the swap chain.
 	DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
-	swapChainDesc.BufferCount = FrameCount;
+	swapChainDesc.BufferCount = NUM_BUFFERED_FRAMES;
 	swapChainDesc.Width = framebufferWidth;
 	swapChainDesc.Height = framebufferHeight;
 	swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 	swapChainDesc.SampleDesc.Count = 1;
+	swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
 
 	ComPtr<IDXGISwapChain1> swapChain1;
 	CHECK_DX_RESULT (
@@ -235,6 +271,15 @@ void IndexRendering::CreateSwapChain (
         )
     );
 
+	ComPtr<IDXGISwapChain2> swapChain2;
+	CHECK_DX_RESULT(
+		swapChain1.As(&swapChain2)
+	);
+	swapChain2->SetMaximumFrameLatency(NUM_BUFFERED_FRAMES);
+
+	// Get the frame latency waitable objects.
+	m_frameLatencyWaitableObject = swapChain2->GetFrameLatencyWaitableObject();
+
 	CHECK_DX_RESULT (
         // Acquire the IDXGISwapChain3 interface.  A reference to this interface will be
         // stored in swapChain.
@@ -255,7 +300,7 @@ void IndexRendering::CreateRenderTargetView (
     // hold the RTV descriptors.
 	{
 		D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
-		rtvHeapDesc.NumDescriptors = FrameCount;
+		rtvHeapDesc.NumDescriptors = NUM_BUFFERED_FRAMES;
 		rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 		rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 		CHECK_DX_RESULT (
@@ -278,7 +323,7 @@ void IndexRendering::CreateRenderTargetView (
         rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
 
 		// Create a RenderTargetView for each frame.
-		for (uint n(0); n < FrameCount; ++n)
+		for (uint n(0); n < NUM_BUFFERED_FRAMES; ++n)
 		{
 			CHECK_DX_RESULT (
                 swapChain->GetBuffer(n, IID_PPV_ARGS(&renderTargets[n]))
@@ -426,28 +471,6 @@ void IndexRendering::CreatePipelineState(
             IID_PPV_ARGS(&pipelineState)
         )
      );
-}
-
-//---------------------------------------------------------------------------------------
-void IndexRendering::CreateDrawCommandLists (
-    _In_ ID3D12Device * device,
-    _In_ ID3D12CommandAllocator * commandAllocator,
-    _In_ uint numCommandLists,
-    _Out_ ComPtr<ID3D12GraphicsCommandList> * drawCommandList
-) {
-    for (uint i(0); i < numCommandLists; ++i) {
-        CHECK_DX_RESULT(
-            device->CreateCommandList (
-                0,
-                D3D12_COMMAND_LIST_TYPE_DIRECT,
-                commandAllocator,
-                nullptr, // Will set pipeline state later before drawing
-                IID_PPV_ARGS(&drawCommandList[i])
-            )
-        );
-        // Stop recording, will reset this later before issuing drawing commands.
-        drawCommandList[i]->Close();
-    }
 }
 
 //---------------------------------------------------------------------------------------
@@ -640,61 +663,115 @@ void IndexRendering::CreateVertexDataBuffers (
     std::vector<ID3D12CommandList*> commandLists = { copyCommandList };
     commandQueue->ExecuteCommandLists(uint(commandLists.size()), commandLists.data());
 
-    // Wait for the copy command list to execute.
-    WaitForPreviousFrame();
+	WaitForGPU();
+}
+//---------------------------------------------------------------------------------------
+void IndexRendering::WaitForGPU()
+{
+	auto & frameFence = m_frameFence[m_frameIndex];
+
+	CHECK_DX_RESULT(
+		m_commandQueue->Signal(frameFence.Get(), m_currentFenceValue)
+	);
+	m_fenceValue[m_frameIndex] = m_currentFenceValue;
+	++m_currentFenceValue;
+
+	auto & frameFenceEvent = m_frameFenceEvent[m_frameIndex];
+
+	if (frameFence->GetCompletedValue() < m_fenceValue[m_frameIndex]) {
+		CHECK_DX_RESULT(
+			frameFence->SetEventOnCompletion(m_fenceValue[m_frameIndex], frameFenceEvent)
+		);
+		WaitForSingleObject(frameFenceEvent, INFINITE);
+	}
 }
 
 //---------------------------------------------------------------------------------------
 // Update frame-based values.
-void IndexRendering::OnUpdate()
+void IndexRendering::Update()
 {
+	WaitForFrameFence (
+		m_frameFence[m_frameIndex].Get(),
+		m_fenceValue[m_frameIndex],
+		m_frameFenceEvent[m_frameIndex]
+	);
 
+	if(m_vsyncEnabled) {
+		// Wait until swap chain has finished presenting all queued frames
+		WaitForSingleObject(m_frameLatencyWaitableObject, INFINITE);
+		Render();
+		Present();
+	} else if (SwapChainWaitableObjectIsSignaled()) {
+		Render();
+		Present();
+	}
 }
 
 //---------------------------------------------------------------------------------------
-// Render the scene.
-void IndexRendering::OnRender()
+bool IndexRendering::SwapChainWaitableObjectIsSignaled()
 {
-	// Execute the command list.
-	std::vector<ID3D12CommandList*> commandLists;
-    for (auto & cmdList : m_drawCommandList) {
-        commandLists.push_back(cmdList.Get());
-    }
-	m_commandQueue->ExecuteCommandLists(1, &commandLists[m_frameIndex]);
+	return WAIT_OBJECT_0 == WaitForSingleObjectEx(m_frameLatencyWaitableObject, 0, true);
+}
 
+
+//---------------------------------------------------------------------------------------
+// Render the scene.
+void IndexRendering::Render()
+{
+	PopulateCommandList();
+
+	// Execute the command list.
+	ID3D12CommandList* commandLists[] = { m_drawCommandList[m_frameIndex].Get() };
+	m_commandQueue->ExecuteCommandLists(_countof(commandLists), commandLists);
+}
+
+//---------------------------------------------------------------------------------------
+void IndexRendering::Present()
+{
 	// Present the frame.
 	CHECK_DX_RESULT (
         m_swapChain->Present(1, 0)
     );
 
-	WaitForPreviousFrame();
+	m_commandQueue->Signal(m_frameFence[m_frameIndex].Get(), m_currentFenceValue);
+	m_fenceValue[m_frameIndex] = m_currentFenceValue;
+	++m_currentFenceValue;
+
+	m_frameIndex = (m_frameIndex + 1) % NUM_BUFFERED_FRAMES;
 }
 
 //---------------------------------------------------------------------------------------
-void IndexRendering::OnDestroy()
+void IndexRendering::CleanupDemo()
 {
 	// Ensure that the GPU is no longer referencing resources that are about to be
 	// cleaned up by the destructor.
-	WaitForPreviousFrame();
+
+	m_commandQueue->Signal(m_frameFence[m_frameIndex].Get(), m_currentFenceValue);
+	m_fenceValue[m_frameIndex] = m_currentFenceValue;
+	++m_currentFenceValue;
+
+	// Wait for command queue to finish processing all buffered frames
+	for (int i = 0; i < NUM_BUFFERED_FRAMES; ++i) {
+		WaitForFrameFence(m_frameFence[i].Get(), m_fenceValue[i], m_frameFenceEvent[i]);
+	}
+
+	// Clean up event handles
+	for (auto event : m_frameFenceEvent) {
+		CloseHandle(event);
+	}
 }
 
 //---------------------------------------------------------------------------------------
 void IndexRendering::PopulateCommandList()
 {
-    // Command list allocators can only be reset when the associated 
-    // command lists have finished execution on the GPU; apps should use 
-    // fences to determine GPU execution progress.
     CHECK_DX_RESULT(
-        m_commandAllocator->Reset()
+        m_commandAllocator[m_frameIndex]->Reset()
     );
 
-    for (int i(0); i < FrameCount; ++i) {
+    for (int i(0); i < NUM_BUFFERED_FRAMES; ++i) {
 
-        // However, when ExecuteCommandList() is called on a particular command 
-        // list, that command list can then be reset at any time and must be before 
-        // re-recording.
         CHECK_DX_RESULT(
-            m_drawCommandList[i]->Reset(m_commandAllocator.Get(), m_pipelineState.Get())
+            m_drawCommandList[i]->Reset(m_commandAllocator[m_frameIndex].Get(), m_pipelineState.Get())
          );
 
 
@@ -743,28 +820,15 @@ void IndexRendering::PopulateCommandList()
 }
 
 //---------------------------------------------------------------------------------------
-void IndexRendering::WaitForPreviousFrame()
-{
-	// WAITING FOR THE FRAME TO COMPLETE BEFORE CONTINUING IS NOT BEST PRACTICE.
-	// This is code implemented as such for simplicity. The D3D12HelloFrameBuffering
-	// sample illustrates how to use fences for efficient resource usage and to
-	// maximize GPU utilization.
-
-	// Signal and increment the fence value.
-	const uint64 fenceValue = m_fence->value;
-	CHECK_DX_RESULT (
-        m_commandQueue->Signal(m_fence->obj.Get(), fenceValue)
-    );
-	m_fence->value++;
-
-	// Wait until the previous frame is finished.
-	if (m_fence->obj->GetCompletedValue() < fenceValue)
-	{
+static void WaitForFrameFence (
+	_In_ ID3D12Fence * fence,
+	_In_ uint64 completionValue,
+	_In_ HANDLE fenceEvent
+) {
+	if (fence->GetCompletedValue() < completionValue) {
 		CHECK_DX_RESULT (
-            m_fence->obj->SetEventOnCompletion(fenceValue, m_fence->event)
-        );
-		WaitForSingleObject(m_fence->event, INFINITE);
+			fence->SetEventOnCompletion(completionValue, fenceEvent)
+		);
+		WaitForSingleObject(fenceEvent, INFINITE);
 	}
-
-	m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
 }

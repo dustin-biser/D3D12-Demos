@@ -37,7 +37,7 @@
 	// of the objects during graphics debugging.
 	// @param x - array of ComPtr<T> where T is a D3D12 object type.
 	// @param n - size of array.
-#define NAME_D3D12_OBJECTS(x, n) \
+#define NAME_D3D12_OBJECT_ARRAY(x, n) \
 	do { \
 		for (unsigned int i(0); i < (n); ++i) { \
 			WCHAR buffer[256]; \
@@ -46,7 +46,7 @@
 		} \
 	} while(0)
 #else
-#define NAME_D3D12_OBJECTS(x, n)
+#define NAME_D3D12_OBJECT_ARRAY(x, n)
 #endif
 
 
