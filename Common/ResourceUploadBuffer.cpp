@@ -48,7 +48,7 @@ private:
 		_In_ size_t dataBytes,
 		_In_ size_t alignment,
 		_Out_ size_t & dataGPUVirtualAddress,
-		_Out_ void ** mappedDataPtr
+		_Out_opt_ void ** mappedDataPtr = nullptr
 	);
 };
 
@@ -102,7 +102,7 @@ void ResourceUploadBufferImpl::uploadData (
 	_In_ size_t dataBytes,
 	_In_ size_t alignment,
 	_Out_ size_t & dataGPUVirtualAddress,
-	_Out_ void ** mappedDataPtr
+	_Out_opt_ void ** mappedDataPtr
 ) {
 	alignDataPointerForAllocation(alignment);
 
@@ -129,7 +129,7 @@ void ResourceUploadBuffer::uploadVertexData (
 	_In_ size_t dataBytes,
 	_In_ size_t sizeOfVertex,
 	_Out_ D3D12_VERTEX_BUFFER_VIEW & vertexBufferView,
-	_Out_ void ** mappedDataPtr
+	_Out_opt_ void ** mappedDataPtr
 ) {
 	size_t dataGPUVirtualAddress(0);
 
@@ -152,7 +152,7 @@ void ResourceUploadBuffer::uploadIndexData (
 	_In_ size_t dataBytes,
 	_In_ size_t sizeOfIndex,
 	_Out_ D3D12_INDEX_BUFFER_VIEW & indexBufferView,
-	_Out_ void ** mappedDataPtr
+	_Out_opt_ void ** mappedDataPtr
 ) {
 	size_t dataGPUVirtualAddress(0);
 	size_t dataAlignment = sizeOfIndex;
@@ -191,7 +191,7 @@ void ResourceUploadBuffer::uploadConstantBufferData (
 	_In_ const void * data,
 	_In_ size_t dataBytes,
 	_Out_ D3D12_CONSTANT_BUFFER_VIEW_DESC & cbvDesc,
-	_Out_ void ** mappedDataPtr
+	_Out_opt_ void ** mappedDataPtr
 ) {
 	size_t dataGPUVirtualAddress(0);
 

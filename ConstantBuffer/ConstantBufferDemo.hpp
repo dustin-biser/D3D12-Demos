@@ -4,7 +4,7 @@
 #include <vector>
 #include <DirectXMath.h>
 
-#include "D3D12DemoBase.h"
+#include "D3D12DemoBase.hpp"
 #include "ResourceUploadBuffer.hpp"
 #include "ConstantBufferDefines.hpp"
 
@@ -17,11 +17,10 @@ public:
         std::wstring name
     );
 
-	virtual void InitializeDemo();
-	virtual void Update();
-	virtual void Render();
-	virtual void Present();
-	virtual void CleanupDemo();
+	virtual void initializeDemo();
+	virtual void update();
+	virtual void render();
+	virtual void cleanupDemo();
 	
 
 private:
@@ -30,10 +29,6 @@ private:
 		float normal[3];
 	};
 	typedef ushort Index;
-
-    // Number of buffered frames to pre-flight on the GPU.
-	static const uint NUM_BUFFERED_FRAMES = 3;
-	uint m_frameIndex;
 
 	// Constant Buffer specific
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_cbvDescHeap;
@@ -49,9 +44,6 @@ private:
 	// Pipeline objects.
 	D3D12_VIEWPORT m_viewport;
 	D3D12_RECT m_scissorRect;
-	Microsoft::WRL::ComPtr<IDXGISwapChain3> m_swapChain;
-	Microsoft::WRL::ComPtr<ID3D12Device> m_device;
-	Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_commandQueue;
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature;
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineState;
 	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> m_cmdAllocator[NUM_BUFFERED_FRAMES];
@@ -77,24 +69,12 @@ private:
 	D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
     uint m_indexCount;
 
-	// Frame Synchronization objects.
-	HANDLE m_frameLatencyWaitableObject;
-	HANDLE m_frameFenceEvent[NUM_BUFFERED_FRAMES];
-	Microsoft::WRL::ComPtr<ID3D12Fence> m_frameFence[NUM_BUFFERED_FRAMES];
-	UINT64 m_currentFenceValue;
-	UINT64 m_fenceValue[NUM_BUFFERED_FRAMES];
+	void loadPipelineDependencies();
 
-	const bool m_vsyncEnabled = false;
+	void loadAssets();
 
+	void populateCommandList();
 
-	void LoadPipelineDependencies();
-
-	void LoadAssets();
-
-	void PopulateCommandList();
-
-	void UpdateConstantBuffers();
-
-	bool SwapChainWaitableObjectIsSignaled();
+	void updateConstantBuffers();
 
 }; // end class FrameBuffering

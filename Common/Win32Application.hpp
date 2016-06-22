@@ -1,10 +1,6 @@
-/*
- * Win32Application.h
- */
-
 #pragma once
 
-#include "D3D12DemoBase.h"
+#include <Windows.h>
 
 class D3D12DemoBase;
 

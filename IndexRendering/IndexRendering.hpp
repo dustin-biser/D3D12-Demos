@@ -1,10 +1,7 @@
 #pragma once
 
-#include "D3D12DemoBase.h"
 #include <memory>
-
-using namespace DirectX;
-using Microsoft::WRL::ComPtr;
+#include "D3D12DemoBase.hpp"
 
 
 class IndexRendering : public D3D12DemoBase {
@@ -15,133 +12,92 @@ public:
         std::wstring name
     );
 
-	virtual void InitializeDemo();
-	virtual void Update();
-	virtual void CleanupDemo();
+	virtual void initializeDemo();
+	virtual void update();
+	virtual void render();
+	virtual void cleanupDemo();
 
 private:
-    /// Number of buffered frames
-	static const uint NUM_BUFFERED_FRAMES = 3;
-
 	struct Vertex
 	{
-		XMFLOAT3 position;
-		XMFLOAT4 color;
+		DirectX::XMFLOAT3 position;
+		DirectX::XMFLOAT4 color;
 	};
 
 	// Pipeline objects.
 	D3D12_VIEWPORT m_viewport;
 	D3D12_RECT m_scissorRect;
-	ComPtr<IDXGISwapChain3> m_swapChain;
-	ComPtr<ID3D12Device> m_device;
-	ComPtr<ID3D12CommandAllocator> m_commandAllocator[NUM_BUFFERED_FRAMES];
-	ComPtr<ID3D12CommandQueue> m_commandQueue;
-	ComPtr<ID3D12RootSignature> m_rootSignature;
-	ComPtr<ID3D12PipelineState> m_pipelineState;
-	ComPtr<ID3D12GraphicsCommandList> m_drawCommandList[NUM_BUFFERED_FRAMES];
-    ComPtr<ID3D12GraphicsCommandList> m_copyCommandList;
-	ComPtr<ID3D12CommandAllocator> m_copyCommandAllocator;
+	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> m_commandAllocator[NUM_BUFFERED_FRAMES];
+	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature;
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineState;
+	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_drawCommandList[NUM_BUFFERED_FRAMES];
+    Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_copyCommandList;
+	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> m_copyCommandAllocator;
 
-	ComPtr<ID3D12Resource> m_renderTargets[NUM_BUFFERED_FRAMES];
-	ComPtr<ID3D12DescriptorHeap> m_rtvHeap;
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_renderTargets[NUM_BUFFERED_FRAMES];
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_rtvHeap;
 	uint m_rtvDescriptorSize;
 
 	// App resources.
-	ComPtr<ID3D12Resource> m_vertexBuffer;
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_vertexBuffer;
 	D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
-	ComPtr<ID3D12Resource> m_indexBuffer;
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_indexBuffer;
 	D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
     uint m_indexCount;
 
-	// Synchronization objects.
-	HANDLE m_frameLatencyWaitableObject;
-	uint m_frameIndex;
-	HANDLE m_frameFenceEvent[NUM_BUFFERED_FRAMES];
-	Microsoft::WRL::ComPtr<ID3D12Fence> m_frameFence[NUM_BUFFERED_FRAMES];
-	UINT64 m_currentFenceValue;
-	UINT64 m_fenceValue[NUM_BUFFERED_FRAMES];
-
-	const bool m_vsyncEnabled = true;
 
 
-	void Render();
-	void Present();
+	void loadRenderPipelineDependencies();
+	void loadAssets();
+	void populateCommandList();
 
-	void LoadRenderPipelineDependencies();
-	void LoadAssets();
-	void PopulateCommandList();
-
-	bool SwapChainWaitableObjectIsSignaled();
-
-	void WaitForGPU();
-
-
-    void CreateDevice (
-        _In_ IDXGIFactory4 * dxgiFactory,
-        _In_ bool useWarpDevice,
-        _Out_ ComPtr<ID3D12Device> & device
-    );
-
-    void CreateCommandQueue (
-        _In_ ID3D12Device * device,
-        _Out_ ComPtr<ID3D12CommandQueue> & commandQueue
-    );
-
-    void CreateSwapChain (
-        _In_ IDXGIFactory4 * dxgiFactory,
-        _In_ ID3D12CommandQueue * commandQueue,
-        _In_ uint framebufferWidth,
-        _In_ uint framebufferHeight,
-        _Out_ ComPtr<IDXGISwapChain3> & swapChain
-    );
-
-    void CreateRenderTargetView (
+    void createRenderTargetView (
         _In_ ID3D12Device * device,
         _In_ IDXGISwapChain * swapChain,
-        _Out_ ComPtr<ID3D12DescriptorHeap> & rtvHeap,
+        _Out_ Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> & rtvHeap,
         _Out_ uint & rtvDescriptorSize,
-        _Out_ ComPtr<ID3D12Resource> * renderTargets
+        _Out_ Microsoft::WRL::ComPtr<ID3D12Resource> * renderTargets
     );
 
-    void CreateRootSignature (
+    void createRootSignature (
         _In_ ID3D12Device * device,
-        _Out_ ComPtr<ID3D12RootSignature> & rootSignature
+        _Out_ Microsoft::WRL::ComPtr<ID3D12RootSignature> & rootSignature
     );
 
-    void LoadShaders (
-        _Out_ ComPtr<ID3DBlob> & vertexShaderBlob,
-        _Out_ ComPtr<ID3DBlob> & pixelShaderBlob
+    void loadShaders (
+        _Out_ Microsoft::WRL::ComPtr<ID3DBlob> & vertexShaderBlob,
+        _Out_ Microsoft::WRL::ComPtr<ID3DBlob> & pixelShaderBlob
     );
 
-    void CreatePipelineState (
+    void createPipelineState (
         _In_ ID3D12Device * device,
         _In_ ID3D12RootSignature * rootSignature,
         _In_ ID3DBlob * vertexShaderBlob,
         _In_ ID3DBlob * pixelShaderBlob,
-        _Out_ ComPtr<ID3D12PipelineState> & pipelineState
+        _Out_ Microsoft::WRL::ComPtr<ID3D12PipelineState> & pipelineState
     );
 
-    D3D12_VERTEX_BUFFER_VIEW UploadVertexDataToDefaultHeap (
+    D3D12_VERTEX_BUFFER_VIEW uploadVertexDataToDefaultHeap (
         _In_ ID3D12Device * device,
         _In_ ID3D12GraphicsCommandList * copyCommandList,
-        _Out_ ComPtr<ID3D12Resource> & vertexBufferUploadHeap,
-        _Out_ ComPtr<ID3D12Resource> & vertexBuffer
+        _Out_ Microsoft::WRL::ComPtr<ID3D12Resource> & vertexBufferUploadHeap,
+        _Out_ Microsoft::WRL::ComPtr<ID3D12Resource> & vertexBuffer
     );
 
-    D3D12_INDEX_BUFFER_VIEW UploadIndexDataToDefaultHeap (
+    D3D12_INDEX_BUFFER_VIEW uploadIndexDataToDefaultHeap (
         _In_ ID3D12Device * device,
         _In_ ID3D12GraphicsCommandList * copyCommandList,
-        _Out_ ComPtr<ID3D12Resource> & indexBufferUploadHeap,
-        _Out_ ComPtr<ID3D12Resource> & indexBuffer,
+        _Out_ Microsoft::WRL::ComPtr<ID3D12Resource> & indexBufferUploadHeap,
+        _Out_ Microsoft::WRL::ComPtr<ID3D12Resource> & indexBuffer,
         _Out_ uint & indexCount
     );
 
-    void CreateVertexDataBuffers (
+    void createVertexDataBuffers (
         _In_ ID3D12Device * device,
         _In_ ID3D12CommandQueue * commandQueue,
         _In_ ID3D12GraphicsCommandList * copyCommandList,
-        _Out_ ComPtr<ID3D12Resource> & vertexBuffer,
-        _Out_ ComPtr<ID3D12Resource> & indexBuffer,
+        _Out_ Microsoft::WRL::ComPtr<ID3D12Resource> & vertexBuffer,
+        _Out_ Microsoft::WRL::ComPtr<ID3D12Resource> & indexBuffer,
         _Out_ uint & indexCount
     );
 

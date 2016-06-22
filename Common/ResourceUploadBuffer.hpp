@@ -25,7 +25,7 @@ public:
 		_In_ size_t dataBytes,
 		_In_ size_t sizeOfVertex,
 		_Out_ D3D12_VERTEX_BUFFER_VIEW & vertexBufferView,
-		_Out_ void ** mappedDataPtr = nullptr
+		_Out_opt_ void ** mappedDataPtr = nullptr
 	);
 
 	void uploadIndexData (
@@ -33,14 +33,14 @@ public:
 		_In_ size_t dataBytes,
 		_In_ size_t sizeOfIndex,
 		_Out_ D3D12_INDEX_BUFFER_VIEW & indexBufferView,
-		_Out_ void ** mappedDataPtr = nullptr
+		_Out_opt_ void ** mappedDataPtr = nullptr
 	);
 
 	void uploadConstantBufferData (
 		_In_ const void * data,
 		_In_ size_t dataBytes,
 		_Out_ D3D12_CONSTANT_BUFFER_VIEW_DESC & cbvDesc,
-		_Out_ void ** mappedDataPtr = nullptr
+		_Out_opt_ void ** mappedDataPtr = nullptr
 	);
 
 	D3D12_GPU_VIRTUAL_ADDRESS getGPUVirtualAddress() const;

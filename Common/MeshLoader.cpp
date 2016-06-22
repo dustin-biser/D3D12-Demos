@@ -62,7 +62,7 @@ static void loadIndexData (
 
 //---------------------------------------------------------------------------------------
 void MeshLoader::loadMesh (
-	const char * assetPath,
+	_In_ const char * assetPath,
 	_Out_ Mesh & mesh
 )
 {

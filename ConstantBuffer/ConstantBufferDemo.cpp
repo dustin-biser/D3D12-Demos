@@ -1,10 +1,8 @@
 #include "pch.h"
-using namespace DirectX;
 
 #include "ConstantBufferDemo.hpp"
+using namespace DirectX;
 using Microsoft::WRL::ComPtr;
-
-#include "MeshLoader.hpp"
 
 #include <vector>
 #include <iostream>
@@ -15,16 +13,6 @@ using namespace std;
 //---------------------------------------------------------------------------------------
 // Static Function Declarations
 //---------------------------------------------------------------------------------------
-static void CreateCommandQueue (
-	_In_ ID3D12Device * device,
-	_Out_ ComPtr<ID3D12CommandQueue> & commandQueue
-);
-
-static void CreateDevice (
-    _In_ IDXGIAdapter1 * hardwareAdapter,
-	_Out_ ComPtr<ID3D12Device> & device
-);
-
 static void CreatePipelineState (
 	_In_ ID3D12Device * device,
 	_In_ ID3D12RootSignature * rootSignature,
@@ -33,33 +21,8 @@ static void CreatePipelineState (
 	_Out_ ComPtr<ID3D12PipelineState> & pipelineState
 );
 
-static void CreateRenderTargetView(
-	_In_ ID3D12Device * device,
-	_In_ IDXGISwapChain * swapChain,
-	_In_ uint numBufferedFrames,
-	_Out_ ComPtr<ID3D12DescriptorHeap> & rtvHeap,
-	_Out_ uint & rtvDescriptorSize,
-	_Out_ ComPtr<ID3D12Resource> * renderTargets
-);
-
-static void CreateSwapChain (
-	_In_ IDXGIFactory4 * dxgiFactory,
-	_In_ ID3D12CommandQueue * commandQueue,
-	_In_ uint framebufferWidth,
-	_In_ uint framebufferHeight,
-	_In_ uint numBufferedFrames,
-	_Out_ ComPtr<IDXGISwapChain3> & swapChain,
-	_Out_ HANDLE & frameLatencyWaitableObject
-);
-
 static void OutputMemoryBudgets (
     _In_ ID3D12Device * device
-);
-
-static void WaitForFrameFence (
-	_In_ ID3D12Fence * fence,
-	_In_ uint64 completionValue,
-	_In_ HANDLE fenceEvent
 );
 
 
@@ -70,10 +33,8 @@ ConstantBufferDemo::ConstantBufferDemo (
     std::wstring name
 )   
     :   D3D12DemoBase(width, height, name),
-        m_frameIndex(0),
-		m_viewport{},       // default to all zeros.
-		m_scissorRect{},    // default to all zeros.
-		m_fenceValue{}		// default to all zeros.
+		m_viewport{},    // default to all zeros.
+		m_scissorRect{}  // default to all zeros.
 {
 	m_viewport.Width = float(width);
 	m_viewport.Height = float(height);
@@ -85,62 +46,20 @@ ConstantBufferDemo::ConstantBufferDemo (
 
 
 //---------------------------------------------------------------------------------------
-void ConstantBufferDemo::InitializeDemo()
+void ConstantBufferDemo::initializeDemo()
 {
-	LoadPipelineDependencies();
+	loadPipelineDependencies();
 
-	LoadAssets();
+	loadAssets();
 
 	OutputMemoryBudgets(m_device.Get());
 }
 
 
 //---------------------------------------------------------------------------------------
-// Loads the rendering pipeline dependencies such as device, command queue, swap chain,
-// render target views and command allocator.
-void ConstantBufferDemo::LoadPipelineDependencies()
+// Loads the rendering pipeline dependencies.
+void ConstantBufferDemo::loadPipelineDependencies()
 {
-#if defined(_DEBUG)
-	//-- Enable the D3D12 debug layer:
-    ComPtr<ID3D12Debug> debugController;
-    if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController))))
-    {
-        debugController->EnableDebugLayer();
-    }
-#endif
-
-	ComPtr<IDXGIFactory4> dxgiFactory;
-	CHECK_DX_RESULT (
-        CreateDXGIFactory1(IID_PPV_ARGS(&dxgiFactory))
-    );
-
-	ComPtr<IDXGIAdapter1> hardwareAdapter;
-	GetHardwareAdapter(dxgiFactory.Get(), &hardwareAdapter);
-
-    // Create the device.
-    CreateDevice(hardwareAdapter.Get(), m_device);
-	NAME_D3D12_OBJECT(m_device);
-
-    // Create the direct command queue.
-    CreateCommandQueue (
-        m_device.Get(),
-        m_commandQueue
-    ); NAME_D3D12_OBJECT(m_commandQueue);
-
-    // Create the swap chain.
-    CreateSwapChain (
-        dxgiFactory.Get(),
-        m_commandQueue.Get(),
-        m_windowWidth,
-        m_windowHeight,
-		NUM_BUFFERED_FRAMES,
-        m_swapChain,
-		m_frameLatencyWaitableObject
-    );
-    
-    // Set the frame index so it corresponds with the current back buffer index.
-	m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
-
 	//-- Create descriptor heaps:
 	{
 		// Describe and create the RTV Descriptor Heap.
@@ -164,8 +83,8 @@ void ConstantBufferDemo::LoadPipelineDependencies()
 
 	//-- Create a RTV for each swapChain buffer:
 	{
-		// Create a RTV handle that points into the RTV descriptor heap.
-		CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle (
+		// Create a RTV handle that points to the RTV descriptor heap.
+		CD3DX12_CPU_DESCRIPTOR_HANDLE rtvDescHeapHandle (
 			m_rtvDescHeap->GetCPUDescriptorHandleForHeapStart()
 		);
 
@@ -184,10 +103,10 @@ void ConstantBufferDemo::LoadPipelineDependencies()
 			);
 
 			// Create a RTV and store it at the heap location pointed to by rtvHandle.
-			m_device->CreateRenderTargetView(m_renderTarget[n].Get(), &rtvDesc, rtvHandle);
+			m_device->CreateRenderTargetView(m_renderTarget[n].Get(), &rtvDesc, rtvDescHeapHandle);
 
 			// Increment rtvHandle so it points to the next RTV descriptor in the heap.
-			rtvHandle.Offset(1, rtvDescriptorSize);
+			rtvDescHeapHandle.Offset(1, rtvDescriptorSize);
 		}
 		NAME_D3D12_OBJECT_ARRAY(m_renderTarget, NUM_BUFFERED_FRAMES);
 	}
@@ -195,7 +114,7 @@ void ConstantBufferDemo::LoadPipelineDependencies()
     //-- Create command allocator for managing command list memory:
 	for(int i(0); i < NUM_BUFFERED_FRAMES; ++i) {
 		CHECK_DX_RESULT(
-			m_device->CreateCommandAllocator(
+			m_device->CreateCommandAllocator (
 				D3D12_COMMAND_LIST_TYPE_DIRECT,
 				IID_PPV_ARGS(&m_cmdAllocator[i])
 			)
@@ -204,12 +123,12 @@ void ConstantBufferDemo::LoadPipelineDependencies()
 	NAME_D3D12_OBJECT_ARRAY(m_cmdAllocator, NUM_BUFFERED_FRAMES);
 
 
-    //-- Create the draw command lists which will hold our rendering commands:
+    //-- Create the direct command lists which will hold our rendering commands:
 	{
 		// Create one command list for each swap chain buffer.
 		for (uint i(0); i < NUM_BUFFERED_FRAMES; ++i) {
 			CHECK_DX_RESULT(
-				m_device->CreateCommandList(
+				m_device->CreateCommandList (
 					0,
 					D3D12_COMMAND_LIST_TYPE_DIRECT,
 					m_cmdAllocator[i].Get(),
@@ -222,44 +141,8 @@ void ConstantBufferDemo::LoadPipelineDependencies()
 		}
 		NAME_D3D12_OBJECT_ARRAY(m_drawCmdList, NUM_BUFFERED_FRAMES);
 	}
-
-    // Create frame synchronization objects.
-	for (int i(0); i < NUM_BUFFERED_FRAMES; ++i) {
-		CHECK_DX_RESULT(
-			m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_frameFence[i]))
-		);
-		m_fenceValue[i] = 0;
-
-		// Create an event handle to use for frame synchronization.
-		m_frameFenceEvent[i] = CreateEvent(nullptr, FALSE, FALSE, nullptr);
-		if (m_frameFenceEvent[i] == nullptr) {
-			CHECK_DX_RESULT (
-				HRESULT_FROM_WIN32(GetLastError())
-			);
-		}
-	}
-	m_currentFenceValue = 1;  
 }
 
-
-//---------------------------------------------------------------------------------------
-static void CreateDevice (
-    _In_ IDXGIAdapter1 * hardwareAdapter,
-	_Out_ ComPtr<ID3D12Device> & device
-) {
-	// Display hardware adapter name.
-	DXGI_ADAPTER_DESC1 adapterDesc = {};
-	hardwareAdapter->GetDesc1(&adapterDesc);
-	std::wcout << "Adapter: " << adapterDesc.Description << std::endl;
-
-	CHECK_DX_RESULT (
-		D3D12CreateDevice (
-			hardwareAdapter,
-			D3D_FEATURE_LEVEL_11_0,
-			IID_PPV_ARGS(&device)
-		)
-	);
-}
 
 //---------------------------------------------------------------------------------------
 static void OutputMemoryBudgets (
@@ -284,113 +167,23 @@ static void OutputMemoryBudgets (
          << "AvailableForReservation: " << videoMemoryInfo.AvailableForReservation << " bytes" << endl
          << "CurrantUsage: " << videoMemoryInfo.CurrentUsage << " bytes" << endl;
     cout << endl;
-}
-
-//---------------------------------------------------------------------------------------
-static void CreateCommandQueue (
-    _In_ ID3D12Device * device,
-    _Out_ ComPtr<ID3D12CommandQueue> & commandQueue
-) {
-	// Describe and create the direct command queue.
-    D3D12_COMMAND_QUEUE_DESC queueDesc = {};
-    queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
-    queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
-
-    CHECK_DX_RESULT(
-        device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&commandQueue))
-    );
-}
 
 
-//---------------------------------------------------------------------------------------
-void CreateSwapChain (
-    _In_ IDXGIFactory4 * dxgiFactory,
-    _In_ ID3D12CommandQueue * commandQueue,
-    _In_ uint framebufferWidth,
-    _In_ uint framebufferHeight,
-	_In_ uint numBufferedFrames,
-    _Out_ ComPtr<IDXGISwapChain3> & swapChain,
-	_Out_ HANDLE & frameLatencyWaitableObject
-) {
+	D3D12_FEATURE_DATA_GPU_VIRTUAL_ADDRESS_SUPPORT featureData;
 
-	// Describe and create the swap chain.
-	DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
-	swapChainDesc.BufferCount = numBufferedFrames;
-	swapChainDesc.Width = framebufferWidth;
-	swapChainDesc.Height = framebufferHeight;
-	swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
-	swapChainDesc.SampleDesc.Count = 1;
-	swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
-
-
-	ComPtr<IDXGISwapChain1> swapChain1;
 	CHECK_DX_RESULT (
-        dxgiFactory->CreateSwapChainForHwnd (
-            commandQueue, // Swap chain needs the queue so that it can force a flush on it.
-            Win32Application::GetHwnd(),
-            &swapChainDesc,
-            nullptr,
-            nullptr,
-            &swapChain1
-		)
-    );
-
-	// This sample does not support full screen transitions.
-	CHECK_DX_RESULT (
-        dxgiFactory->MakeWindowAssociation (
-            Win32Application::GetHwnd(),
-            DXGI_MWA_NO_ALT_ENTER
-        )
-    );
-
-	ComPtr<IDXGISwapChain2> swapChain2;
-	CHECK_DX_RESULT(
-		swapChain1.As(&swapChain2)
+		device->CheckFeatureSupport(D3D12_FEATURE_GPU_VIRTUAL_ADDRESS_SUPPORT,
+			&featureData, sizeof(D3D12_FEATURE_DATA_GPU_VIRTUAL_ADDRESS_SUPPORT))
 	);
-	swapChain2->SetMaximumFrameLatency(numBufferedFrames);
-
-	// Get the frame latency waitable objects.
-	frameLatencyWaitableObject = swapChain2->GetFrameLatencyWaitableObject();
-
-	CHECK_DX_RESULT (
-        // Acquire the IDXGISwapChain3 interface.  A reference to this interface will be
-        // stored in swapChain.
-        swapChain1.As(&swapChain)
-    );
+	
+	cout << "Max GPU Virtual Address Bits per Process: " << featureData.MaxGPUVirtualAddressBitsPerProcess << endl;
+	cout << "Max GPU Virtual Address Bits per Resource: " << featureData.MaxGPUVirtualAddressBitsPerResource << endl;
 }
 
 
-//---------------------------------------------------------------------------------------
-static void CreateRenderTargetView (
-    _In_ ID3D12Device * device,
-    _In_ IDXGISwapChain * swapChain,
-	_In_ uint numBufferedFrames,
-    _Out_ ComPtr<ID3D12DescriptorHeap> & rtvHeap,
-    _Out_ uint & rtvDescriptorSize,
-    _Out_ ComPtr<ID3D12Resource> * renderTargets
-) {
-    // Describe and create a render target view (RTV) descriptor heap which will
-    // hold the RTV descriptors.
-	{
-		D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
-		rtvHeapDesc.NumDescriptors = numBufferedFrames;
-		rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-		rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-		CHECK_DX_RESULT (
-            device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&rtvHeap))
-        );
-
-		rtvDescriptorSize =
-            device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-	}
-
-
-}
 
 //---------------------------------------------------------------------------------------
-void ConstantBufferDemo::LoadAssets()
+void ConstantBufferDemo::loadAssets()
 {
 	//-- Create root signature:
 	{
@@ -435,8 +228,8 @@ void ConstantBufferDemo::LoadAssets()
 	//-- Load shader byte code:
 	ComPtr<ID3DBlob> vertexShaderBlob;
 	ComPtr<ID3DBlob> pixelShaderBlob;
-	D3DReadFileToBlob(GetAssetPath(L"VertexShader.cso").c_str(), &vertexShaderBlob);
-	D3DReadFileToBlob(GetAssetPath(L"PixelShader.cso").c_str(), &pixelShaderBlob);
+	D3DReadFileToBlob(getAssetPath(L"VertexShader.cso").c_str(), &vertexShaderBlob);
+	D3DReadFileToBlob(getAssetPath(L"PixelShader.cso").c_str(), &pixelShaderBlob);
 
 	// Create the pipeline state object.
 	CreatePipelineState(
@@ -537,12 +330,11 @@ void ConstantBufferDemo::LoadAssets()
 
 	// Create SceneConstants ConstantBuffer storage within upload heap, duplicating
 	// storage space for each buffered frame.
-	size_t sceneConstantsSize = sizeof(SceneConstants);
 	for (int i(0); i < NUM_BUFFERED_FRAMES; ++i) {
-		ZeroMemory(&m_sceneConstData[i], sceneConstantsSize);
+		ZeroMemory(&m_sceneConstData[i], sizeof(SceneConstants));
 		m_uploadBuffer->uploadConstantBufferData(
 			reinterpret_cast<const void *>(&m_sceneConstData[i]),
-			sceneConstantsSize,
+			sizeof(SceneConstants),
 			m_cbvDesc_SceneConstants[i],
 			&m_cbv_SceneConstants_dataPtr[i]
 		);
@@ -550,12 +342,11 @@ void ConstantBufferDemo::LoadAssets()
 
 	// Create PointLight ConstantBuffer storage within upload heap, duplicating
 	// storage space for each buffered frame.
-	size_t pointLightSize = sizeof(PointLight);
 	for (int i(0); i < NUM_BUFFERED_FRAMES; ++i) {
-		ZeroMemory(&m_pointLightConstData[i], pointLightSize);
+		ZeroMemory(&m_pointLightConstData[i], sizeof(PointLight));
 		m_uploadBuffer->uploadConstantBufferData(
 			reinterpret_cast<const void *>(&m_pointLightConstData[i]),
-			pointLightSize,
+			sizeof(PointLight),
 			m_cbvDesc_PointLight[i],
 			&m_cbv_PointLight_dataPtr[i]
 		);
@@ -625,13 +416,6 @@ void ConstantBufferDemo::LoadAssets()
 
 
 //---------------------------------------------------------------------------------------
-static void CreateRootSignature (
-    _In_ ID3D12Device * device,
-    _Out_ ComPtr<ID3D12RootSignature> & rootSignature
-) {
-}
-
-//---------------------------------------------------------------------------------------
 static void CreatePipelineState (
     _In_ ID3D12Device * device,
     _In_ ID3D12RootSignature * rootSignature,
@@ -695,7 +479,7 @@ static void CreatePipelineState (
 }
 
 //---------------------------------------------------------------------------------------
-void ConstantBufferDemo::UpdateConstantBuffers()
+void ConstantBufferDemo::updateConstantBuffers()
 {
 	//-- Create and Upload SceneContants Data:
 	{
@@ -765,101 +549,42 @@ void ConstantBufferDemo::UpdateConstantBuffers()
 
 
 		// Update SceneConstants ConstantBuffer data:
-		memcpy (
-			m_cbv_SceneConstants_dataPtr[m_frameIndex], 
-			&m_sceneConstData[m_frameIndex],
-			sizeof(SceneConstants)
-		);
+		memcpy (m_cbv_SceneConstants_dataPtr[m_frameIndex], 
+				&m_sceneConstData[m_frameIndex],
+				sizeof(SceneConstants));
 
 		// Update PointLight ConstantBuffer data:
-		memcpy (
-			m_cbv_PointLight_dataPtr[m_frameIndex], 
-			&m_pointLightConstData[m_frameIndex],
-			sizeof(PointLight)
-		);
-	}
-}
-
-
-//---------------------------------------------------------------------------------------
-// Perform per-frame logic + rendering
-void ConstantBufferDemo::Update()
-{
-	WaitForFrameFence (
-		m_frameFence[m_frameIndex].Get(),
-		m_fenceValue[m_frameIndex],
-		m_frameFenceEvent[m_frameIndex]
-	);
-
-	UpdateConstantBuffers();
-
-	if(m_vsyncEnabled) {
-		// Wait until swap chain has finished presenting all queued frames
-		WaitForSingleObject(m_frameLatencyWaitableObject, INFINITE);
-		Render();
-		Present();
-	} else if (SwapChainWaitableObjectIsSignaled()) {
-		Render();
-		Present();
+		memcpy (m_cbv_PointLight_dataPtr[m_frameIndex], 
+				&m_pointLightConstData[m_frameIndex],
+				sizeof(PointLight) );
 	}
 }
 
 //---------------------------------------------------------------------------------------
-bool ConstantBufferDemo::SwapChainWaitableObjectIsSignaled()
+void ConstantBufferDemo::update()
 {
-	return WAIT_OBJECT_0 == WaitForSingleObjectEx(m_frameLatencyWaitableObject, 0, true);
+	this->updateConstantBuffers();
 }
 
-
 //---------------------------------------------------------------------------------------
-// Render the scene.
-void ConstantBufferDemo::Render()
+void ConstantBufferDemo::render()
 {
-	PopulateCommandList();
+	this->populateCommandList();
 
 	// Execute command list for the current frame index
 	ID3D12CommandList * commandLists[] = { m_drawCmdList[m_frameIndex].Get() };
-	m_commandQueue->ExecuteCommandLists(_countof(commandLists), commandLists);
+	m_directCmdQueue->ExecuteCommandLists(_countof(commandLists), commandLists);
 }
 
+
 //---------------------------------------------------------------------------------------
-// Present to contents of the back-buffer, signal the frame-fence, then increment the
-// frame index so the next frame can be processed.
-void ConstantBufferDemo::Present()
+void ConstantBufferDemo::cleanupDemo()
 {
-	uint syncInterval = m_vsyncEnabled ? 1 : 0;
-	CHECK_DX_RESULT(
-		m_swapChain->Present(syncInterval, 0)
-	);
 
-	m_commandQueue->Signal(m_frameFence[m_frameIndex].Get(), m_currentFenceValue);
-	m_fenceValue[m_frameIndex] = m_currentFenceValue;
-	++m_currentFenceValue;
-
-	m_frameIndex = (m_frameIndex + 1) % NUM_BUFFERED_FRAMES;
 }
 
 //---------------------------------------------------------------------------------------
-void ConstantBufferDemo::CleanupDemo()
-{
-	m_commandQueue->Signal(m_frameFence[m_frameIndex].Get(), m_currentFenceValue);
-	m_fenceValue[m_frameIndex] = m_currentFenceValue;
-	++m_currentFenceValue;
-
-	// Wait for command queue to finish processing all buffered frames
-	for (int i = 0; i < NUM_BUFFERED_FRAMES; ++i) {
-		WaitForFrameFence(m_frameFence[i].Get(), m_fenceValue[i], m_frameFenceEvent[i]);
-	}
-
-	// Clean up event handles
-	for (auto event : m_frameFenceEvent) {
-		CloseHandle(event);
-	}
-}
-
-//---------------------------------------------------------------------------------------
-
-void ConstantBufferDemo::PopulateCommandList()
+void ConstantBufferDemo::populateCommandList()
 {
 	auto * cmdAllocator = m_cmdAllocator[m_frameIndex].Get();
 	auto & drawCmdList = m_drawCmdList[m_frameIndex];
@@ -898,9 +623,10 @@ void ConstantBufferDemo::PopulateCommandList()
 	);
 
 	uint rtvDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	int offset(m_frameIndex);
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle (
 		m_rtvDescHeap->GetCPUDescriptorHandleForHeapStart(),
-		m_frameIndex, 
+		offset, 
 		rtvDescriptorSize
 	);
 	// Get a handle to the depth/stencil buffer
@@ -918,7 +644,9 @@ void ConstantBufferDemo::PopulateCommandList()
 	);
 
 	drawCmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	drawCmdList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
+	
+	const uint inputSlot0 = 0;
+	drawCmdList->IASetVertexBuffers(inputSlot0, 1, &m_vertexBufferView);
 	drawCmdList->IASetIndexBuffer(&m_indexBufferView);
 	
 	UINT numIndices = static_cast<UINT>(m_indexArray.size());
@@ -934,18 +662,4 @@ void ConstantBufferDemo::PopulateCommandList()
 	);
 
 	CHECK_DX_RESULT(drawCmdList->Close());
-}
-
-//---------------------------------------------------------------------------------------
-static void WaitForFrameFence (
-	_In_ ID3D12Fence * fence,
-	_In_ uint64 completionValue,
-	_In_ HANDLE fenceEvent
-) {
-	if (fence->GetCompletedValue() < completionValue) {
-		CHECK_DX_RESULT (
-			fence->SetEventOnCompletion(completionValue, fenceEvent)
-		);
-		WaitForSingleObject(fenceEvent, INFINITE);
-	}
 }

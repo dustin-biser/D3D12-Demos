@@ -35,7 +35,7 @@ void QueryVideoMemoryInfo (
 
 //---------------------------------------------------------------------------------------
 void GetWorkingDir (
-	_Out_writes_(pathSize) WCHAR* path,
+	_Out_writes_(pathSize) WCHAR * path,
 	UINT pathSize
 ) {
 	if (path == nullptr)

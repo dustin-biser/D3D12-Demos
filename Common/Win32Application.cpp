@@ -1,13 +1,11 @@
-/*
- * Win32Application.cpp
- */
-
 #include "pch.h"
 
-#include "Win32Application.hpp"
 #include <cassert>
 #include <chrono>
 #include <cwchar>
+
+#include "Win32Application.hpp"
+#include "D3D12DemoBase.hpp"
 
 
 HWND Win32Application::m_hwnd = nullptr;
@@ -19,24 +17,17 @@ int Win32Application::Run (
     int nCmdShow
 ) {
     assert(demo);
-	// Parse the command line parameters
-	int argc;
-	LPWSTR * argv = CommandLineToArgvW(GetCommandLineW(), &argc);
-	demo->ParseCommandLineArgs(argv, argc);
-	LocalFree(argv);
 
-
-    //-- Open a new console window and redirect std IO streams to it:
+    //-- Open a new console window and redirect std streams to it:
     {
         // Open a new console window
         AllocConsole();
 
         //-- Associate std input/output with newly opened console window:
-        freopen("CONIN$", "r", stdin);
-        freopen("CONOUT$", "w", stdout);
-        freopen("CONOUT$", "w", stderr);
+        FILE * file0 = freopen("CONIN$", "r", stdin);
+        FILE * file1 = freopen("CONOUT$", "w", stdout);
+        FILE * file2 = freopen("CONOUT$", "w", stderr);
     }
-
 
 	//-- Initialize the window class:
 	WNDCLASSEX windowClass = { 0 };
@@ -50,18 +41,18 @@ int Win32Application::Run (
 
     //-- Center window:
     RECT windowRect;
-    GetClientRect(GetDesktopWindow(), &windowRect);
-    long width = static_cast<LONG>(demo->GetWidth());
-    long height = static_cast<LONG>(demo->GetHeight());
-    windowRect.left = (windowRect.right / 2) - (width / 2);
-    windowRect.top = (windowRect.bottom / 2) - (height / 2);
+	GetClientRect(GetDesktopWindow(), &windowRect);
+	long width = static_cast<LONG>(demo->getWindowWidth());
+	long height = static_cast<LONG>(demo->getWindowHeight());
+	windowRect.left = (windowRect.right / 2) - (width / 2);
+	windowRect.top = (windowRect.bottom / 2) - (height / 2);
 
 	AdjustWindowRect(&windowRect, WS_OVERLAPPEDWINDOW, FALSE);
 
 	// Create the window and store a handle to it.
 	m_hwnd = CreateWindow (
 		windowClass.lpszClassName,
-		demo->GetWindowTitle(),
+		demo->getWindowTitle(),
 		WS_OVERLAPPEDWINDOW,
 		windowRect.left,
 		windowRect.top,
@@ -75,8 +66,12 @@ int Win32Application::Run (
                         // interact with the D3D12Demo instance.
     );
 
-	// Initialize the sample. OnInit is defined in each child-implementation of DXSample.
-	demo->InitializeDemo();
+	// Run setup code common to all demos
+	demo->D3D12DemoBase::initializeDemo();
+
+	// Run code specific to setting up derived demo.
+	demo->initializeDemo();
+
 
 	ShowWindow(m_hwnd, nCmdShow);
 
@@ -99,10 +94,12 @@ int Win32Application::Run (
             // Dispatches a message to a the registered window procedure.
             DispatchMessage(&msg);
         }
-        demo->Update();
+        demo->buildNextFrame();
+		demo->presentNextFrame();
+
         // End frame timer.
         auto timerEnd = std::chrono::high_resolution_clock::now();
-        frameCount++;
+        ++frameCount;
 
         auto timeDelta = 
             std::chrono::duration<double, std::milli>(timerEnd - timerStart).count();
@@ -113,7 +110,8 @@ int Win32Application::Run (
 			float msPerFrame = fpsTimer / float(frameCount);
             float fps = float(frameCount) / fpsTimer * 1000.0f;
             wchar_t buffer[256];
-			swprintf(buffer, _countof(buffer), L"%s - %.1f fps (%.2f ms)", demo->GetWindowTitle(), fps, msPerFrame);
+			swprintf(buffer, _countof(buffer), L"%s - %.1f fps (%.2f ms)",
+				demo->getWindowTitle(), fps, msPerFrame);
             SetWindowText(m_hwnd, buffer);
 
             // Reset timing info.
@@ -122,7 +120,10 @@ int Win32Application::Run (
         }
 	}
 
-	demo->CleanupDemo();
+	// Clean up derived class specific items
+	demo->cleanupDemo(); 
+	// Clean up base class specific items
+	demo->D3D12DemoBase::cleanupDemo(); 
 
 	// Return this part of the WM_QUIT message to Windows.
 	return static_cast<char>(msg.wParam);
@@ -135,16 +136,17 @@ LRESULT CALLBACK Win32Application::WindowProc (
     WPARAM wParam,
     LPARAM lParam
 ) {
-    // Retrieve a pointer to the DXSample instance held by the user data field of our 
+    // Retrieve a pointer to the D3D12DemoBase instance held by the user data field of our 
     // window instance.
-	D3D12DemoBase * pSample = reinterpret_cast<D3D12DemoBase*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
+	D3D12DemoBase * demo =
+		reinterpret_cast<D3D12DemoBase*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
 
 	switch (message)
 	{
 	case WM_CREATE:
 		{
-			// Save the DXSample* passed in to CreateWindow and store it in the window's
-            // user data field so we can retrieve it later.
+			// Save the D3D12DemoBase ptr passed into CreateWindow and store it in the
+			// window's user data field so we can retrieve it later.
 			LPCREATESTRUCT pCreateStruct = reinterpret_cast<LPCREATESTRUCT>(lParam);
 			SetWindowLongPtr(hWnd, GWLP_USERDATA,
                 reinterpret_cast<LONG_PTR>(pCreateStruct->lpCreateParams));
@@ -155,16 +157,16 @@ LRESULT CALLBACK Win32Application::WindowProc (
         if (wParam == VK_ESCAPE) {
             PostQuitMessage(0);
         }
-		else if (pSample)
+		else if (demo)
 		{
-			pSample->OnKeyDown(static_cast<UINT8>(wParam));
+			demo->onKeyDown(static_cast<UINT8>(wParam));
 		}
 		return 0;
 
 	case WM_KEYUP:
-		if (pSample)
+		if (demo)
 		{
-			pSample->OnKeyUp(static_cast<UINT8>(wParam));
+			demo->onKeyUp(static_cast<UINT8>(wParam));
 		}
 		return 0;
 
@@ -177,6 +179,6 @@ LRESULT CALLBACK Win32Application::WindowProc (
 		return 0;
 	}
 
-	// Handle any messages the switch statement didn't.
+	// Handle any messages the switch statement above didn't.
 	return DefWindowProc(hWnd, message, wParam, lParam);
 }

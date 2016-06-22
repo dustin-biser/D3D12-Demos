@@ -1,15 +1,13 @@
 #include "pch.h"
-#include "IndexRendering.hpp"
 
 #include <vector>
 #include <iostream>
+#include "IndexRendering.hpp"
+
+using Microsoft::WRL::ComPtr;
+using namespace DirectX;
 using namespace std;
 
-static void WaitForFrameFence(
-	_In_ ID3D12Fence * fence,
-	_In_ uint64 completionValue,
-	_In_ HANDLE fenceEvent
-);
 
 //---------------------------------------------------------------------------------------
 IndexRendering::IndexRendering (
@@ -18,12 +16,9 @@ IndexRendering::IndexRendering (
     std::wstring name
 )   
     :   D3D12DemoBase(width, height, name),
-        m_frameIndex(0),
         m_viewport(),
         m_scissorRect(),
-        m_rtvDescriptorSize(0),
-		m_currentFenceValue(0),
-		m_fenceValue{} // default to all zeros.
+        m_rtvDescriptorSize(0)
 {
 	m_viewport.Width = float(width);
 	m_viewport.Height = float(height);
@@ -35,60 +30,20 @@ IndexRendering::IndexRendering (
 
 
 //---------------------------------------------------------------------------------------
-void IndexRendering::InitializeDemo()
+void IndexRendering::initializeDemo()
 {
-	LoadRenderPipelineDependencies();
-	LoadAssets();
+	loadRenderPipelineDependencies();
+	loadAssets();
 }
 
 
 //---------------------------------------------------------------------------------------
 // Loads the rendering pipeline dependencies such as device, command queue, swap chain,
 // render target views and command allocator.
-void IndexRendering::LoadRenderPipelineDependencies()
+void IndexRendering::loadRenderPipelineDependencies()
 {
-#if defined(_DEBUG)
-	//-- Enable the D3D12 debug layer:
-    ComPtr<ID3D12Debug> debugController;
-    if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController))))
-    {
-        debugController->EnableDebugLayer();
-    }
-#endif
-
-	ComPtr<IDXGIFactory4> dxgiFactory;
-	CHECK_DX_RESULT (
-        CreateDXGIFactory1(IID_PPV_ARGS(&dxgiFactory))
-    );
-
-
-    // Create the device.
-    this->CreateDevice (
-        dxgiFactory.Get(),
-        m_useWarpDevice,
-        m_device
-    ); NAME_D3D12_OBJECT(m_device);
-
-    // Create the direct command queue.
-    this->CreateCommandQueue (
-        m_device.Get(),
-        m_commandQueue
-    ); NAME_D3D12_OBJECT(m_commandQueue);
-
-    // Create the swap chain.
-    this->CreateSwapChain (
-        dxgiFactory.Get(),
-        m_commandQueue.Get(),
-        m_windowWidth,
-        m_windowHeight,
-        m_swapChain
-    );
-    
-    // Set the current frame index to correspond with the current back buffer index.
-	m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
-
     // Create RTVs, one for each SwapChain buffer.
-    this->CreateRenderTargetView (
+    this->createRenderTargetView (
         m_device.Get(),
         m_swapChain.Get(),
         m_rtvHeap,
@@ -149,147 +104,11 @@ void IndexRendering::LoadRenderPipelineDependencies()
          )
     );
     NAME_D3D12_OBJECT(m_copyCommandList);
-
-    // Create synchronization primitive.
-	for(int i(0); i < NUM_BUFFERED_FRAMES; ++i) {
-		CHECK_DX_RESULT(
-			m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_frameFence[i]))
-		);
-		m_fenceValue[i] = 0;
-
-		// Create an event handle to use for frame synchronization.
-		m_frameFenceEvent[i] = CreateEvent(nullptr, FALSE, FALSE, nullptr);
-		if (m_frameFenceEvent[i] == nullptr) {
-			CHECK_DX_RESULT(
-				HRESULT_FROM_WIN32(GetLastError())
-			);
-		}
-	}
-	m_currentFenceValue = 1;  
-
-}
-
-//---------------------------------------------------------------------------------------
-void IndexRendering::CreateDevice (
-    _In_ IDXGIFactory4 * dxgiFactory,
-    _In_ bool useWarpDevice,
-	_Out_ ComPtr<ID3D12Device> & device
-) {
-	if (useWarpDevice)
-	{
-		ComPtr<IDXGIAdapter> warpAdapter;
-		CHECK_DX_RESULT (
-            dxgiFactory->EnumWarpAdapter(IID_PPV_ARGS(&warpAdapter))
-        );
-
-        // Display warp adapter name.
-        DXGI_ADAPTER_DESC adapterDesc = {};
-        warpAdapter->GetDesc(&adapterDesc);
-        std::wcout << "Adapter: " << adapterDesc.Description << std::endl;
-
-		CHECK_DX_RESULT (
-            D3D12CreateDevice (
-                warpAdapter.Get(),
-                D3D_FEATURE_LEVEL_11_0,
-                IID_PPV_ARGS(&device)
-            )
-        );
-	}
-	else
-	{
-		ComPtr<IDXGIAdapter1> hardwareAdapter;
-		GetHardwareAdapter(dxgiFactory, &hardwareAdapter);
-
-        // Display hardware adapter name.
-        DXGI_ADAPTER_DESC1 adapterDesc = {};
-        hardwareAdapter->GetDesc1(&adapterDesc);
-        std::wcout << "Adapter: " << adapterDesc.Description << std::endl;
-
-		CHECK_DX_RESULT (
-            D3D12CreateDevice (
-                hardwareAdapter.Get(),
-			    D3D_FEATURE_LEVEL_11_0,
-			    IID_PPV_ARGS(&device)
-            )
-        );
-	}
-}
-
-//---------------------------------------------------------------------------------------
-void IndexRendering::CreateCommandQueue (
-    _In_ ID3D12Device * device,
-    _Out_ ComPtr<ID3D12CommandQueue> & commandQueue
-) {
-	// Describe and create the direct command queue.
-    D3D12_COMMAND_QUEUE_DESC queueDesc = {};
-    queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
-    queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
-
-    CHECK_DX_RESULT(
-        device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&commandQueue))
-    );
 }
 
 
 //---------------------------------------------------------------------------------------
-void IndexRendering::CreateSwapChain (
-    _In_ IDXGIFactory4 * dxgiFactory,
-    _In_ ID3D12CommandQueue * commandQueue,
-    _In_ uint framebufferWidth,
-    _In_ uint framebufferHeight,
-    _Out_ ComPtr<IDXGISwapChain3> & swapChain
-) {
-
-	// Describe and create the swap chain.
-	DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
-	swapChainDesc.BufferCount = NUM_BUFFERED_FRAMES;
-	swapChainDesc.Width = framebufferWidth;
-	swapChainDesc.Height = framebufferHeight;
-	swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
-	swapChainDesc.SampleDesc.Count = 1;
-	swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
-
-	ComPtr<IDXGISwapChain1> swapChain1;
-	CHECK_DX_RESULT (
-        dxgiFactory->CreateSwapChainForHwnd (
-            commandQueue, // Swap chain needs the queue so that it can force a flush on it.
-            Win32Application::GetHwnd(),
-            &swapChainDesc,
-            nullptr,
-            nullptr,
-            &swapChain1
-		)
-    );
-
-	// This sample does not support full screen transitions.
-	CHECK_DX_RESULT (
-        dxgiFactory->MakeWindowAssociation (
-            Win32Application::GetHwnd(),
-            DXGI_MWA_NO_ALT_ENTER
-        )
-    );
-
-	ComPtr<IDXGISwapChain2> swapChain2;
-	CHECK_DX_RESULT(
-		swapChain1.As(&swapChain2)
-	);
-	swapChain2->SetMaximumFrameLatency(NUM_BUFFERED_FRAMES);
-
-	// Get the frame latency waitable objects.
-	m_frameLatencyWaitableObject = swapChain2->GetFrameLatencyWaitableObject();
-
-	CHECK_DX_RESULT (
-        // Acquire the IDXGISwapChain3 interface.  A reference to this interface will be
-        // stored in swapChain.
-        swapChain1.As(&swapChain)
-    );
-}
-
-
-//---------------------------------------------------------------------------------------
-void IndexRendering::CreateRenderTargetView (
+void IndexRendering::createRenderTargetView (
     _In_ ID3D12Device * device,
     _In_ IDXGISwapChain * swapChain,
     _Out_ ComPtr<ID3D12DescriptorHeap> & rtvHeap,
@@ -337,10 +156,10 @@ void IndexRendering::CreateRenderTargetView (
 
 //---------------------------------------------------------------------------------------
 // Load the sample assets.
-void IndexRendering::LoadAssets()
+void IndexRendering::loadAssets()
 {
 	// Create an empty root signature.
-    this->CreateRootSignature(
+    this->createRootSignature(
         m_device.Get(),
         m_rootSignature
     );
@@ -348,10 +167,10 @@ void IndexRendering::LoadAssets()
     // Load shader bytecode.
     ComPtr<ID3DBlob> vertexShaderBlob;
     ComPtr<ID3DBlob> pixelShaderBlob;
-    this->LoadShaders(vertexShaderBlob, pixelShaderBlob);
+    this->loadShaders(vertexShaderBlob, pixelShaderBlob);
 
 	// Create the pipeline state object.
-    this->CreatePipelineState (
+    this->createPipelineState (
         m_device.Get(),
         m_rootSignature.Get(),
         vertexShaderBlob.Get(),
@@ -359,9 +178,9 @@ void IndexRendering::LoadAssets()
         m_pipelineState
     ); NAME_D3D12_OBJECT(m_pipelineState);
 
-    this->CreateVertexDataBuffers (
+    this->createVertexDataBuffers (
         m_device.Get(),
-        m_commandQueue.Get(),
+        m_directCmdQueue.Get(),
         m_copyCommandList.Get(),
         m_vertexBuffer,
         m_indexBuffer,
@@ -372,7 +191,7 @@ void IndexRendering::LoadAssets()
 }
 
 //---------------------------------------------------------------------------------------
-void IndexRendering::CreateRootSignature (
+void IndexRendering::createRootSignature (
     _In_ ID3D12Device * device,
     _Out_ ComPtr<ID3D12RootSignature> & rootSignature
 ) {
@@ -406,16 +225,16 @@ void IndexRendering::CreateRootSignature (
 
 
 //---------------------------------------------------------------------------------------
-void IndexRendering::LoadShaders (
+void IndexRendering::loadShaders (
     _Out_ ComPtr<ID3DBlob> & vertexShaderBlob,
     _Out_ ComPtr<ID3DBlob> & pixelShaderBlob
 ) {
-    D3DReadFileToBlob(GetAssetPath(L"VertexShader.cso").c_str(), &vertexShaderBlob);
-    D3DReadFileToBlob(GetAssetPath(L"PixelShader.cso").c_str(), &pixelShaderBlob);
+    D3DReadFileToBlob(getAssetPath(L"VertexShader.cso").c_str(), &vertexShaderBlob);
+    D3DReadFileToBlob(getAssetPath(L"PixelShader.cso").c_str(), &pixelShaderBlob);
 }
 
 //---------------------------------------------------------------------------------------
-void IndexRendering::CreatePipelineState(
+void IndexRendering::createPipelineState(
     _In_ ID3D12Device * device,
     _In_ ID3D12RootSignature * rootSignature,
     _In_ ID3DBlob * vertexShaderBlob,
@@ -474,20 +293,22 @@ void IndexRendering::CreatePipelineState(
 }
 
 //---------------------------------------------------------------------------------------
-D3D12_VERTEX_BUFFER_VIEW IndexRendering::UploadVertexDataToDefaultHeap(
+D3D12_VERTEX_BUFFER_VIEW IndexRendering::uploadVertexDataToDefaultHeap(
     _In_ ID3D12Device * device,
     _In_ ID3D12GraphicsCommandList * copyCommandList,
     _Out_ ComPtr<ID3D12Resource> & vertexUploadBuffer,
     _Out_ ComPtr<ID3D12Resource> & vertexBuffer
 ) {
+	const float aspectRatio = static_cast<float>(m_windowWidth) / m_windowHeight;
+
     // Define vertices for a square.
     const Vertex vertexData[] =
     {
         // Positions                              Colors
-        { { 0.25f, 0.25f * m_aspectRatio, 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f } },
-        { { 0.25f, -0.25f * m_aspectRatio, 0.0f }, { 0.0f, 1.0f, 0.0f, 1.0f } },
-        { { -0.25f, -0.25f * m_aspectRatio, 0.0f }, { 0.0f, 0.0f, 1.0f, 1.0f } },
-        { { -0.25f, 0.25f * m_aspectRatio, 0.0f }, { 1.0f, 0.0f, 1.0f, 1.0f } }
+        { { 0.25f, 0.25f * aspectRatio, 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f } },
+        { { 0.25f, -0.25f * aspectRatio, 0.0f }, { 0.0f, 1.0f, 0.0f, 1.0f } },
+        { { -0.25f, -0.25f * aspectRatio, 0.0f }, { 0.0f, 0.0f, 1.0f, 1.0f } },
+        { { -0.25f, 0.25f * aspectRatio, 0.0f }, { 1.0f, 0.0f, 1.0f, 1.0f } }
     };
     const uint vertexBufferSize = sizeof(vertexData);
 
@@ -552,7 +373,7 @@ D3D12_VERTEX_BUFFER_VIEW IndexRendering::UploadVertexDataToDefaultHeap(
 
 
 //---------------------------------------------------------------------------------------
-D3D12_INDEX_BUFFER_VIEW IndexRendering::UploadIndexDataToDefaultHeap(
+D3D12_INDEX_BUFFER_VIEW IndexRendering::uploadIndexDataToDefaultHeap(
     _In_ ID3D12Device * device,
     _In_ ID3D12GraphicsCommandList * copyCommandList,
     _Out_ ComPtr<ID3D12Resource> & indexUploadBuffer,
@@ -620,7 +441,7 @@ D3D12_INDEX_BUFFER_VIEW IndexRendering::UploadIndexDataToDefaultHeap(
 
 
 //---------------------------------------------------------------------------------------
-void IndexRendering::CreateVertexDataBuffers (
+void IndexRendering::createVertexDataBuffers (
     _In_ ID3D12Device * device,
     _In_ ID3D12CommandQueue * commandQueue,
     _In_ ID3D12GraphicsCommandList * copyCommandList,
@@ -639,7 +460,7 @@ void IndexRendering::CreateVertexDataBuffers (
 
     // Upload vertex data to the Default Heap and create a Vertex Buffer View of the
     // resource.
-    m_vertexBufferView = this->UploadVertexDataToDefaultHeap (
+    m_vertexBufferView = this->uploadVertexDataToDefaultHeap (
         device,
         copyCommandList,
         vertexUploadBuffer,
@@ -648,7 +469,7 @@ void IndexRendering::CreateVertexDataBuffers (
 
     // Upload index data to the Default Heap and create an Index Buffer View of the
     // resource.
-    m_indexBufferView = this->UploadIndexDataToDefaultHeap (
+    m_indexBufferView = this->uploadIndexDataToDefaultHeap (
         device,
         copyCommandList,
         indexUploadBuffer,
@@ -663,106 +484,27 @@ void IndexRendering::CreateVertexDataBuffers (
     std::vector<ID3D12CommandList*> commandLists = { copyCommandList };
     commandQueue->ExecuteCommandLists(uint(commandLists.size()), commandLists.data());
 
-	WaitForGPU();
-}
-//---------------------------------------------------------------------------------------
-void IndexRendering::WaitForGPU()
-{
-	auto & frameFence = m_frameFence[m_frameIndex];
-
-	CHECK_DX_RESULT(
-		m_commandQueue->Signal(frameFence.Get(), m_currentFenceValue)
-	);
-	m_fenceValue[m_frameIndex] = m_currentFenceValue;
-	++m_currentFenceValue;
-
-	auto & frameFenceEvent = m_frameFenceEvent[m_frameIndex];
-
-	if (frameFence->GetCompletedValue() < m_fenceValue[m_frameIndex]) {
-		CHECK_DX_RESULT(
-			frameFence->SetEventOnCompletion(m_fenceValue[m_frameIndex], frameFenceEvent)
-		);
-		WaitForSingleObject(frameFenceEvent, INFINITE);
-	}
+	waitForGpuCompletion(m_directCmdQueue.Get());
 }
 
 //---------------------------------------------------------------------------------------
-// Update frame-based values.
-void IndexRendering::Update()
+void IndexRendering::update()
 {
-	WaitForFrameFence (
-		m_frameFence[m_frameIndex].Get(),
-		m_fenceValue[m_frameIndex],
-		m_frameFenceEvent[m_frameIndex]
-	);
 
-	if(m_vsyncEnabled) {
-		// Wait until swap chain has finished presenting all queued frames
-		WaitForSingleObject(m_frameLatencyWaitableObject, INFINITE);
-		Render();
-		Present();
-	} else if (SwapChainWaitableObjectIsSignaled()) {
-		Render();
-		Present();
-	}
 }
 
 //---------------------------------------------------------------------------------------
-bool IndexRendering::SwapChainWaitableObjectIsSignaled()
+void IndexRendering::render()
 {
-	return WAIT_OBJECT_0 == WaitForSingleObjectEx(m_frameLatencyWaitableObject, 0, true);
-}
-
-
-//---------------------------------------------------------------------------------------
-// Render the scene.
-void IndexRendering::Render()
-{
-	PopulateCommandList();
+	populateCommandList();
 
 	// Execute the command list.
 	ID3D12CommandList* commandLists[] = { m_drawCommandList[m_frameIndex].Get() };
-	m_commandQueue->ExecuteCommandLists(_countof(commandLists), commandLists);
+	m_directCmdQueue->ExecuteCommandLists(_countof(commandLists), commandLists);
 }
 
 //---------------------------------------------------------------------------------------
-void IndexRendering::Present()
-{
-	// Present the frame.
-	CHECK_DX_RESULT (
-        m_swapChain->Present(1, 0)
-    );
-
-	m_commandQueue->Signal(m_frameFence[m_frameIndex].Get(), m_currentFenceValue);
-	m_fenceValue[m_frameIndex] = m_currentFenceValue;
-	++m_currentFenceValue;
-
-	m_frameIndex = (m_frameIndex + 1) % NUM_BUFFERED_FRAMES;
-}
-
-//---------------------------------------------------------------------------------------
-void IndexRendering::CleanupDemo()
-{
-	// Ensure that the GPU is no longer referencing resources that are about to be
-	// cleaned up by the destructor.
-
-	m_commandQueue->Signal(m_frameFence[m_frameIndex].Get(), m_currentFenceValue);
-	m_fenceValue[m_frameIndex] = m_currentFenceValue;
-	++m_currentFenceValue;
-
-	// Wait for command queue to finish processing all buffered frames
-	for (int i = 0; i < NUM_BUFFERED_FRAMES; ++i) {
-		WaitForFrameFence(m_frameFence[i].Get(), m_fenceValue[i], m_frameFenceEvent[i]);
-	}
-
-	// Clean up event handles
-	for (auto event : m_frameFenceEvent) {
-		CloseHandle(event);
-	}
-}
-
-//---------------------------------------------------------------------------------------
-void IndexRendering::PopulateCommandList()
+void IndexRendering::populateCommandList()
 {
     CHECK_DX_RESULT(
         m_commandAllocator[m_frameIndex]->Reset()
@@ -820,15 +562,8 @@ void IndexRendering::PopulateCommandList()
 }
 
 //---------------------------------------------------------------------------------------
-static void WaitForFrameFence (
-	_In_ ID3D12Fence * fence,
-	_In_ uint64 completionValue,
-	_In_ HANDLE fenceEvent
-) {
-	if (fence->GetCompletedValue() < completionValue) {
-		CHECK_DX_RESULT (
-			fence->SetEventOnCompletion(completionValue, fenceEvent)
-		);
-		WaitForSingleObject(fenceEvent, INFINITE);
-	}
+void IndexRendering::cleanupDemo()
+{
+
 }
+
