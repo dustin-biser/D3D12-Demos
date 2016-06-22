@@ -10,5 +10,6 @@ Additional Features:
 * sRGB Render Target View for gamma correction
 * CommandList resuse
 
-## [InstanceRendering](InstanceRendering/)
-Makes use of a constant upload heap buffer to manage per instance data for rendering multiple instances of a single mesh.  
+## [ConstantBuffer](ConstantBuffer/)
+<img src="./Images/constant_buffer.png" height="128px" align="right">
+Uses an upload heap buffer to manage constant buffer data that is updated per frame.  
