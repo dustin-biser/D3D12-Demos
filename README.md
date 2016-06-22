@@ -8,7 +8,6 @@ This demo shows how to create an index buffer resource, copy the index data to t
 Additional Features:
 * Precompiled shaders
 * sRGB Render Target View for gamma correction
-* CommandList resuse
 
 ## [ConstantBuffer](ConstantBuffer/)
 <img src="./Images/constant_buffer.png" height="128px" align="right">
