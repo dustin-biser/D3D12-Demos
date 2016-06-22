@@ -9,9 +9,9 @@
 #include "ConstantBufferDefines.hpp"
 
 
-class InstanceRendering : public D3D12DemoBase {
+class ConstantBufferDemo : public D3D12DemoBase {
 public:
-	InstanceRendering (
+	ConstantBufferDemo (
         uint width,
         uint height,
         std::wstring name
@@ -84,7 +84,7 @@ private:
 	UINT64 m_currentFenceValue;
 	UINT64 m_fenceValue[NUM_BUFFERED_FRAMES];
 
-	const bool m_vsyncEnabled = true;
+	const bool m_vsyncEnabled = false;
 
 
 	void LoadPipelineDependencies();

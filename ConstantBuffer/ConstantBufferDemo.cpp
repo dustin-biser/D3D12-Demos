@@ -1,7 +1,7 @@
 #include "pch.h"
 using namespace DirectX;
 
-#include "InstanceRendering.hpp"
+#include "ConstantBufferDemo.hpp"
 using Microsoft::WRL::ComPtr;
 
 #include "MeshLoader.hpp"
@@ -64,7 +64,7 @@ static void WaitForFrameFence (
 
 
 //---------------------------------------------------------------------------------------
-InstanceRendering::InstanceRendering (
+ConstantBufferDemo::ConstantBufferDemo (
     uint width, 
     uint height,
     std::wstring name
@@ -85,13 +85,11 @@ InstanceRendering::InstanceRendering (
 
 
 //---------------------------------------------------------------------------------------
-void InstanceRendering::InitializeDemo()
+void ConstantBufferDemo::InitializeDemo()
 {
 	LoadPipelineDependencies();
 
 	LoadAssets();
-
-    PopulateCommandList();
 
 	OutputMemoryBudgets(m_device.Get());
 }
@@ -100,7 +98,7 @@ void InstanceRendering::InitializeDemo()
 //---------------------------------------------------------------------------------------
 // Loads the rendering pipeline dependencies such as device, command queue, swap chain,
 // render target views and command allocator.
-void InstanceRendering::LoadPipelineDependencies()
+void ConstantBufferDemo::LoadPipelineDependencies()
 {
 #if defined(_DEBUG)
 	//-- Enable the D3D12 debug layer:
@@ -392,7 +390,7 @@ static void CreateRenderTargetView (
 }
 
 //---------------------------------------------------------------------------------------
-void InstanceRendering::LoadAssets()
+void ConstantBufferDemo::LoadAssets()
 {
 	//-- Create root signature:
 	{
@@ -697,7 +695,7 @@ static void CreatePipelineState (
 }
 
 //---------------------------------------------------------------------------------------
-void InstanceRendering::UpdateConstantBuffers()
+void ConstantBufferDemo::UpdateConstantBuffers()
 {
 	//-- Create and Upload SceneContants Data:
 	{
@@ -708,7 +706,7 @@ void InstanceRendering::UpdateConstantBuffers()
 		XMVECTOR axis = XMVectorSet(0.5f, 1.0f, 0.5f, 0.0f);
 		XMMATRIX rotate = XMMatrixRotationAxis(axis, XMConvertToRadians(rotationAngle));
 
-		XMMATRIX modelMatrix = XMMatrixMultiply(rotate, XMMatrixTranslation(0.0f, 0.0f, -5.0f));
+		XMMATRIX modelMatrix = XMMatrixMultiply(rotate, XMMatrixTranslation(0.0f, 0.0f, -4.0f));
 
 		XMMATRIX viewMatrix = XMMatrixLookAtRH(
 			XMVECTOR{ 0.0f, 0.0f, 0.0f, 1.0f },
@@ -785,7 +783,7 @@ void InstanceRendering::UpdateConstantBuffers()
 
 //---------------------------------------------------------------------------------------
 // Perform per-frame logic + rendering
-void InstanceRendering::Update()
+void ConstantBufferDemo::Update()
 {
 	WaitForFrameFence (
 		m_frameFence[m_frameIndex].Get(),
@@ -807,7 +805,7 @@ void InstanceRendering::Update()
 }
 
 //---------------------------------------------------------------------------------------
-bool InstanceRendering::SwapChainWaitableObjectIsSignaled()
+bool ConstantBufferDemo::SwapChainWaitableObjectIsSignaled()
 {
 	return WAIT_OBJECT_0 == WaitForSingleObjectEx(m_frameLatencyWaitableObject, 0, true);
 }
@@ -815,7 +813,7 @@ bool InstanceRendering::SwapChainWaitableObjectIsSignaled()
 
 //---------------------------------------------------------------------------------------
 // Render the scene.
-void InstanceRendering::Render()
+void ConstantBufferDemo::Render()
 {
 	PopulateCommandList();
 
@@ -827,7 +825,7 @@ void InstanceRendering::Render()
 //---------------------------------------------------------------------------------------
 // Present to contents of the back-buffer, signal the frame-fence, then increment the
 // frame index so the next frame can be processed.
-void InstanceRendering::Present()
+void ConstantBufferDemo::Present()
 {
 	uint syncInterval = m_vsyncEnabled ? 1 : 0;
 	CHECK_DX_RESULT(
@@ -842,7 +840,7 @@ void InstanceRendering::Present()
 }
 
 //---------------------------------------------------------------------------------------
-void InstanceRendering::CleanupDemo()
+void ConstantBufferDemo::CleanupDemo()
 {
 	m_commandQueue->Signal(m_frameFence[m_frameIndex].Get(), m_currentFenceValue);
 	m_fenceValue[m_frameIndex] = m_currentFenceValue;
@@ -861,7 +859,7 @@ void InstanceRendering::CleanupDemo()
 
 //---------------------------------------------------------------------------------------
 
-void InstanceRendering::PopulateCommandList()
+void ConstantBufferDemo::PopulateCommandList()
 {
 	auto * cmdAllocator = m_cmdAllocator[m_frameIndex].Get();
 	auto & drawCmdList = m_drawCmdList[m_frameIndex];
