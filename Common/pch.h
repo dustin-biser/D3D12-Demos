@@ -36,4 +36,3 @@
 
 #include "NumericTypes.hpp"
 #include "DemoUtils.hpp"
-#include "DemoException.hpp"

@@ -1,3 +1,6 @@
+//
+// D3D12DemoBase.hpp
+//
 #pragma once
 
 #include <sal.h>
@@ -14,8 +17,8 @@ class D3D12DemoBase
 {
 public:
 	D3D12DemoBase (
-        uint width,
-        uint height,
+        uint windowWidth,
+        uint windowHeight,
         std::wstring name
     );
 
@@ -70,7 +73,7 @@ protected:
 
 	void present();
 
-	bool swapChainWaitableObjectIsSignaled();
+	__forceinline bool swapChainWaitableObjectIsSignaled();
 
 
 	// Issues a Signal from 'commanQueue', and causes current thread to block

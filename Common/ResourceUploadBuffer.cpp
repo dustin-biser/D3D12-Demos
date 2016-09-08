@@ -4,7 +4,6 @@ using Microsoft::WRL::ComPtr;
 #include <exception>
 
 #include "ResourceUploadBuffer.hpp"
-#include "DemoException.hpp"
 
 //-- Minimum byte alignments for common D3D12 Resource types:
 // Note that index data alignment is equal to sizeof(index), so 2 for 16bit indices,
@@ -67,7 +66,7 @@ ResourceUploadBuffer::ResourceUploadBuffer (
 ) {
 	impl = new ResourceUploadBufferImpl();
 
-	CHECK_DX_RESULT (
+	CHECK_D3D_RESULT (
 		device->CreateCommittedResource (
 			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
 			D3D12_HEAP_FLAG_NONE,
@@ -107,7 +106,7 @@ void ResourceUploadBufferImpl::uploadData (
 	alignDataPointerForAllocation(alignment);
 
 	if ((dataCur + dataBytes) > dataEnd) {
-		throw InsufficientMemory();
+		ForceBreak("Insufficient memory.  Unable to upload data.");
 	}
 	if (mappedDataPtr) {
 		*mappedDataPtr = dataCur;
@@ -169,7 +168,7 @@ void ResourceUploadBuffer::uploadIndexData (
 		dxgiIndexFormat = DXGI_FORMAT_R32_UINT;
 		break;
 	default:
-		throw DemoException("Invalid Index Format.");
+		ForceBreak("Invalid Index Format.");
 		break;
 	}
 
@@ -219,7 +218,7 @@ template <typename T>
 static T align(T value, T alignment)
 {
 	if ((0 == alignment) || (alignment & (alignment - 1))) {
-		throw DemoException("non-pow2 alignment");
+		ForceBreak("Error. Non-power of 2 alignment requested.");
 	}
 
 	return ((value + (alignment - 1)) & ~(alignment - 1));

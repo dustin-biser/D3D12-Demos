@@ -12,10 +12,10 @@ public:
         std::wstring name
     );
 
-	virtual void initializeDemo();
-	virtual void update();
-	virtual void render();
-	virtual void cleanupDemo();
+	void initializeDemo() override;
+	void update() override;
+	void render() override;
+	void cleanupDemo() override;
 
 private:
 	struct Vertex
@@ -27,12 +27,14 @@ private:
 	// Pipeline objects.
 	D3D12_VIEWPORT m_viewport;
 	D3D12_RECT m_scissorRect;
-	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> m_commandAllocator[NUM_BUFFERED_FRAMES];
+	Microsoft::WRL::ComPtr<ID3D12CommandAllocator>
+		m_commandAllocator[NUM_BUFFERED_FRAMES];
+	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList>
+		m_drawCommandList[NUM_BUFFERED_FRAMES];
+	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> m_copyCommandAllocator;
+    Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_copyCommandList;
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature;
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineState;
-	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_drawCommandList[NUM_BUFFERED_FRAMES];
-    Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_copyCommandList;
-	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> m_copyCommandAllocator;
 
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_renderTargets[NUM_BUFFERED_FRAMES];
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_rtvHeap;

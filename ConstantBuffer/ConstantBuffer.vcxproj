@@ -134,7 +134,6 @@
   <ItemGroup>
     <ClInclude Include="..\Common\d3dx12.h" />
     <ClInclude Include="..\Common\D3D12DemoBase.hpp" />
-    <ClInclude Include="..\Common\DemoException.hpp" />
     <ClInclude Include="..\Common\DemoUtils.hpp" />
     <ClInclude Include="..\Common\MeshLoader.hpp" />
     <ClInclude Include="..\Common\NumericTypes.hpp" />

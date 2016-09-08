@@ -17,10 +17,10 @@ public:
         std::wstring name
     );
 
-	virtual void initializeDemo();
-	virtual void update();
-	virtual void render();
-	virtual void cleanupDemo();
+	void initializeDemo() override;
+	void update() override;
+	void render() override;
+	void cleanupDemo() override;
 	
 
 private:

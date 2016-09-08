@@ -9,6 +9,7 @@ using Microsoft::WRL::ComPtr;
 
 #include <dxgi1_4.h>
 #include <d3dx12.h>
+#include <iostream>
 
 //---------------------------------------------------------------------------------------
 void QueryVideoMemoryInfo (
@@ -19,7 +20,7 @@ void QueryVideoMemoryInfo (
     assert(device);
 
     ComPtr<IDXGIFactory4> dxgiFactory;
-    CHECK_DX_RESULT(
+    CHECK_D3D_RESULT(
         CreateDXGIFactory1(IID_PPV_ARGS(&dxgiFactory))
     );
 
@@ -32,6 +33,7 @@ void QueryVideoMemoryInfo (
         0, memoryGroup, &videoMemoryInfo
     );
 }
+
 
 //---------------------------------------------------------------------------------------
 void GetWorkingDir (

@@ -1,3 +1,6 @@
+//
+// D3D12DemoBase.cpp
+//
 #include "pch.h"
 #include "D3D12DemoBase.hpp"
 
@@ -12,8 +15,7 @@ static void GetHardwareAdapter (
 	_In_ IDXGIFactory2 * pFactory,
 	_In_ D3D_FEATURE_LEVEL featureLevel,
 	_Out_ IDXGIAdapter1 ** ppAdapter
-)
-{
+) {
 	ComPtr<IDXGIAdapter1> adapter;
 	*ppAdapter = nullptr;
 
@@ -52,7 +54,7 @@ static void CreateWarpDevice (
 	_Out_ Microsoft::WRL::ComPtr<ID3D12Device> & device
 ) {
 	ComPtr<IDXGIAdapter> warpAdapter;
-	CHECK_DX_RESULT(
+	CHECK_D3D_RESULT (
 		dxgiFactory->EnumWarpAdapter(IID_PPV_ARGS(&warpAdapter))
 	);
 
@@ -61,7 +63,7 @@ static void CreateWarpDevice (
 	warpAdapter->GetDesc(&adapterDesc);
 	std::wcout << "Adapter: " << adapterDesc.Description << std::endl;
 
-	CHECK_DX_RESULT(
+	CHECK_D3D_RESULT (
 		D3D12CreateDevice( warpAdapter.Get(), featureLevel, IID_PPV_ARGS(&device) )
 	);
 
@@ -74,17 +76,20 @@ static void CreateHardwareDevice (
 	_Out_ Microsoft::WRL::ComPtr<ID3D12Device> & device
 ) {
 	ComPtr<IDXGIAdapter1> hardwareAdapter;
-	GetHardwareAdapter(dxgiFactory, featureLevel, &hardwareAdapter);
+	::GetHardwareAdapter(dxgiFactory, featureLevel, &hardwareAdapter);
+
+	if (!hardwareAdapter) {
+		ForceBreak("No hardware adapter found that supports the given feature level");
+	}
 
 	// Display hardware adapter name.
 	DXGI_ADAPTER_DESC1 adapterDesc = {};
 	hardwareAdapter->GetDesc1(&adapterDesc);
-	std::wcout << "Adapter: " << adapterDesc.Description << std::endl;
+	std::wcout << L"Adapter: " << adapterDesc.Description << std::endl;
 
-	CHECK_DX_RESULT(
-		D3D12CreateDevice (hardwareAdapter.Get(), featureLevel, IID_PPV_ARGS(&device))
+	CHECK_D3D_RESULT (
+		D3D12CreateDevice(hardwareAdapter.Get(), featureLevel, IID_PPV_ARGS(&device))
 	);
-
 }
 
 
@@ -97,10 +102,10 @@ static void createDevice (
 	const D3D_FEATURE_LEVEL featureLevel(D3D_FEATURE_LEVEL_11_0);
 
 	if (useWarpDevice) {
-		CreateWarpDevice(dxgiFactory, featureLevel, device);
+		::CreateWarpDevice(dxgiFactory, featureLevel, device);
 	}
 	else {
-		CreateHardwareDevice(dxgiFactory, featureLevel, device);
+		::CreateHardwareDevice(dxgiFactory, featureLevel, device);
 	}
 }
 
@@ -126,7 +131,7 @@ static void createSwapChain (
 	swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
 
 	ComPtr<IDXGISwapChain1> swapChain1;
-	CHECK_DX_RESULT(
+	CHECK_D3D_RESULT (
 		dxgiFactory->CreateSwapChainForHwnd (
 			commandQueue, // Swap chain needs the command queue so that it can force a flush on it.
 			Win32Application::GetHwnd(),
@@ -138,7 +143,7 @@ static void createSwapChain (
 	);
 
 	// This sample does not support full screen transitions.
-	CHECK_DX_RESULT(
+	CHECK_D3D_RESULT (
 		dxgiFactory->MakeWindowAssociation(
 			Win32Application::GetHwnd(),
 			DXGI_MWA_NO_ALT_ENTER
@@ -146,7 +151,7 @@ static void createSwapChain (
 	);
 
 	ComPtr<IDXGISwapChain2> swapChain2;
-	CHECK_DX_RESULT(
+	CHECK_D3D_RESULT (
 		swapChain1.As(&swapChain2)
 	);
 	swapChain2->SetMaximumFrameLatency(numSwapChainBuffers);
@@ -154,7 +159,7 @@ static void createSwapChain (
 	// Get the frame latency waitable objects.
 	*frameLatencyWaitableObject = swapChain2->GetFrameLatencyWaitableObject();
 
-	CHECK_DX_RESULT(
+	CHECK_D3D_RESULT (
 		// Acquire the IDXGISwapChain3 interface.
 		swapChain1.As(&swapChain)
 	);
@@ -167,7 +172,7 @@ void waitForFrameFence (
 	_In_ HANDLE fenceEvent
 ) {
 	if (fence->GetCompletedValue() < completionValue) {
-		CHECK_DX_RESULT (
+		CHECK_D3D_RESULT (
 			fence->SetEventOnCompletion(completionValue, fenceEvent)
 		);
 		// fenceEvent will be signaled once GPU updates fence object to completionValue.
@@ -178,13 +183,13 @@ void waitForFrameFence (
 
 //---------------------------------------------------------------------------------------
 D3D12DemoBase::D3D12DemoBase (
-	uint width,
-	uint height,
+	uint windowWidth,
+	uint windowHeight,
 	std::wstring name
 ) :
 	m_frameIndex(0),
-	m_windowWidth(width),
-	m_windowHeight(height),
+	m_windowWidth(windowWidth),
+	m_windowHeight(windowHeight),
 	m_title(name),
 	m_useWarpDevice(false),
 	m_fenceValue{} // default to all zeros.
@@ -205,7 +210,7 @@ D3D12DemoBase::D3D12DemoBase (
 
 	// Check for DirectXMath support.
 	if (!DirectX::XMVerifyCPUSupport()) {
-		throw DemoException("Error: No support for DirectXMath.");
+		ForceBreak("No support for DirectXMath.");
 	}
 }
 
@@ -214,26 +219,22 @@ static void createCommandQueue (
 	_In_ ID3D12Device * device,
 	_In_ D3D12_COMMAND_LIST_TYPE queueType,
 	_Out_ ComPtr<ID3D12CommandQueue> & commandQueue
-)
-{
+) {
 	// Describe and create the direct command queue.
 	D3D12_COMMAND_QUEUE_DESC queueDesc = {};
 	queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
 	queueDesc.Type = queueType;
 
-	CHECK_DX_RESULT(
+	CHECK_D3D_RESULT (
 		device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&commandQueue))
 	);
 }
-
-
 
 //---------------------------------------------------------------------------------------
 D3D12DemoBase::~D3D12DemoBase()
 {
 
 }
-
 
 //---------------------------------------------------------------------------------------
 void D3D12DemoBase::initializeDemo()
@@ -246,7 +247,7 @@ void D3D12DemoBase::initializeDemo()
 	}
 #endif
 
-	CHECK_DX_RESULT (
+	CHECK_D3D_RESULT (
 		::CreateDXGIFactory1(IID_PPV_ARGS(&m_dxgiFactory))
 	);
 
@@ -273,7 +274,7 @@ void D3D12DemoBase::initializeDemo()
 
 	// Create synchronization primitive.
 	for (int i(0); i < NUM_BUFFERED_FRAMES; ++i) {
-		CHECK_DX_RESULT(
+		CHECK_D3D_RESULT(
 			m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_frameFence[i]))
 		);
 		m_fenceValue[i] = 0;
@@ -281,7 +282,7 @@ void D3D12DemoBase::initializeDemo()
 		// Create an event handle to use for frame synchronization.
 		m_frameFenceEvent[i] = CreateEvent(nullptr, FALSE, FALSE, nullptr);
 		if (m_frameFenceEvent[i] == nullptr) {
-			CHECK_DX_RESULT(
+			CHECK_D3D_RESULT(
 				HRESULT_FROM_WIN32(GetLastError())
 			);
 		}
@@ -303,8 +304,8 @@ void D3D12DemoBase::buildNextFrame()
 
 	if (m_vsyncEnabled) {
 		// Wait until swap chain has finished presenting all queued frames before building
-		// command lists and rendering next frame.  This will reduce perceived frame
-		// latency.
+		// command lists and rendering next frame.  This will reduce latency for the next
+		// rendered frame.
 		WaitForSingleObject(m_frameLatencyWaitableObject, INFINITE);
 	}
 
@@ -321,7 +322,8 @@ void D3D12DemoBase::presentNextFrame()
 		// Swap-chain is available to queue up another Present, so do that now.
 		present();
 	}
-	else { // Start over and rebuild the frame again, rendering to the same indexed back buffer.
+	else { 
+		// Start over and rebuild the frame again, rendering to the same indexed back buffer.
 		m_directCmdQueue->Signal(m_frameFence[m_frameIndex].Get(), m_currentFenceValue);
 		m_fenceValue[m_frameIndex] = m_currentFenceValue;
 		++m_currentFenceValue;
@@ -333,8 +335,8 @@ void D3D12DemoBase::presentNextFrame()
 // frame index so the next frame can be processed.
 void D3D12DemoBase::present()
 {
-	uint syncInterval = m_vsyncEnabled ? 1 : 0;
-	CHECK_DX_RESULT(
+	const uint syncInterval = m_vsyncEnabled;
+	CHECK_D3D_RESULT (
 		m_swapChain->Present(syncInterval, 0)
 	);
 
@@ -346,7 +348,7 @@ void D3D12DemoBase::present()
 }
 
 //---------------------------------------------------------------------------------------
-bool D3D12DemoBase::swapChainWaitableObjectIsSignaled()
+__forceinline bool D3D12DemoBase::swapChainWaitableObjectIsSignaled()
 {
 	return WAIT_OBJECT_0 == WaitForSingleObjectEx(m_frameLatencyWaitableObject, 0, true);
 }
@@ -354,20 +356,16 @@ bool D3D12DemoBase::swapChainWaitableObjectIsSignaled()
 //---------------------------------------------------------------------------------------
 void D3D12DemoBase::waitForGpuCompletion(
 	ID3D12CommandQueue * commandQueue
-)
-{
-	CHECK_DX_RESULT(
+) {
+	CHECK_D3D_RESULT (
 		commandQueue->Signal(m_frameFence[m_frameIndex].Get(), m_currentFenceValue)
 	);
 	m_fenceValue[m_frameIndex] = m_currentFenceValue;
 	++m_currentFenceValue;
 
-
 	::waitForFrameFence(m_frameFence[m_frameIndex].Get(),
 		m_fenceValue[m_frameIndex], m_frameFenceEvent[m_frameIndex]);
 }
-
-
 
 //---------------------------------------------------------------------------------------
 void D3D12DemoBase::cleanupDemo()

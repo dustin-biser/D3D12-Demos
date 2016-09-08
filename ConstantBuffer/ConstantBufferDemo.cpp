@@ -63,21 +63,21 @@ void ConstantBufferDemo::loadPipelineDependencies()
 	//-- Create descriptor heaps:
 	{
 		// Describe and create the RTV Descriptor Heap.
-		D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDescriptor = {};
-		rtvHeapDescriptor.NumDescriptors = NUM_BUFFERED_FRAMES;
-		rtvHeapDescriptor.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-		rtvHeapDescriptor.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-		CHECK_DX_RESULT (
-			m_device->CreateDescriptorHeap(&rtvHeapDescriptor, IID_PPV_ARGS(&m_rtvDescHeap))
+		D3D12_DESCRIPTOR_HEAP_DESC rtvDescHeapDescriptor = {};
+		rtvDescHeapDescriptor.NumDescriptors = NUM_BUFFERED_FRAMES;
+		rtvDescHeapDescriptor.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+		rtvDescHeapDescriptor.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+		CHECK_D3D_RESULT (
+			m_device->CreateDescriptorHeap(&rtvDescHeapDescriptor, IID_PPV_ARGS(&m_rtvDescHeap))
 		);
 
 		// Describe and create the CBV Descriptor Heap.
-		D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc = {};
-		cbvHeapDesc.NumDescriptors = 2 * NUM_BUFFERED_FRAMES;
-		cbvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-		cbvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-		CHECK_DX_RESULT (
-			m_device->CreateDescriptorHeap(&cbvHeapDesc, IID_PPV_ARGS(&m_cbvDescHeap))
+		D3D12_DESCRIPTOR_HEAP_DESC cbvDescHeapDescriptor = {};
+		cbvDescHeapDescriptor.NumDescriptors = 2 * NUM_BUFFERED_FRAMES;
+		cbvDescHeapDescriptor.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+		cbvDescHeapDescriptor.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+		CHECK_D3D_RESULT (
+			m_device->CreateDescriptorHeap(&cbvDescHeapDescriptor, IID_PPV_ARGS(&m_cbvDescHeap))
 		);
 	}
 
@@ -98,7 +98,7 @@ void ConstantBufferDemo::loadPipelineDependencies()
 
 		// Create a render target view for each frame.
 		for (uint n(0); n < NUM_BUFFERED_FRAMES; ++n) {
-			CHECK_DX_RESULT (
+			CHECK_D3D_RESULT (
 				m_swapChain->GetBuffer(n, IID_PPV_ARGS(&m_renderTarget[n]))
 			);
 
@@ -113,7 +113,7 @@ void ConstantBufferDemo::loadPipelineDependencies()
 
     //-- Create command allocator for managing command list memory:
 	for(int i(0); i < NUM_BUFFERED_FRAMES; ++i) {
-		CHECK_DX_RESULT(
+		CHECK_D3D_RESULT(
 			m_device->CreateCommandAllocator (
 				D3D12_COMMAND_LIST_TYPE_DIRECT,
 				IID_PPV_ARGS(&m_cmdAllocator[i])
@@ -127,7 +127,7 @@ void ConstantBufferDemo::loadPipelineDependencies()
 	{
 		// Create one command list for each swap chain buffer.
 		for (uint i(0); i < NUM_BUFFERED_FRAMES; ++i) {
-			CHECK_DX_RESULT(
+			CHECK_D3D_RESULT(
 				m_device->CreateCommandList (
 					0,
 					D3D12_COMMAND_LIST_TYPE_DIRECT,
@@ -171,7 +171,7 @@ static void OutputMemoryBudgets (
 
 	D3D12_FEATURE_DATA_GPU_VIRTUAL_ADDRESS_SUPPORT featureData;
 
-	CHECK_DX_RESULT (
+	CHECK_D3D_RESULT (
 		device->CheckFeatureSupport(D3D12_FEATURE_GPU_VIRTUAL_ADDRESS_SUPPORT,
 			&featureData, sizeof(D3D12_FEATURE_DATA_GPU_VIRTUAL_ADDRESS_SUPPORT))
 	);
@@ -214,12 +214,12 @@ void ConstantBufferDemo::loadAssets()
 		ComPtr<ID3DBlob> signature;
 		ComPtr<ID3DBlob> error;
 
-		CHECK_DX_RESULT(
+		CHECK_D3D_RESULT(
 			D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1,
 				&signature, &error)
 		);
 
-		CHECK_DX_RESULT(
+		CHECK_D3D_RESULT(
 			m_device->CreateRootSignature(0, signature->GetBufferPointer(),
 				signature->GetBufferSize(), IID_PPV_ARGS(&m_rootSignature))
 		);
@@ -379,7 +379,7 @@ void ConstantBufferDemo::loadAssets()
 		dsvHeapDescriptor.NumDescriptors = 1;
 		dsvHeapDescriptor.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
 		dsvHeapDescriptor.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-		CHECK_DX_RESULT (
+		CHECK_D3D_RESULT (
 			m_device->CreateDescriptorHeap(&dsvHeapDescriptor, IID_PPV_ARGS(&m_dsvDescHeap))
 		);
 
@@ -393,7 +393,7 @@ void ConstantBufferDemo::loadAssets()
 		depthOptimizedClearValue.DepthStencil.Depth = 1.0f;
 		depthOptimizedClearValue.DepthStencil.Stencil = 0;
 
-		CHECK_DX_RESULT(
+		CHECK_D3D_RESULT(
 			m_device->CreateCommittedResource (
 				&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 				D3D12_HEAP_FLAG_NONE,
@@ -473,7 +473,7 @@ static void CreatePipelineState (
 	psoDesc.SampleDesc = sampleDesc;
 
     // Create the Pipeline State Object.
-    CHECK_DX_RESULT (
+    CHECK_D3D_RESULT (
         device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&pipelineState))
      );
 }
@@ -589,11 +589,11 @@ void ConstantBufferDemo::populateCommandList()
 	auto * cmdAllocator = m_cmdAllocator[m_frameIndex].Get();
 	auto & drawCmdList = m_drawCmdList[m_frameIndex];
 
-    CHECK_DX_RESULT (
+    CHECK_D3D_RESULT (
         cmdAllocator->Reset()
     );
 
-	CHECK_DX_RESULT (
+	CHECK_D3D_RESULT (
 		drawCmdList->Reset(cmdAllocator, m_pipelineState.Get())
 	 );
 
@@ -661,5 +661,5 @@ void ConstantBufferDemo::populateCommandList()
 		)
 	);
 
-	CHECK_DX_RESULT(drawCmdList->Close());
+	CHECK_D3D_RESULT(drawCmdList->Close());
 }

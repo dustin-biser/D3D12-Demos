@@ -55,7 +55,7 @@ void IndexRendering::loadRenderPipelineDependencies()
 
     // Create command allocator for managing command list memory
 	for (int i(0); i < NUM_BUFFERED_FRAMES; ++i) {
-		CHECK_DX_RESULT(
+		CHECK_D3D_RESULT(
 			m_device->CreateCommandAllocator(
 				D3D12_COMMAND_LIST_TYPE_DIRECT,
 				IID_PPV_ARGS(&m_commandAllocator[i])
@@ -68,7 +68,7 @@ void IndexRendering::loadRenderPipelineDependencies()
     // Create the draw command lists which will hold our rendering commands.
 	// Create one command list for each swap chain buffer.
     for (uint i(0); i < NUM_BUFFERED_FRAMES; ++i) {
-        CHECK_DX_RESULT(
+        CHECK_D3D_RESULT(
             m_device->CreateCommandList (
                 0,
                 D3D12_COMMAND_LIST_TYPE_DIRECT,
@@ -84,7 +84,7 @@ void IndexRendering::loadRenderPipelineDependencies()
 
 
 	// Create copy command allocator for managing memory for copy command list.
-	CHECK_DX_RESULT(
+	CHECK_D3D_RESULT(
 		m_device->CreateCommandAllocator(
 			D3D12_COMMAND_LIST_TYPE_DIRECT,
 			IID_PPV_ARGS(&m_copyCommandAllocator)
@@ -94,7 +94,7 @@ void IndexRendering::loadRenderPipelineDependencies()
 
 
     // Create a separate command list for copying resource data to the GPU.
-    CHECK_DX_RESULT (
+    CHECK_D3D_RESULT (
         m_device->CreateCommandList (
             0,
             D3D12_COMMAND_LIST_TYPE_DIRECT,
@@ -122,7 +122,7 @@ void IndexRendering::createRenderTargetView (
 		rtvHeapDesc.NumDescriptors = NUM_BUFFERED_FRAMES;
 		rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 		rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-		CHECK_DX_RESULT (
+		CHECK_D3D_RESULT (
             device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&rtvHeap))
         );
 
@@ -144,7 +144,7 @@ void IndexRendering::createRenderTargetView (
 		// Create a RenderTargetView for each frame.
 		for (uint n(0); n < NUM_BUFFERED_FRAMES; ++n)
 		{
-			CHECK_DX_RESULT (
+			CHECK_D3D_RESULT (
                 swapChain->GetBuffer(n, IID_PPV_ARGS(&renderTargets[n]))
             );
 			device->CreateRenderTargetView(renderTargets[n].Get(), &rtvDesc, rtvHandle);
@@ -204,7 +204,7 @@ void IndexRendering::createRootSignature (
     ComPtr<ID3DBlob> signature;
     ComPtr<ID3DBlob> error;
 
-    CHECK_DX_RESULT (
+    CHECK_D3D_RESULT (
         D3D12SerializeRootSignature (
             &rootSignatureDesc,
             D3D_ROOT_SIGNATURE_VERSION_1, 
@@ -213,7 +213,7 @@ void IndexRendering::createRootSignature (
         )
     );
 
-    CHECK_DX_RESULT (
+    CHECK_D3D_RESULT (
         device->CreateRootSignature (
             0,
             signature->GetBufferPointer(),
@@ -284,7 +284,7 @@ void IndexRendering::createPipelineState(
     psoDesc.SampleDesc.Count = 1;
 
     // Create the Pipeline State Object.
-    CHECK_DX_RESULT (
+    CHECK_D3D_RESULT (
         device->CreateGraphicsPipelineState (
             &psoDesc,
             IID_PPV_ARGS(&pipelineState)
@@ -314,7 +314,7 @@ D3D12_VERTEX_BUFFER_VIEW IndexRendering::uploadVertexDataToDefaultHeap(
 
     // The vertex buffer resource will live in the Default Heap, and will
     // be the copy destination.
-    CHECK_DX_RESULT(
+    CHECK_D3D_RESULT(
         device->CreateCommittedResource (
             &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
             D3D12_HEAP_FLAG_NONE,
@@ -325,7 +325,7 @@ D3D12_VERTEX_BUFFER_VIEW IndexRendering::uploadVertexDataToDefaultHeap(
     );
 
     // The Upload Heap will contain the raw vertex data, and will be the copy source.
-    CHECK_DX_RESULT(
+    CHECK_D3D_RESULT(
         device->CreateCommittedResource (
             &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
             D3D12_HEAP_FLAG_NONE,
@@ -384,7 +384,7 @@ D3D12_INDEX_BUFFER_VIEW IndexRendering::uploadIndexDataToDefaultHeap(
     indexCount = uint(indices.size());
     const uint indexBufferSize = sizeof(ushort) * indexCount;
 
-    CHECK_DX_RESULT(
+    CHECK_D3D_RESULT(
         device->CreateCommittedResource (
             &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
             D3D12_HEAP_FLAG_NONE,
@@ -394,7 +394,7 @@ D3D12_INDEX_BUFFER_VIEW IndexRendering::uploadIndexDataToDefaultHeap(
             IID_PPV_ARGS(&indexBuffer))
     );
 
-    CHECK_DX_RESULT(
+    CHECK_D3D_RESULT(
         device->CreateCommittedResource (
             &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
             D3D12_HEAP_FLAG_NONE,
@@ -478,7 +478,7 @@ void IndexRendering::createVertexDataBuffers (
     );
 
     // Close the command list and execute it to begin the initial GPU setup.
-    CHECK_DX_RESULT(
+    CHECK_D3D_RESULT(
         copyCommandList->Close()
     );
     std::vector<ID3D12CommandList*> commandLists = { copyCommandList };
@@ -506,13 +506,13 @@ void IndexRendering::render()
 //---------------------------------------------------------------------------------------
 void IndexRendering::populateCommandList()
 {
-    CHECK_DX_RESULT(
+    CHECK_D3D_RESULT(
         m_commandAllocator[m_frameIndex]->Reset()
     );
 
     for (int i(0); i < NUM_BUFFERED_FRAMES; ++i) {
 
-        CHECK_DX_RESULT(
+        CHECK_D3D_RESULT(
             m_drawCommandList[i]->Reset(m_commandAllocator[m_frameIndex].Get(), m_pipelineState.Get())
          );
 
@@ -557,7 +557,7 @@ void IndexRendering::populateCommandList()
             )
         );
 
-        CHECK_DX_RESULT(m_drawCommandList[i]->Close());
+        CHECK_D3D_RESULT(m_drawCommandList[i]->Close());
     }
 }
 

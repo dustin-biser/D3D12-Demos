@@ -6,7 +6,7 @@
 
 
 #if defined(_DEBUG)
-#define CHECK_DX_RESULT(x)									 \
+#define CHECK_D3D_RESULT(x)									 \
 	do {													 \
 		HRESULT result = (x);								 \
 		if ( FAILED(result) ) {								 \
@@ -17,7 +17,7 @@
 	}														 \
 	while(0)
 #else
-#define CHECK_DX_RESULT(x) x;
+#define CHECK_D3D_RESULT(x) x;
 #endif
 
 
@@ -79,3 +79,13 @@ void QueryVideoMemoryInfo (
 	_In_ DXGI_MEMORY_SEGMENT_GROUP memoryGroup,
 	_Out_ DXGI_QUERY_VIDEO_MEMORY_INFO & videoMemoryInfo
 );
+
+
+// Force runtime to break with optional message.
+#define ForceBreak(message) \
+	do { \
+		if (message) { \
+			std::wcout << (message) << std::endl; \
+		} \
+		__debugbreak(); \
+	} while(0)
