@@ -33,7 +33,7 @@
 
 
 #if defined(_DEBUG)
-	// Assigns default names to an array D3D12 objects to aid in identification
+	// Assigns default names to an array of D3D12 objects to aid in identification
 	// of the objects during graphics debugging.
 	// @param x - array of ComPtr<T> where T is a D3D12 object type.
 	// @param n - size of array.

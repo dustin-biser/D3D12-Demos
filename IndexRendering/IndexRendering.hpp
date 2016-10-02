@@ -24,9 +24,6 @@ private:
 		DirectX::XMFLOAT4 color;
 	};
 
-	// Pipeline objects.
-	D3D12_VIEWPORT m_viewport;
-	D3D12_RECT m_scissorRect;
 	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> m_commandAllocator[NUM_BUFFERED_FRAMES];
 	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_drawCommandList[NUM_BUFFERED_FRAMES];
 	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> m_copyCommandAllocator;
@@ -45,38 +42,20 @@ private:
 	D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
     uint m_indexCount;
 
-
 	void loadRenderPipelineDependencies();
 	void loadAssets();
 	void populateCommandList();
-
-    void createRenderTargetView (
-        _In_ ID3D12Device * device,
-        _In_ IDXGISwapChain * swapChain,
-        _Out_ Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> & rtvHeap,
-        _Out_ uint & rtvDescriptorSize,
-        _Out_ Microsoft::WRL::ComPtr<ID3D12Resource> * renderTargets
-    );
-
-    void createRootSignature (
-        _In_ ID3D12Device * device,
-        _Out_ Microsoft::WRL::ComPtr<ID3D12RootSignature> & rootSignature
-    );
-
+    void createRenderTargetView();
+    void createRootSignature();
+    void createVertexDataBuffers();
     void loadShaders (
         _Out_ Microsoft::WRL::ComPtr<ID3DBlob> & vertexShaderBlob,
         _Out_ Microsoft::WRL::ComPtr<ID3DBlob> & pixelShaderBlob
     );
-
     void createPipelineState (
-        _In_ ID3D12Device * device,
-        _In_ ID3D12RootSignature * rootSignature,
         _In_ ID3DBlob * vertexShaderBlob,
-        _In_ ID3DBlob * pixelShaderBlob,
-        _Out_ Microsoft::WRL::ComPtr<ID3D12PipelineState> & pipelineState
+        _In_ ID3DBlob * pixelShaderBlob
     );
-
-    void createVertexDataBuffers();
 
 
 }; // end class IndexRendering

@@ -194,6 +194,15 @@ D3D12DemoBase::D3D12DemoBase (
 	m_useWarpDevice(false),
 	m_fenceValue{} // default to all zeros.
 {
+	// Default viewport to size of full window.
+	m_viewport.Width = float(windowWidth);
+	m_viewport.Height = float(windowHeight);
+	m_viewport.MaxDepth = 1.0f;
+
+	// Default to rendering to entire viewport.
+	m_scissorRect.right = long(windowWidth);
+	m_scissorRect.bottom = long(windowHeight);
+
     //-- Set working directory path:
     {
         WCHAR pathBuffer[512];

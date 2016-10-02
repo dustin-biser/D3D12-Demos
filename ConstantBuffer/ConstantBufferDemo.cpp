@@ -32,16 +32,9 @@ ConstantBufferDemo::ConstantBufferDemo (
     uint height,
     std::wstring name
 )   
-    :   D3D12DemoBase(width, height, name),
-		m_viewport{},    // default to all zeros.
-		m_scissorRect{}  // default to all zeros.
+    :   D3D12DemoBase(width, height, name)
 {
-	m_viewport.Width = float(width);
-	m_viewport.Height = float(height);
-	m_viewport.MaxDepth = 1.0f;
 
-	m_scissorRect.right = long(width);
-	m_scissorRect.bottom = long(height);
 }
 
 

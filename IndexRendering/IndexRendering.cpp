@@ -15,17 +15,9 @@ IndexRendering::IndexRendering (
     uint height,
     std::wstring name
 )   
-    :   D3D12DemoBase(width, height, name),
-        m_viewport(),
-        m_scissorRect(),
-        m_rtvDescriptorSize(0)
+    :   D3D12DemoBase(width, height, name)
 {
-	m_viewport.Width = float(width);
-	m_viewport.Height = float(height);
-	m_viewport.MaxDepth = 1.0f;
 
-	m_scissorRect.right = long(width);
-	m_scissorRect.bottom = long(height);
 }
 
 
@@ -43,15 +35,7 @@ void IndexRendering::initializeDemo()
 void IndexRendering::loadRenderPipelineDependencies()
 {
     // Create RTVs, one for each SwapChain buffer.
-    this->createRenderTargetView (
-        m_device.Get(),
-        m_swapChain.Get(),
-        m_rtvHeap,
-        m_rtvDescriptorSize,
-        m_renderTargets
-    );
-    NAME_D3D12_OBJECT(m_renderTargets[0]);
-    NAME_D3D12_OBJECT(m_renderTargets[1]);
+    createRenderTargetView();
 
     // Create command allocator for managing command list memory
 	for (int i(0); i < NUM_BUFFERED_FRAMES; ++i) {
@@ -108,13 +92,8 @@ void IndexRendering::loadRenderPipelineDependencies()
 
 
 //---------------------------------------------------------------------------------------
-void IndexRendering::createRenderTargetView (
-    _In_ ID3D12Device * device,
-    _In_ IDXGISwapChain * swapChain,
-    _Out_ ComPtr<ID3D12DescriptorHeap> & rtvHeap,
-    _Out_ uint & rtvDescriptorSize,
-    _Out_ ComPtr<ID3D12Resource> * renderTargets
-) {
+void IndexRendering::createRenderTargetView()
+{
     // Describe and create a render target view (RTV) descriptor heap which will
     // hold the RTV descriptors.
 	{
@@ -123,17 +102,17 @@ void IndexRendering::createRenderTargetView (
 		rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 		rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 		CHECK_D3D_RESULT (
-            device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&rtvHeap))
+            m_device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&m_rtvHeap))
         );
 
-		rtvDescriptorSize =
-            device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+		m_rtvDescriptorSize = 
+			m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	}
 
 	// Create a RTV for each swapChain buffer.
 	{
 		CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle (
-            rtvHeap->GetCPUDescriptorHandleForHeapStart()
+            m_rtvHeap->GetCPUDescriptorHandleForHeapStart()
         );
 
         // Create a RTV with sRGB format so output image is properly gamma corrected.
@@ -145,13 +124,13 @@ void IndexRendering::createRenderTargetView (
 		for (uint n(0); n < NUM_BUFFERED_FRAMES; ++n)
 		{
 			CHECK_D3D_RESULT (
-                swapChain->GetBuffer(n, IID_PPV_ARGS(&renderTargets[n]))
+                m_swapChain->GetBuffer(n, IID_PPV_ARGS(&m_renderTargets[n]))
             );
-			device->CreateRenderTargetView(renderTargets[n].Get(), &rtvDesc, rtvHandle);
-			rtvHandle.Offset(1, rtvDescriptorSize);
+			m_device->CreateRenderTargetView(m_renderTargets[n].Get(), &rtvDesc, rtvHandle);
+			rtvHandle.Offset(1, m_rtvDescriptorSize);
 		}
+		NAME_D3D12_OBJECT_ARRAY(m_renderTargets, 2);
 	}
-
 }
 
 //---------------------------------------------------------------------------------------
@@ -159,7 +138,7 @@ void IndexRendering::createRenderTargetView (
 void IndexRendering::loadAssets()
 {
 	// Create an empty root signature.
-    createRootSignature(m_device.Get(), m_rootSignature);
+	createRootSignature();
 
     // Load shader bytecode.
     ComPtr<ID3DBlob> vertexShaderBlob;
@@ -167,23 +146,14 @@ void IndexRendering::loadAssets()
     loadShaders(vertexShaderBlob, pixelShaderBlob);
 
 	// Create the pipeline state object.
-    createPipelineState (
-        m_device.Get(),
-        m_rootSignature.Get(),
-        vertexShaderBlob.Get(),
-        pixelShaderBlob.Get(),
-        m_pipelineState
-    );
-	NAME_D3D12_OBJECT(m_pipelineState);
+    createPipelineState(vertexShaderBlob.Get(), pixelShaderBlob.Get());
 
     createVertexDataBuffers();
 }
 
 //---------------------------------------------------------------------------------------
-void IndexRendering::createRootSignature (
-    _In_ ID3D12Device * device,
-    _Out_ ComPtr<ID3D12RootSignature> & rootSignature
-) {
+void IndexRendering::createRootSignature()
+{
     CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
     rootSignatureDesc.Init (
         0, nullptr, 0, nullptr,
@@ -203,11 +173,11 @@ void IndexRendering::createRootSignature (
     );
 
     CHECK_D3D_RESULT (
-        device->CreateRootSignature (
+        m_device->CreateRootSignature (
             0,
             signature->GetBufferPointer(),
             signature->GetBufferSize(),
-            IID_PPV_ARGS(&rootSignature)
+            IID_PPV_ARGS(&m_rootSignature)
         )
     );
 }
@@ -224,11 +194,8 @@ void IndexRendering::loadShaders (
 
 //---------------------------------------------------------------------------------------
 void IndexRendering::createPipelineState(
-    _In_ ID3D12Device * device,
-    _In_ ID3D12RootSignature * rootSignature,
     _In_ ID3DBlob * vertexShaderBlob,
-    _In_ ID3DBlob * pixelShaderBlob,
-    _Out_ ComPtr<ID3D12PipelineState> & pipelineState
+    _In_ ID3DBlob * pixelShaderBlob
 ) {
     // Define the vertex input layout.
     D3D12_INPUT_ELEMENT_DESC inputElementDescriptor[2];
@@ -255,11 +222,10 @@ void IndexRendering::createPipelineState(
     CD3DX12_RASTERIZER_DESC rasterizerState(D3D12_DEFAULT);
     rasterizerState.FrontCounterClockwise = TRUE;
 
-
     // Describe and create the graphics pipeline state object (PSO).
     D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
     psoDesc.InputLayout = { inputElementDescriptor, _countof(inputElementDescriptor) };
-    psoDesc.pRootSignature = rootSignature;
+    psoDesc.pRootSignature = m_rootSignature.Get();
     psoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShaderBlob);
     psoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShaderBlob);
     psoDesc.RasterizerState = rasterizerState;
@@ -274,11 +240,12 @@ void IndexRendering::createPipelineState(
 
     // Create the Pipeline State Object.
     CHECK_D3D_RESULT (
-        device->CreateGraphicsPipelineState (
+        m_device->CreateGraphicsPipelineState (
             &psoDesc,
-            IID_PPV_ARGS(&pipelineState)
+            IID_PPV_ARGS(&m_pipelineState)
         )
      );
+	NAME_D3D12_OBJECT(m_pipelineState);
 }
 
 //---------------------------------------------------------------------------------------
@@ -360,13 +327,16 @@ void IndexRendering::createVertexDataBuffers ()
 	// Copy data in CPU memory to upload buffer
 	{
 		void * p;
-		// Map pointer p to full range of upload buffer.
-		uploadBuffer->Map(0, nullptr, &p);
+		// Set read range to zero, since we are only going to upload data to upload buffer
+		// rather than read data from it.
+		D3D12_RANGE readRange = {0, 0};
+		uploadBuffer->Map(0, &readRange, &p);
 		::memcpy(p, vertices, sizeof(vertices));
 		::memcpy(static_cast<byte *>(p) + sizeof(vertices), indices, sizeof(indices));
 
-		// Finished uploading data to uploadBuffer, so unmap full range.
-		uploadBuffer->Unmap(0, nullptr);
+		// Finished uploading data to uploadBuffer, so unmap it.
+		D3D12_RANGE writtenRange = {0, sizeof(vertices) + sizeof(indices)};
+		uploadBuffer->Unmap(0, &writtenRange);
 	}
 
 	// Copy data from upload buffer on CPU into the index/vertex buffer on 

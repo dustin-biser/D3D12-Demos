@@ -49,16 +49,17 @@ protected:
 	static const uint NUM_BUFFERED_FRAMES = 3;
 	uint m_frameIndex;
 
-	// Viewport dimensions.
+	// Window and viewport dimensions.
 	uint m_windowWidth;
 	uint m_windowHeight;
+	D3D12_VIEWPORT m_viewport;
+	D3D12_RECT m_scissorRect;
 
 	// Set to true to use software rasterizer.
 	bool m_useWarpDevice;
 
 	Microsoft::WRL::ComPtr<IDXGIFactory4> m_dxgiFactory;
 	Microsoft::WRL::ComPtr<ID3D12Device> m_device;
-
 	Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_directCmdQueue;
 
 	// SwapChain objects.

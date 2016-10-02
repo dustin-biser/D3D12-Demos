@@ -42,8 +42,6 @@ private:
 	void * m_cbv_SceneConstants_dataPtr[NUM_BUFFERED_FRAMES];
 
 	// Pipeline objects.
-	D3D12_VIEWPORT m_viewport;
-	D3D12_RECT m_scissorRect;
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature;
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineState;
 	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> m_cmdAllocator[NUM_BUFFERED_FRAMES];
