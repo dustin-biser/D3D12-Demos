@@ -21,10 +21,6 @@ static void CreatePipelineState (
 	_Out_ ComPtr<ID3D12PipelineState> & pipelineState
 );
 
-static void OutputMemoryBudgets (
-    _In_ ID3D12Device * device
-);
-
 
 //---------------------------------------------------------------------------------------
 ConstantBufferDemo::ConstantBufferDemo (
@@ -44,8 +40,6 @@ void ConstantBufferDemo::initializeDemo()
 	loadPipelineDependencies();
 
 	loadAssets();
-
-	OutputMemoryBudgets(m_device.Get());
 }
 
 
@@ -135,44 +129,6 @@ void ConstantBufferDemo::loadPipelineDependencies()
 		NAME_D3D12_OBJECT_ARRAY(m_drawCmdList, NUM_BUFFERED_FRAMES);
 	}
 }
-
-
-//---------------------------------------------------------------------------------------
-static void OutputMemoryBudgets (
-    _In_ ID3D12Device * device
-) {
-    assert(device);
-
-    DXGI_QUERY_VIDEO_MEMORY_INFO videoMemoryInfo;
-
-    // Query video memory
-	QueryVideoMemoryInfo(device, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, videoMemoryInfo);
-    cout << "Video Memory:\n"
-         << "Budget: " << videoMemoryInfo.Budget << " bytes" << endl
-         << "AvailableForReservation: " << videoMemoryInfo.AvailableForReservation << " bytes" << endl
-         << "CurrantUsage: " << videoMemoryInfo.CurrentUsage << " bytes" << endl;
-    cout << endl;
-
-    // Query system memory
-	QueryVideoMemoryInfo(device, DXGI_MEMORY_SEGMENT_GROUP_NON_LOCAL, videoMemoryInfo);
-    cout << "System Memory:\n"
-         << "Budget: " << videoMemoryInfo.Budget << " bytes" << endl
-         << "AvailableForReservation: " << videoMemoryInfo.AvailableForReservation << " bytes" << endl
-         << "CurrantUsage: " << videoMemoryInfo.CurrentUsage << " bytes" << endl;
-    cout << endl;
-
-
-	D3D12_FEATURE_DATA_GPU_VIRTUAL_ADDRESS_SUPPORT featureData;
-
-	CHECK_D3D_RESULT (
-		device->CheckFeatureSupport(D3D12_FEATURE_GPU_VIRTUAL_ADDRESS_SUPPORT,
-			&featureData, sizeof(D3D12_FEATURE_DATA_GPU_VIRTUAL_ADDRESS_SUPPORT))
-	);
-	
-	cout << "Max GPU Virtual Address Bits per Process: " << featureData.MaxGPUVirtualAddressBitsPerProcess << endl;
-	cout << "Max GPU Virtual Address Bits per Resource: " << featureData.MaxGPUVirtualAddressBitsPerResource << endl;
-}
-
 
 
 //---------------------------------------------------------------------------------------

@@ -74,5 +74,5 @@ private:
 	void populateCommandList();
 
 	void updateConstantBuffers();
+};
 
-}; // end class FrameBuffering
