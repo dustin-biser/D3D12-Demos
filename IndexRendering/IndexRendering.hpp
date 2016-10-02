@@ -27,10 +27,8 @@ private:
 	// Pipeline objects.
 	D3D12_VIEWPORT m_viewport;
 	D3D12_RECT m_scissorRect;
-	Microsoft::WRL::ComPtr<ID3D12CommandAllocator>
-		m_commandAllocator[NUM_BUFFERED_FRAMES];
-	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList>
-		m_drawCommandList[NUM_BUFFERED_FRAMES];
+	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> m_commandAllocator[NUM_BUFFERED_FRAMES];
+	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_drawCommandList[NUM_BUFFERED_FRAMES];
 	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> m_copyCommandAllocator;
     Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_copyCommandList;
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature;
@@ -46,7 +44,6 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_indexBuffer;
 	D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
     uint m_indexCount;
-
 
 
 	void loadRenderPipelineDependencies();
@@ -79,29 +76,7 @@ private:
         _Out_ Microsoft::WRL::ComPtr<ID3D12PipelineState> & pipelineState
     );
 
-    D3D12_VERTEX_BUFFER_VIEW uploadVertexDataToDefaultHeap (
-        _In_ ID3D12Device * device,
-        _In_ ID3D12GraphicsCommandList * copyCommandList,
-        _Out_ Microsoft::WRL::ComPtr<ID3D12Resource> & vertexBufferUploadHeap,
-        _Out_ Microsoft::WRL::ComPtr<ID3D12Resource> & vertexBuffer
-    );
-
-    D3D12_INDEX_BUFFER_VIEW uploadIndexDataToDefaultHeap (
-        _In_ ID3D12Device * device,
-        _In_ ID3D12GraphicsCommandList * copyCommandList,
-        _Out_ Microsoft::WRL::ComPtr<ID3D12Resource> & indexBufferUploadHeap,
-        _Out_ Microsoft::WRL::ComPtr<ID3D12Resource> & indexBuffer,
-        _Out_ uint & indexCount
-    );
-
-    void createVertexDataBuffers (
-        _In_ ID3D12Device * device,
-        _In_ ID3D12CommandQueue * commandQueue,
-        _In_ ID3D12GraphicsCommandList * copyCommandList,
-        _Out_ Microsoft::WRL::ComPtr<ID3D12Resource> & vertexBuffer,
-        _Out_ Microsoft::WRL::ComPtr<ID3D12Resource> & indexBuffer,
-        _Out_ uint & indexCount
-    );
+    void createVertexDataBuffers();
 
 
 }; // end class IndexRendering

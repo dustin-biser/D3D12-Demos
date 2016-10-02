@@ -64,7 +64,7 @@ static void CreateWarpDevice (
 	std::wcout << "Adapter: " << adapterDesc.Description << std::endl;
 
 	CHECK_D3D_RESULT (
-		D3D12CreateDevice( warpAdapter.Get(), featureLevel, IID_PPV_ARGS(&device) )
+		D3D12CreateDevice(warpAdapter.Get(), featureLevel, IID_PPV_ARGS(&device))
 	);
 
 }
@@ -255,6 +255,7 @@ void D3D12DemoBase::initializeDemo()
 	::createDevice(m_dxgiFactory.Get(), m_useWarpDevice, m_device);
 	NAME_D3D12_OBJECT(m_device);
 
+	// Create a direct D3D12CommandQueue.
 	::createCommandQueue(m_device.Get(), D3D12_COMMAND_LIST_TYPE_DIRECT, m_directCmdQueue);
 	NAME_D3D12_OBJECT(m_directCmdQueue);
 

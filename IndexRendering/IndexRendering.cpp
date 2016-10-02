@@ -159,35 +159,24 @@ void IndexRendering::createRenderTargetView (
 void IndexRendering::loadAssets()
 {
 	// Create an empty root signature.
-    this->createRootSignature(
-        m_device.Get(),
-        m_rootSignature
-    );
+    createRootSignature(m_device.Get(), m_rootSignature);
 
     // Load shader bytecode.
     ComPtr<ID3DBlob> vertexShaderBlob;
     ComPtr<ID3DBlob> pixelShaderBlob;
-    this->loadShaders(vertexShaderBlob, pixelShaderBlob);
+    loadShaders(vertexShaderBlob, pixelShaderBlob);
 
 	// Create the pipeline state object.
-    this->createPipelineState (
+    createPipelineState (
         m_device.Get(),
         m_rootSignature.Get(),
         vertexShaderBlob.Get(),
         pixelShaderBlob.Get(),
         m_pipelineState
-    ); NAME_D3D12_OBJECT(m_pipelineState);
-
-    this->createVertexDataBuffers (
-        m_device.Get(),
-        m_directCmdQueue.Get(),
-        m_copyCommandList.Get(),
-        m_vertexBuffer,
-        m_indexBuffer,
-        m_indexCount
     );
-    NAME_D3D12_OBJECT(m_vertexBuffer);
-    NAME_D3D12_OBJECT(m_indexBuffer);
+	NAME_D3D12_OBJECT(m_pipelineState);
+
+    createVertexDataBuffers();
 }
 
 //---------------------------------------------------------------------------------------
@@ -293,196 +282,135 @@ void IndexRendering::createPipelineState(
 }
 
 //---------------------------------------------------------------------------------------
-D3D12_VERTEX_BUFFER_VIEW IndexRendering::uploadVertexDataToDefaultHeap(
-    _In_ ID3D12Device * device,
-    _In_ ID3D12GraphicsCommandList * copyCommandList,
-    _Out_ ComPtr<ID3D12Resource> & vertexUploadBuffer,
-    _Out_ ComPtr<ID3D12Resource> & vertexBuffer
-) {
-	const float aspectRatio = static_cast<float>(m_windowWidth) / m_windowHeight;
-
-    // Define vertices for a square.
-    const Vertex vertexData[] =
-    {
-        // Positions                              Colors
-        { { 0.25f, 0.25f * aspectRatio, 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f } },
-        { { 0.25f, -0.25f * aspectRatio, 0.0f }, { 0.0f, 1.0f, 0.0f, 1.0f } },
-        { { -0.25f, -0.25f * aspectRatio, 0.0f }, { 0.0f, 0.0f, 1.0f, 1.0f } },
-        { { -0.25f, 0.25f * aspectRatio, 0.0f }, { 1.0f, 0.0f, 1.0f, 1.0f } }
-    };
-    const uint vertexBufferSize = sizeof(vertexData);
-
-    // The vertex buffer resource will live in the Default Heap, and will
-    // be the copy destination.
-    CHECK_D3D_RESULT(
-        device->CreateCommittedResource (
-            &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-            D3D12_HEAP_FLAG_NONE,
-            &CD3DX12_RESOURCE_DESC::Buffer(vertexBufferSize),
-            D3D12_RESOURCE_STATE_COPY_DEST,
-            nullptr,
-            IID_PPV_ARGS(&vertexBuffer))
-    );
-
-    // The Upload Heap will contain the raw vertex data, and will be the copy source.
-    CHECK_D3D_RESULT(
-        device->CreateCommittedResource (
-            &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
-            D3D12_HEAP_FLAG_NONE,
-            &CD3DX12_RESOURCE_DESC::Buffer(vertexBufferSize),
-            D3D12_RESOURCE_STATE_GENERIC_READ,
-            nullptr,
-            IID_PPV_ARGS(&vertexUploadBuffer)
-        )
-    );
-
-    // Copy data to the intermediate Upload Heap and then schedule a copy 
-    // from the Upload Heap to the vertex buffer resource.
-    {
-        D3D12_SUBRESOURCE_DATA vertexDataSubResource = {};
-        vertexDataSubResource.pData = vertexData;
-        vertexDataSubResource.RowPitch = vertexBufferSize;
-        vertexDataSubResource.SlicePitch = vertexDataSubResource.RowPitch;
-
-        UpdateSubresources<1>(
-            copyCommandList,
-            vertexBuffer.Get(),
-            vertexUploadBuffer.Get(),
-            0, 0, 1,
-            &vertexDataSubResource
-        );
-
-        // Transition the vertex buffer resource from the Copy Destination State to
-        // the Vertex Buffer State so it can be fed to the 3D pipeline for rendering.
-        copyCommandList->ResourceBarrier (
-            1, &CD3DX12_RESOURCE_BARRIER::Transition (
-                vertexBuffer.Get(),
-                D3D12_RESOURCE_STATE_COPY_DEST,
-                D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER)
-        );
-    }
-
-    // Initialize the vertex buffer view.
-    D3D12_VERTEX_BUFFER_VIEW vertexBufferView;
-    vertexBufferView.BufferLocation = vertexBuffer->GetGPUVirtualAddress();
-    vertexBufferView.StrideInBytes = sizeof(Vertex);
-    vertexBufferView.SizeInBytes = vertexBufferSize;
-
-    return vertexBufferView;
-}
-
-
-//---------------------------------------------------------------------------------------
-D3D12_INDEX_BUFFER_VIEW IndexRendering::uploadIndexDataToDefaultHeap(
-    _In_ ID3D12Device * device,
-    _In_ ID3D12GraphicsCommandList * copyCommandList,
-    _Out_ ComPtr<ID3D12Resource> & indexUploadBuffer,
-    _Out_ ComPtr<ID3D12Resource> & indexBuffer,
-    _Out_ uint & indexCount
-) {
-    std::vector<ushort> indices = { 2, 1,0, 2,0,3 };
-    indexCount = uint(indices.size());
-    const uint indexBufferSize = sizeof(ushort) * indexCount;
-
-    CHECK_D3D_RESULT(
-        device->CreateCommittedResource (
-            &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-            D3D12_HEAP_FLAG_NONE,
-            &CD3DX12_RESOURCE_DESC::Buffer(indexBufferSize),
-            D3D12_RESOURCE_STATE_COPY_DEST,
-            nullptr,
-            IID_PPV_ARGS(&indexBuffer))
-    );
-
-    CHECK_D3D_RESULT(
-        device->CreateCommittedResource (
-            &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
-            D3D12_HEAP_FLAG_NONE,
-            &CD3DX12_RESOURCE_DESC::Buffer(indexBufferSize),
-            D3D12_RESOURCE_STATE_GENERIC_READ,
-            nullptr,
-            IID_PPV_ARGS(&indexUploadBuffer))
-    );
-
-    // Copy data to the intermediate upload heap and then schedule a copy 
-    // from the upload heap to the index buffer.
-    {
-        D3D12_SUBRESOURCE_DATA indexDataSubResource = {};
-        indexDataSubResource.pData = indices.data();
-        indexDataSubResource.RowPitch = indexBufferSize;
-        indexDataSubResource.SlicePitch = indexDataSubResource.RowPitch;
-
-        UpdateSubresources<1>(
-            copyCommandList,
-            indexBuffer.Get(),
-            indexUploadBuffer.Get(),
-            0, 0, 1,
-            &indexDataSubResource
-        );
-
-        // Transition the index buffer resource from the Copy Destination State to
-        // the Index Buffer State so it can be fed to the 3D pipeline for rendering.
-        copyCommandList->ResourceBarrier (
-            1, &CD3DX12_RESOURCE_BARRIER::Transition (
-                indexBuffer.Get(),
-                D3D12_RESOURCE_STATE_COPY_DEST,
-                D3D12_RESOURCE_STATE_INDEX_BUFFER)
-        );
-    }
-
-    // Initialize the vertex buffer view.
-    D3D12_INDEX_BUFFER_VIEW indexBufferView;
-    indexBufferView.BufferLocation = indexBuffer->GetGPUVirtualAddress();
-    indexBufferView.Format = DXGI_FORMAT_R16_UINT;
-    indexBufferView.SizeInBytes = indexBufferSize;
-
-    return indexBufferView;
-}
-
-
-//---------------------------------------------------------------------------------------
-void IndexRendering::createVertexDataBuffers (
-    _In_ ID3D12Device * device,
-    _In_ ID3D12CommandQueue * commandQueue,
-    _In_ ID3D12GraphicsCommandList * copyCommandList,
-    _Out_ ComPtr<ID3D12Resource> & vertexBuffer,
-    _Out_ ComPtr<ID3D12Resource> & indexBuffer,
-    _Out_ uint & indexCount
-) {
-    // Upload buffers (which rides in the Upload Heap) are only needed when loading data
+void IndexRendering::createVertexDataBuffers ()
+{
+    // Upload buffers (which reside in the upload Heap) are only needed when loading data
     // into GPU memory.
     // Note: ComPtr's are CPU objects but this resource needs to stay in scope until
     // the command list that references it has finished executing on the GPU.
     // We will flush the GPU at the end of this method to ensure the resource is not
     // prematurely destroyed.
-    ComPtr<ID3D12Resource> vertexUploadBuffer;
-    ComPtr<ID3D12Resource> indexUploadBuffer;
+    ComPtr<ID3D12Resource> uploadBuffer;
 
-    // Upload vertex data to the Default Heap and create a Vertex Buffer View of the
-    // resource.
-    m_vertexBufferView = this->uploadVertexDataToDefaultHeap (
-        device,
-        copyCommandList,
-        vertexUploadBuffer,
-        vertexBuffer
-    );
+	const float aspectRatio = static_cast<float>(m_windowWidth) / m_windowHeight;
 
-    // Upload index data to the Default Heap and create an Index Buffer View of the
-    // resource.
-    m_indexBufferView = this->uploadIndexDataToDefaultHeap (
-        device,
-        copyCommandList,
-        indexUploadBuffer,
-        indexBuffer,
-        indexCount
-    );
+	// Define vertices for a square.
+	const Vertex vertices[] =
+	{
+		  // Positions                          Colors
+		{ {0.25f, 0.25f * aspectRatio, 0.0f},   {1.0f, 0.0f, 0.0f, 1.0f} },
+		{ {0.25f, -0.25f * aspectRatio, 0.0f},  {0.0f, 1.0f, 0.0f, 1.0f} },
+		{ {-0.25f, -0.25f * aspectRatio, 0.0f}, {0.0f, 0.0f, 1.0f, 1.0f} },
+		{ {-0.25f, 0.25f * aspectRatio, 0.0f},  {1.0f, 0.0f, 1.0f, 1.0f} }
+	};
 
-    // Close the command list and execute it to begin the initial GPU setup.
-    CHECK_D3D_RESULT(
-        copyCommandList->Close()
+    const ushort indices[] = { 2,1,0, 2,0,3 };
+	m_indexCount = _countof(indices);
+
+	const int uploadBufferSize = sizeof(vertices) + sizeof(indices);
+	const auto uploadHeapProperties = CD3DX12_HEAP_PROPERTIES (D3D12_HEAP_TYPE_UPLOAD);
+	const auto uploadBufferDesc = CD3DX12_RESOURCE_DESC::Buffer (uploadBufferSize);
+
+	// Create upload buffer.
+	m_device->CreateCommittedResource (
+		&uploadHeapProperties,
+		D3D12_HEAP_FLAG_NONE,
+		&uploadBufferDesc,
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS (&uploadBuffer)
+	);
+
+	// Allocate vertex and index buffers within the default heap
+	{
+		const auto defaultHeapProperties = CD3DX12_HEAP_PROPERTIES (D3D12_HEAP_TYPE_DEFAULT);
+
+		const auto vertexBufferDesc = CD3DX12_RESOURCE_DESC::Buffer (sizeof(vertices));
+		m_device->CreateCommittedResource (
+			&defaultHeapProperties,
+			D3D12_HEAP_FLAG_NONE,
+			&vertexBufferDesc,
+			D3D12_RESOURCE_STATE_COPY_DEST,
+			nullptr,
+			IID_PPV_ARGS (&m_vertexBuffer)
+		);
+		NAME_D3D12_OBJECT(m_vertexBuffer);
+
+		const auto indexBufferDesc = CD3DX12_RESOURCE_DESC::Buffer (sizeof(indices));
+		m_device->CreateCommittedResource (
+			&defaultHeapProperties,
+			D3D12_HEAP_FLAG_NONE,
+			&indexBufferDesc,
+			D3D12_RESOURCE_STATE_COPY_DEST,
+			nullptr,
+			IID_PPV_ARGS (&m_indexBuffer)
+		);
+		NAME_D3D12_OBJECT(m_indexBuffer);
+	}
+
+	// Create buffer views
+	m_vertexBufferView.BufferLocation = m_vertexBuffer->GetGPUVirtualAddress();
+	m_vertexBufferView.SizeInBytes = sizeof(vertices);
+	m_vertexBufferView.StrideInBytes = sizeof(Vertex);
+
+	m_indexBufferView.BufferLocation = m_indexBuffer->GetGPUVirtualAddress();
+	m_indexBufferView.SizeInBytes = sizeof(indices);
+	m_indexBufferView.Format = DXGI_FORMAT_R16_UINT;
+
+	// Copy data in CPU memory to upload buffer
+	{
+		void * p;
+		// Map pointer p to full range of upload buffer.
+		uploadBuffer->Map(0, nullptr, &p);
+		::memcpy(p, vertices, sizeof(vertices));
+		::memcpy(static_cast<byte *>(p) + sizeof(vertices), indices, sizeof(indices));
+
+		// Finished uploading data to uploadBuffer, so unmap full range.
+		uploadBuffer->Unmap(0, nullptr);
+	}
+
+	// Copy data from upload buffer on CPU into the index/vertex buffer on 
+	// the GPU.
+	{
+		uint64 dstOffset = 0;
+		uint64 srcOffset = 0;
+		m_copyCommandList->CopyBufferRegion (
+			m_vertexBuffer.Get(), dstOffset, uploadBuffer.Get(), srcOffset, sizeof(vertices)
+		);
+
+		dstOffset = 0;
+		srcOffset = sizeof(vertices);
+		m_copyCommandList->CopyBufferRegion (
+			m_indexBuffer.Get(), dstOffset, uploadBuffer.Get(), srcOffset, sizeof(indices)
+		);
+	}
+
+	// Batch resource barriers marking state transitions.
+	{
+		const CD3DX12_RESOURCE_BARRIER barriers[2] = {
+
+			CD3DX12_RESOURCE_BARRIER::Transition (
+				m_vertexBuffer.Get(),
+				D3D12_RESOURCE_STATE_COPY_DEST,
+				D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER
+			),
+
+			CD3DX12_RESOURCE_BARRIER::Transition (
+				m_indexBuffer.Get(),
+				D3D12_RESOURCE_STATE_COPY_DEST,
+				D3D12_RESOURCE_STATE_INDEX_BUFFER
+			)
+		};
+
+		m_copyCommandList->ResourceBarrier(2, barriers);
+	}
+
+    // Close command list and execute it on the command queue. 
+    CHECK_D3D_RESULT (
+        m_copyCommandList->Close()
     );
-    std::vector<ID3D12CommandList*> commandLists = { copyCommandList };
-    commandQueue->ExecuteCommandLists(uint(commandLists.size()), commandLists.data());
+    ID3D12CommandList * commandLists[] = { m_copyCommandList.Get() };
+    m_directCmdQueue->ExecuteCommandLists(_countof(commandLists), commandLists);
 
 	waitForGpuCompletion(m_directCmdQueue.Get());
 }

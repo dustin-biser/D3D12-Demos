@@ -58,6 +58,7 @@ protected:
 
 	Microsoft::WRL::ComPtr<IDXGIFactory4> m_dxgiFactory;
 	Microsoft::WRL::ComPtr<ID3D12Device> m_device;
+
 	Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_directCmdQueue;
 
 	// SwapChain objects.
