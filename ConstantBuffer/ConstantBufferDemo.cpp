@@ -9,19 +9,6 @@ using Microsoft::WRL::ComPtr;
 using namespace std;
 
 
-
-//---------------------------------------------------------------------------------------
-// Static Function Declarations
-//---------------------------------------------------------------------------------------
-static void CreatePipelineState (
-	_In_ ID3D12Device * device,
-	_In_ ID3D12RootSignature * rootSignature,
-	_In_ ID3DBlob * vertexShaderBlob,
-	_In_ ID3DBlob * pixelShaderBlob,
-	_Out_ ComPtr<ID3D12PipelineState> & pipelineState
-);
-
-
 //---------------------------------------------------------------------------------------
 ConstantBufferDemo::ConstantBufferDemo (
     uint width, 
@@ -181,13 +168,7 @@ void ConstantBufferDemo::loadAssets()
 	D3DReadFileToBlob(getAssetPath(L"PixelShader.cso").c_str(), &pixelShaderBlob);
 
 	// Create the pipeline state object.
-	CreatePipelineState(
-		m_device.Get(),
-		m_rootSignature.Get(),
-		vertexShaderBlob.Get(),
-		pixelShaderBlob.Get(),
-		m_pipelineState
-	); NAME_D3D12_OBJECT(m_pipelineState);
+	createPipelineState(vertexShaderBlob.Get(), pixelShaderBlob.Get());
 
 	// Create upload buffer to hold graphics resources
 	m_uploadBuffer = std::make_shared<ResourceUploadBuffer>(
@@ -365,12 +346,9 @@ void ConstantBufferDemo::loadAssets()
 
 
 //---------------------------------------------------------------------------------------
-static void CreatePipelineState (
-    _In_ ID3D12Device * device,
-    _In_ ID3D12RootSignature * rootSignature,
-    _In_ ID3DBlob * vertexShaderBlob,
-    _In_ ID3DBlob * pixelShaderBlob,
-    _Out_ ComPtr<ID3D12PipelineState> & pipelineState
+void ConstantBufferDemo::createPipelineState (
+    ID3DBlob * vertexShaderBlob,
+    ID3DBlob * pixelShaderBlob
 ) {
     // Define the vertex input layout.
     D3D12_INPUT_ELEMENT_DESC inputElementDescriptor[2];
@@ -405,7 +383,7 @@ static void CreatePipelineState (
     // Describe and create the graphics pipeline state object (PSO).
     D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
     psoDesc.InputLayout = inputLayoutDesc;
-    psoDesc.pRootSignature = rootSignature;
+    psoDesc.pRootSignature = m_rootSignature.Get();
     psoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShaderBlob);
     psoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShaderBlob);
     psoDesc.RasterizerState = rasterizerState;
@@ -423,8 +401,9 @@ static void CreatePipelineState (
 
     // Create the Pipeline State Object.
     CHECK_D3D_RESULT (
-        device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&pipelineState))
+        m_device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pipelineState))
      );
+	NAME_D3D12_OBJECT(m_pipelineState);
 }
 
 //---------------------------------------------------------------------------------------

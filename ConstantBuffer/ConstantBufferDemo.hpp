@@ -68,11 +68,12 @@ private:
     uint m_indexCount;
 
 	void loadPipelineDependencies();
-
 	void loadAssets();
-
 	void populateCommandList();
-
 	void updateConstantBuffers();
+	void createPipelineState (
+		ID3DBlob * vertexShaderBlob,
+		ID3DBlob * pixelShaderBlob
+	);
 };
 
