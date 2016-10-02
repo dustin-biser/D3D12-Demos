@@ -11,10 +11,10 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{6CD9FF56-E775-4F72-A0BF-D764B76F64E6}</ProjectGuid>
+    <ProjectGuid>{2366B8F0-2F2A-49A8-93CC-0EF679E55E61}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>D3D12HelloTriangle</RootNamespace>
-    <ProjectName>ConstantBuffer</ProjectName>
+    <ProjectName>TexturedCube</ProjectName>
     <WindowsTargetPlatformVersion>10.0.10240.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -141,7 +141,7 @@
     <ClInclude Include="..\Common\Win32Application.hpp" />
     <ClInclude Include="Assets\Shaders\ConstantBufferDefines.hpp" />
     <ClInclude Include="Assets\Shaders\HLSL_DirectXMath_Conversion.hpp" />
-    <ClInclude Include="ConstantBufferDemo.hpp" />
+    <ClInclude Include="TexturedCubeDemo.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Common\D3D12DemoBase.cpp" />
@@ -153,7 +153,7 @@
     </ClCompile>
     <ClCompile Include="..\Common\ResourceUploadBuffer.cpp" />
     <ClCompile Include="..\Common\Win32Application.cpp" />
-    <ClCompile Include="ConstantBufferDemo.cpp" />
+    <ClCompile Include="TexturedCubeDemo.cpp" />
     <ClCompile Include="Main.cpp" />
   </ItemGroup>
   <ItemGroup>

@@ -1,6 +1,6 @@
 #include "pch.h"
 
-#include "ConstantBufferDemo.hpp"
+#include "TexturedCubeDemo.hpp"
 using namespace DirectX;
 using Microsoft::WRL::ComPtr;
 
@@ -10,7 +10,7 @@ using namespace std;
 
 
 //---------------------------------------------------------------------------------------
-ConstantBufferDemo::ConstantBufferDemo (
+TexturedCubeDemo::TexturedCubeDemo (
     uint width, 
     uint height,
     std::wstring name
@@ -22,7 +22,7 @@ ConstantBufferDemo::ConstantBufferDemo (
 
 
 //---------------------------------------------------------------------------------------
-void ConstantBufferDemo::initializeDemo()
+void TexturedCubeDemo::initializeDemo()
 {
 	loadPipelineDependencies();
 
@@ -32,7 +32,7 @@ void ConstantBufferDemo::initializeDemo()
 
 //---------------------------------------------------------------------------------------
 // Loads the rendering pipeline dependencies.
-void ConstantBufferDemo::loadPipelineDependencies()
+void TexturedCubeDemo::loadPipelineDependencies()
 {
 	//-- Create descriptor heaps:
 	{
@@ -119,7 +119,7 @@ void ConstantBufferDemo::loadPipelineDependencies()
 
 
 //---------------------------------------------------------------------------------------
-void ConstantBufferDemo::loadAssets()
+void TexturedCubeDemo::loadAssets()
 {
 	//-- Create root signature:
 	{
@@ -346,7 +346,7 @@ void ConstantBufferDemo::loadAssets()
 
 
 //---------------------------------------------------------------------------------------
-void ConstantBufferDemo::createPipelineState (
+void TexturedCubeDemo::createPipelineState (
     ID3DBlob * vertexShaderBlob,
     ID3DBlob * pixelShaderBlob
 ) {
@@ -407,7 +407,7 @@ void ConstantBufferDemo::createPipelineState (
 }
 
 //---------------------------------------------------------------------------------------
-void ConstantBufferDemo::updateConstantBuffers()
+void TexturedCubeDemo::updateConstantBuffers()
 {
 	//-- Create and Upload SceneContants Data:
 	{
@@ -489,13 +489,13 @@ void ConstantBufferDemo::updateConstantBuffers()
 }
 
 //---------------------------------------------------------------------------------------
-void ConstantBufferDemo::update()
+void TexturedCubeDemo::update()
 {
 	this->updateConstantBuffers();
 }
 
 //---------------------------------------------------------------------------------------
-void ConstantBufferDemo::render()
+void TexturedCubeDemo::render()
 {
 	this->populateCommandList();
 
@@ -506,13 +506,13 @@ void ConstantBufferDemo::render()
 
 
 //---------------------------------------------------------------------------------------
-void ConstantBufferDemo::cleanupDemo()
+void TexturedCubeDemo::cleanupDemo()
 {
 
 }
 
 //---------------------------------------------------------------------------------------
-void ConstantBufferDemo::populateCommandList()
+void TexturedCubeDemo::populateCommandList()
 {
 	auto * cmdAllocator = m_cmdAllocator[m_frameIndex].Get();
 	auto & drawCmdList = m_drawCmdList[m_frameIndex];
