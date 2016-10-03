@@ -504,22 +504,17 @@ void TexturedCubeDemo::populateCommandList()
 	// Indicate that the back buffer will be used as a render target.
 	drawCmdList->ResourceBarrier (1,
 		&CD3DX12_RESOURCE_BARRIER::Transition (
-			m_renderTarget[m_frameIndex].Get(),
+			m_renderTarget[m_frameIndex].resource,
 			D3D12_RESOURCE_STATE_PRESENT,
 			D3D12_RESOURCE_STATE_RENDER_TARGET
 		)
 	);
 
-	uint rtvDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-	int offset(m_frameIndex);
-	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle (
-		m_rtvDescHeap->GetCPUDescriptorHandleForHeapStart(),
-		offset, 
-		rtvDescriptorSize
-	);
+	// Get a handle to the depth/stencil buffer.
+	D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle (m_dsvDescHeap->GetCPUDescriptorHandleForHeapStart());
 
-	// Get a handle to the depth/stencil buffer
-	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(m_dsvDescHeap->GetCPUDescriptorHandleForHeapStart());
+	// Get handle to render target view.
+	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle (m_renderTarget[m_frameIndex].rtvHandle);
 
 	drawCmdList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
 
@@ -545,7 +540,7 @@ void TexturedCubeDemo::populateCommandList()
 	// Indicate that the back buffer will now be used to present.
 	drawCmdList->ResourceBarrier (1,
 		&CD3DX12_RESOURCE_BARRIER::Transition (
-			m_renderTarget[m_frameIndex].Get(),
+			m_renderTarget[m_frameIndex].resource,
 			D3D12_RESOURCE_STATE_RENDER_TARGET,
 			D3D12_RESOURCE_STATE_PRESENT
 		)

@@ -309,38 +309,35 @@ void D3D12DemoBase::initializeDemo()
 		rtvDescHeapDescriptor.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 		rtvDescHeapDescriptor.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 		CHECK_D3D_RESULT (
-			m_device->CreateDescriptorHeap(&rtvDescHeapDescriptor, IID_PPV_ARGS(&m_rtvDescHeap))
+			m_device->CreateDescriptorHeap(&rtvDescHeapDescriptor, IID_PPV_ARGS(&m_rtvDescHeap.pHeap))
 		);
+
+		m_rtvDescHeap.handleIncrementSize = 
+			m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	}
 
 	//-- Create a RTV for each swapChain buffer.
 	{
-		// Create a RTV handle that points to the RTV descriptor heap.
-		CD3DX12_CPU_DESCRIPTOR_HANDLE rtvDescHeapHandle (
-			m_rtvDescHeap->GetCPUDescriptorHandleForHeapStart()
-		);
-
 		// Specify a RTV with sRGB format to support gamma correction.
 		D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
 		rtvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
 		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
 
-		const uint rtvDescriptorSize =
-			m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-
 		// Create a render target view for each frame.
 		for (uint n(0); n < NUM_BUFFERED_FRAMES; ++n) {
 			CHECK_D3D_RESULT (
-				m_swapChain->GetBuffer(n, IID_PPV_ARGS(&m_renderTarget[n]))
+				m_swapChain->GetBuffer(n, IID_PPV_ARGS(&m_renderTarget[n].resource))
 			);
 
-			// Create RTV and store it at the heap location pointed to by descriptor heap handle.
-			m_device->CreateRenderTargetView(m_renderTarget[n].Get(), &rtvDesc, rtvDescHeapHandle);
+			m_renderTarget[n].rtvHandle = m_rtvDescHeap.pHeap->GetCPUDescriptorHandleForHeapStart();
+			m_renderTarget[n].rtvHandle.ptr += n * m_rtvDescHeap.handleIncrementSize;
 
-			// Increment descriptor heap handle so it points to the next RTV in the heap.
-			rtvDescHeapHandle.Offset(1, rtvDescriptorSize);
+			// Create RTV and store it at the heap location pointed to by descriptor heap handle.
+			m_device->CreateRenderTargetView (
+				m_renderTarget[n].resource, &rtvDesc, m_renderTarget[n].rtvHandle
+			); 
+			NAME_D3D12_OBJECT(m_renderTarget[n].resource);
 		}
-		NAME_D3D12_OBJECT_ARRAY(m_renderTarget, NUM_BUFFERED_FRAMES);
 	}
 }
 

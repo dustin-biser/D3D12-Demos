@@ -41,7 +41,6 @@ private:
 	void loadRenderPipelineDependencies();
 	void loadAssets();
 	void populateCommandList();
-    void createRenderTargetView();
     void createRootSignature();
     void createVertexDataBuffers();
     void loadShaders (

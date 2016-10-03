@@ -66,9 +66,20 @@ protected:
 	Microsoft::WRL::ComPtr<IDXGISwapChain3> m_swapChain;
 	HANDLE m_frameLatencyWaitableObject;
 
-	// Render Target specific
-	Microsoft::WRL::ComPtr<ID3D12Resource> m_renderTarget[NUM_BUFFERED_FRAMES];
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_rtvDescHeap;
+	struct RenderTarget {
+		ID3D12Resource * resource;
+		// Handle to render target view within descriptor heap.
+		D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle;
+	};
+	RenderTarget m_renderTarget[NUM_BUFFERED_FRAMES];
+
+	struct DescriptorHeap {
+		// Size of handle increment for next descriptor within heap.
+		uint handleIncrementSize;
+		ID3D12DescriptorHeap * pHeap;
+	};
+	DescriptorHeap m_rtvDescHeap;
+
 
 	// Synchronization objects.
 	HANDLE m_frameFenceEvent[NUM_BUFFERED_FRAMES];

@@ -358,62 +358,55 @@ void IndexRendering::render()
 //---------------------------------------------------------------------------------------
 void IndexRendering::populateCommandList()
 {
-    CHECK_D3D_RESULT(
-        m_commandAllocator[m_frameIndex]->Reset()
-    );
+	auto * cmdAllocator = m_commandAllocator[m_frameIndex].Get();
+	auto & drawCmdList = m_drawCommandList[m_frameIndex];
 
-    for (int i(0); i < NUM_BUFFERED_FRAMES; ++i) {
+	CHECK_D3D_RESULT (
+		cmdAllocator->Reset()
+	);
 
-        CHECK_D3D_RESULT(
-            m_drawCommandList[i]->Reset(m_commandAllocator[m_frameIndex].Get(), m_pipelineState.Get())
-         );
+	CHECK_D3D_RESULT (
+		drawCmdList->Reset(cmdAllocator, m_pipelineState.Get())
+	);
 
+	// Set necessary state.
+	drawCmdList->SetPipelineState(m_pipelineState.Get());
+	drawCmdList->SetGraphicsRootSignature(m_rootSignature.Get());
+	drawCmdList->RSSetViewports(1, &m_viewport);
+	drawCmdList->RSSetScissorRects(1, &m_scissorRect);
 
-        // Set necessary state.
-        m_drawCommandList[i]->SetPipelineState(m_pipelineState.Get());
-        m_drawCommandList[i]->SetGraphicsRootSignature(m_rootSignature.Get());
-        m_drawCommandList[i]->RSSetViewports(1, &m_viewport);
-        m_drawCommandList[i]->RSSetScissorRects(1, &m_scissorRect);
+	// Indicate that the back buffer will be used as a render target.
+	drawCmdList->ResourceBarrier (1,
+		&CD3DX12_RESOURCE_BARRIER::Transition (
+			m_renderTarget[m_frameIndex].resource,
+			D3D12_RESOURCE_STATE_PRESENT,
+			D3D12_RESOURCE_STATE_RENDER_TARGET
+		)
+	);
 
-        // Indicate that the back buffer will be used as a render target.
-        m_drawCommandList[i]->ResourceBarrier (1,
-            &CD3DX12_RESOURCE_BARRIER::Transition (
-                m_renderTarget[i].Get(),
-                D3D12_RESOURCE_STATE_PRESENT,
-                D3D12_RESOURCE_STATE_RENDER_TARGET
-            )
-        );
+	// Get handle to render target view.
+	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle (m_renderTarget[m_frameIndex].rtvHandle);
 
-		const uint rtvDescriptorSize = 
-			m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	drawCmdList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
 
-        int descOffset = i;
-        CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle (
-            m_rtvDescHeap->GetCPUDescriptorHandleForHeapStart(),
-            descOffset, 
-            rtvDescriptorSize
-        );
-        m_drawCommandList[i]->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
+	// Record commands.
+	const float clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
+	drawCmdList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+	drawCmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	drawCmdList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
+	drawCmdList->IASetIndexBuffer(&m_indexBufferView);
+	drawCmdList->DrawIndexedInstanced(m_indexCount, 1, 0, 0, 0);
 
-        // Record commands.
-        const float clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
-        m_drawCommandList[i]->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
-        m_drawCommandList[i]->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-        m_drawCommandList[i]->IASetVertexBuffers(0, 1, &m_vertexBufferView);
-        m_drawCommandList[i]->IASetIndexBuffer(&m_indexBufferView);
-        m_drawCommandList[i]->DrawIndexedInstanced(m_indexCount, 1, 0, 0, 0);
+	// Indicate that the back buffer will now be used to present.
+	drawCmdList->ResourceBarrier (1,
+		&CD3DX12_RESOURCE_BARRIER::Transition (
+			m_renderTarget[m_frameIndex].resource,
+			D3D12_RESOURCE_STATE_RENDER_TARGET,
+			D3D12_RESOURCE_STATE_PRESENT
+		)
+	);
 
-        // Indicate that the back buffer will now be used to present.
-        m_drawCommandList[i]->ResourceBarrier (1,
-            &CD3DX12_RESOURCE_BARRIER::Transition (
-                m_renderTarget[i].Get(),
-                D3D12_RESOURCE_STATE_RENDER_TARGET,
-                D3D12_RESOURCE_STATE_PRESENT
-            )
-        );
-
-        CHECK_D3D_RESULT(m_drawCommandList[i]->Close());
-    }
+	CHECK_D3D_RESULT(drawCmdList->Close());
 }
 
 //---------------------------------------------------------------------------------------
