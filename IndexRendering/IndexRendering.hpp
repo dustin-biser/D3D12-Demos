@@ -31,10 +31,6 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature;
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineState;
 
-	Microsoft::WRL::ComPtr<ID3D12Resource> m_renderTargets[NUM_BUFFERED_FRAMES];
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_rtvHeap;
-	uint m_rtvDescriptorSize;
-
 	// App resources.
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_vertexBuffer;
 	D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;

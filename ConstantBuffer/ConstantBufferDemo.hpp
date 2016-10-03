@@ -47,10 +47,6 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> m_cmdAllocator[NUM_BUFFERED_FRAMES];
 	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_drawCmdList[NUM_BUFFERED_FRAMES];
 
-	// Render Target specific
-	Microsoft::WRL::ComPtr<ID3D12Resource> m_renderTarget[NUM_BUFFERED_FRAMES];
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_rtvDescHeap;
-
 	// Depth/Stencil specific
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_dsvDescHeap;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_depthStencilBuffer;

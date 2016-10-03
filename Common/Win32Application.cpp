@@ -72,7 +72,6 @@ int Win32Application::Run (
 	// Run code specific to setting up derived demo.
 	demo->initializeDemo();
 
-
 	ShowWindow(m_hwnd, nCmdShow);
 
     //-- Timing information:

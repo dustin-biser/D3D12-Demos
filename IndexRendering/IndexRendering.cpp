@@ -34,9 +34,6 @@ void IndexRendering::initializeDemo()
 // render target views and command allocator.
 void IndexRendering::loadRenderPipelineDependencies()
 {
-    // Create RTVs, one for each SwapChain buffer.
-    createRenderTargetView();
-
     // Create command allocator for managing command list memory
 	for (int i(0); i < NUM_BUFFERED_FRAMES; ++i) {
 		CHECK_D3D_RESULT(
@@ -88,49 +85,6 @@ void IndexRendering::loadRenderPipelineDependencies()
          )
     );
     NAME_D3D12_OBJECT(m_copyCommandList);
-}
-
-
-//---------------------------------------------------------------------------------------
-void IndexRendering::createRenderTargetView()
-{
-    // Describe and create a render target view (RTV) descriptor heap which will
-    // hold the RTV descriptors.
-	{
-		D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
-		rtvHeapDesc.NumDescriptors = NUM_BUFFERED_FRAMES;
-		rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-		rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-		CHECK_D3D_RESULT (
-            m_device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&m_rtvHeap))
-        );
-
-		m_rtvDescriptorSize = 
-			m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-	}
-
-	// Create a RTV for each swapChain buffer.
-	{
-		CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle (
-            m_rtvHeap->GetCPUDescriptorHandleForHeapStart()
-        );
-
-        // Create a RTV with sRGB format so output image is properly gamma corrected.
-        D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
-        rtvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
-        rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
-
-		// Create a RenderTargetView for each frame.
-		for (uint n(0); n < NUM_BUFFERED_FRAMES; ++n)
-		{
-			CHECK_D3D_RESULT (
-                m_swapChain->GetBuffer(n, IID_PPV_ARGS(&m_renderTargets[n]))
-            );
-			m_device->CreateRenderTargetView(m_renderTargets[n].Get(), &rtvDesc, rtvHandle);
-			rtvHandle.Offset(1, m_rtvDescriptorSize);
-		}
-		NAME_D3D12_OBJECT_ARRAY(m_renderTargets, 2);
-	}
 }
 
 //---------------------------------------------------------------------------------------
@@ -424,17 +378,20 @@ void IndexRendering::populateCommandList()
         // Indicate that the back buffer will be used as a render target.
         m_drawCommandList[i]->ResourceBarrier (1,
             &CD3DX12_RESOURCE_BARRIER::Transition (
-                m_renderTargets[i].Get(),
+                m_renderTarget[i].Get(),
                 D3D12_RESOURCE_STATE_PRESENT,
                 D3D12_RESOURCE_STATE_RENDER_TARGET
             )
         );
 
+		const uint rtvDescriptorSize = 
+			m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+
         int descOffset = i;
         CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle (
-            m_rtvHeap->GetCPUDescriptorHandleForHeapStart(),
+            m_rtvDescHeap->GetCPUDescriptorHandleForHeapStart(),
             descOffset, 
-            m_rtvDescriptorSize
+            rtvDescriptorSize
         );
         m_drawCommandList[i]->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
 
@@ -449,7 +406,7 @@ void IndexRendering::populateCommandList()
         // Indicate that the back buffer will now be used to present.
         m_drawCommandList[i]->ResourceBarrier (1,
             &CD3DX12_RESOURCE_BARRIER::Transition (
-                m_renderTargets[i].Get(),
+                m_renderTarget[i].Get(),
                 D3D12_RESOURCE_STATE_RENDER_TARGET,
                 D3D12_RESOURCE_STATE_PRESENT
             )

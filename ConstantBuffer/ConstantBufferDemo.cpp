@@ -34,18 +34,8 @@ void ConstantBufferDemo::initializeDemo()
 // Loads the rendering pipeline dependencies.
 void ConstantBufferDemo::loadPipelineDependencies()
 {
-	//-- Create descriptor heaps:
+	//-- Describe and create the CBV Descriptor Heap.
 	{
-		// Describe and create the RTV Descriptor Heap.
-		D3D12_DESCRIPTOR_HEAP_DESC rtvDescHeapDescriptor = {};
-		rtvDescHeapDescriptor.NumDescriptors = NUM_BUFFERED_FRAMES;
-		rtvDescHeapDescriptor.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-		rtvDescHeapDescriptor.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-		CHECK_D3D_RESULT (
-			m_device->CreateDescriptorHeap(&rtvDescHeapDescriptor, IID_PPV_ARGS(&m_rtvDescHeap))
-		);
-
-		// Describe and create the CBV Descriptor Heap.
 		D3D12_DESCRIPTOR_HEAP_DESC cbvDescHeapDescriptor = {};
 		cbvDescHeapDescriptor.NumDescriptors = 2 * NUM_BUFFERED_FRAMES;
 		cbvDescHeapDescriptor.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
@@ -53,36 +43,6 @@ void ConstantBufferDemo::loadPipelineDependencies()
 		CHECK_D3D_RESULT (
 			m_device->CreateDescriptorHeap(&cbvDescHeapDescriptor, IID_PPV_ARGS(&m_cbvDescHeap))
 		);
-	}
-
-	//-- Create a RTV for each swapChain buffer:
-	{
-		// Create a RTV handle that points to the RTV descriptor heap.
-		CD3DX12_CPU_DESCRIPTOR_HANDLE rtvDescHeapHandle (
-			m_rtvDescHeap->GetCPUDescriptorHandleForHeapStart()
-		);
-
-		// Specify a RTV with sRGB format to support gamma correction.
-		D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
-		rtvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
-		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
-
-		uint rtvDescriptorSize = 
-			m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-
-		// Create a render target view for each frame.
-		for (uint n(0); n < NUM_BUFFERED_FRAMES; ++n) {
-			CHECK_D3D_RESULT (
-				m_swapChain->GetBuffer(n, IID_PPV_ARGS(&m_renderTarget[n]))
-			);
-
-			// Create a RTV and store it at the heap location pointed to by rtvHandle.
-			m_device->CreateRenderTargetView(m_renderTarget[n].Get(), &rtvDesc, rtvDescHeapHandle);
-
-			// Increment rtvHandle so it points to the next RTV descriptor in the heap.
-			rtvDescHeapHandle.Offset(1, rtvDescriptorSize);
-		}
-		NAME_D3D12_OBJECT_ARRAY(m_renderTarget, NUM_BUFFERED_FRAMES);
 	}
 
     //-- Create command allocator for managing command list memory:
@@ -550,7 +510,7 @@ void ConstantBufferDemo::populateCommandList()
 		)
 	);
 
-	uint rtvDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	const uint rtvDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	int offset(m_frameIndex);
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle (
 		m_rtvDescHeap->GetCPUDescriptorHandleForHeapStart(),

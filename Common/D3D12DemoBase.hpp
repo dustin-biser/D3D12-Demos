@@ -66,6 +66,10 @@ protected:
 	Microsoft::WRL::ComPtr<IDXGISwapChain3> m_swapChain;
 	HANDLE m_frameLatencyWaitableObject;
 
+	// Render Target specific
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_renderTarget[NUM_BUFFERED_FRAMES];
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_rtvDescHeap;
+
 	// Synchronization objects.
 	HANDLE m_frameFenceEvent[NUM_BUFFERED_FRAMES];
 	Microsoft::WRL::ComPtr<ID3D12Fence> m_frameFence[NUM_BUFFERED_FRAMES];
