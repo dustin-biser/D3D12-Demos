@@ -66,6 +66,10 @@ protected:
 	ID3D12CommandAllocator * m_directCmdAllocator[NUM_BUFFERED_FRAMES];
 	ID3D12GraphicsCommandList * m_drawCmdList[NUM_BUFFERED_FRAMES];
 
+	// Copy Command Related
+	ID3D12CommandAllocator * m_copyCmdAllocator;
+	ID3D12GraphicsCommandList * m_copyCmdList;
+
 	// SwapChain objects.
 	Microsoft::WRL::ComPtr<IDXGISwapChain3> m_swapChain;
 	HANDLE m_frameLatencyWaitableObject;
@@ -124,6 +128,7 @@ private:
 	std::wstring m_title;
 
 	void createDrawCommandLists();
+	void createCopyCommandList();
 };
 
 

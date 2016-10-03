@@ -269,6 +269,7 @@ void D3D12DemoBase::initializeDemo()
 	NAME_D3D12_OBJECT(m_directCmdQueue);
 
 	createDrawCommandLists();
+	createCopyCommandList();
 
 	::createSwapChain (
 		m_dxgiFactory.Get(),
@@ -377,6 +378,34 @@ void D3D12DemoBase::createDrawCommandLists()
 		NAME_D3D12_OBJECT_ARRAY(m_drawCmdList, NUM_BUFFERED_FRAMES);
 	}
 
+}
+
+//---------------------------------------------------------------------------------------
+void D3D12DemoBase::createCopyCommandList()
+{
+	//-- Create command allocator for managing command list memory.
+	CHECK_D3D_RESULT(
+		m_device->CreateCommandAllocator (
+			D3D12_COMMAND_LIST_TYPE_DIRECT,
+			IID_PPV_ARGS(&m_copyCmdAllocator)
+		)
+	);
+	NAME_D3D12_OBJECT(m_copyCmdAllocator);
+
+
+	//-- Create the copy command list that will hold our resource copy commands:
+	{
+		CHECK_D3D_RESULT(
+			m_device->CreateCommandList (
+				0,
+				D3D12_COMMAND_LIST_TYPE_DIRECT,
+				m_copyCmdAllocator,
+				nullptr,
+				IID_PPV_ARGS(&m_copyCmdList)
+			)
+		);
+		NAME_D3D12_OBJECT(m_copyCmdList);
+	}
 }
 
 

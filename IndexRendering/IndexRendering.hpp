@@ -27,9 +27,6 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature;
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineState;
 
-	ID3D12CommandAllocator * m_copyCommandAllocator;
-    ID3D12GraphicsCommandList * m_copyCommandList;
-
 	// App resources.
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_vertexBuffer;
 	D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
@@ -37,7 +34,6 @@ private:
 	D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
     uint m_indexCount;
 
-	void loadRenderPipelineDependencies();
 	void loadAssets();
 	void populateCommandList();
     void createRootSignature();

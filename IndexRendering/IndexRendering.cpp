@@ -24,35 +24,7 @@ IndexRendering::IndexRendering (
 //---------------------------------------------------------------------------------------
 void IndexRendering::initializeDemo()
 {
-	loadRenderPipelineDependencies();
 	loadAssets();
-}
-
-
-//---------------------------------------------------------------------------------------
-void IndexRendering::loadRenderPipelineDependencies()
-{
-	// Create copy command allocator for managing memory for copy command list.
-	CHECK_D3D_RESULT(
-		m_device->CreateCommandAllocator(
-			D3D12_COMMAND_LIST_TYPE_DIRECT,
-			IID_PPV_ARGS(&m_copyCommandAllocator)
-		)
-	);
-    NAME_D3D12_OBJECT(m_copyCommandAllocator);
-
-
-    // Create a separate command list for copying resource data to the GPU.
-    CHECK_D3D_RESULT (
-        m_device->CreateCommandList (
-            0,
-            D3D12_COMMAND_LIST_TYPE_DIRECT,
-            m_copyCommandAllocator,
-            nullptr,
-            IID_PPV_ARGS(&m_copyCommandList)
-         )
-    );
-    NAME_D3D12_OBJECT(m_copyCommandList);
 }
 
 //---------------------------------------------------------------------------------------
@@ -266,13 +238,13 @@ void IndexRendering::createVertexDataBuffers ()
 	{
 		uint64 dstOffset = 0;
 		uint64 srcOffset = 0;
-		m_copyCommandList->CopyBufferRegion (
+		m_copyCmdList->CopyBufferRegion (
 			m_vertexBuffer.Get(), dstOffset, uploadBuffer.Get(), srcOffset, sizeof(vertices)
 		);
 
 		dstOffset = 0;
 		srcOffset = sizeof(vertices);
-		m_copyCommandList->CopyBufferRegion (
+		m_copyCmdList->CopyBufferRegion (
 			m_indexBuffer.Get(), dstOffset, uploadBuffer.Get(), srcOffset, sizeof(indices)
 		);
 	}
@@ -294,14 +266,14 @@ void IndexRendering::createVertexDataBuffers ()
 			)
 		};
 
-		m_copyCommandList->ResourceBarrier(2, barriers);
+		m_copyCmdList->ResourceBarrier(2, barriers);
 	}
 
-    // Close command list and execute it on the command queue. 
+    // Close command list and execute it on the direct command queue. 
     CHECK_D3D_RESULT (
-        m_copyCommandList->Close()
+        m_copyCmdList->Close()
     );
-    ID3D12CommandList * commandLists[] = { m_copyCommandList };
+    ID3D12CommandList * commandLists[] = { m_copyCmdList };
     m_directCmdQueue->ExecuteCommandLists(_countof(commandLists), commandLists);
 
 	waitForGpuCompletion(m_directCmdQueue);

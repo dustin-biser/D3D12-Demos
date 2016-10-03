@@ -444,34 +444,34 @@ void TexturedCubeDemo::cleanupDemo()
 void TexturedCubeDemo::populateCommandList()
 {
 	auto * cmdAllocator = m_directCmdAllocator[m_frameIndex];
-	auto & drawCmdList = m_drawCmdList[m_frameIndex];
+	auto & directCmdList = m_drawCmdList[m_frameIndex];
 
     CHECK_D3D_RESULT (
         cmdAllocator->Reset()
     );
 
 	CHECK_D3D_RESULT (
-		drawCmdList->Reset(cmdAllocator, m_pipelineState.Get())
+		directCmdList->Reset(cmdAllocator, m_pipelineState.Get())
 	 );
 
-	drawCmdList->SetPipelineState(m_pipelineState.Get());
+	directCmdList->SetPipelineState(m_pipelineState.Get());
 
-	drawCmdList->SetGraphicsRootSignature(m_rootSignature.Get());
+	directCmdList->SetGraphicsRootSignature(m_rootSignature.Get());
 
 	ID3D12DescriptorHeap * ppHeaps[] = { m_cbvDescHeap.Get() };
-	drawCmdList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
-	drawCmdList->SetGraphicsRootConstantBufferView (
+	directCmdList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
+	directCmdList->SetGraphicsRootConstantBufferView (
 		0, m_cbvDesc_SceneConstants[m_frameIndex].BufferLocation
 	);
-	drawCmdList->SetGraphicsRootConstantBufferView (
+	directCmdList->SetGraphicsRootConstantBufferView (
 		1, m_cbvDesc_PointLight[m_frameIndex].BufferLocation
 	);
 
-	drawCmdList->RSSetViewports(1, &m_viewport);
-	drawCmdList->RSSetScissorRects(1, &m_scissorRect);
+	directCmdList->RSSetViewports(1, &m_viewport);
+	directCmdList->RSSetScissorRects(1, &m_scissorRect);
 
 	// Indicate that the back buffer will be used as a render target.
-	drawCmdList->ResourceBarrier (1,
+	directCmdList->ResourceBarrier (1,
 		&CD3DX12_RESOURCE_BARRIER::Transition (
 			m_renderTarget[m_frameIndex].resource,
 			D3D12_RESOURCE_STATE_PRESENT,
@@ -485,29 +485,29 @@ void TexturedCubeDemo::populateCommandList()
 	// Get handle to render target view.
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle (m_renderTarget[m_frameIndex].rtvHandle);
 
-	drawCmdList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
+	directCmdList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
 
 	// Record commands.
 	const float clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
-	drawCmdList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+	directCmdList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
 
 	// clear the depth/stencil buffer
-	drawCmdList->ClearDepthStencilView (
+	directCmdList->ClearDepthStencilView (
 		m_dsvDescHeap->GetCPUDescriptorHandleForHeapStart(),
 		D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr
 	);
 
-	drawCmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	directCmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	
 	const uint inputSlot0 = 0;
-	drawCmdList->IASetVertexBuffers(inputSlot0, 1, &m_vertexBufferView);
-	drawCmdList->IASetIndexBuffer(&m_indexBufferView);
+	directCmdList->IASetVertexBuffers(inputSlot0, 1, &m_vertexBufferView);
+	directCmdList->IASetIndexBuffer(&m_indexBufferView);
 	
 	UINT numIndices = static_cast<UINT>(m_indexArray.size());
-	drawCmdList->DrawIndexedInstanced(numIndices, 1, 0, 0, 0);
+	directCmdList->DrawIndexedInstanced(numIndices, 1, 0, 0, 0);
 
 	// Indicate that the back buffer will now be used to present.
-	drawCmdList->ResourceBarrier (1,
+	directCmdList->ResourceBarrier (1,
 		&CD3DX12_RESOURCE_BARRIER::Transition (
 			m_renderTarget[m_frameIndex].resource,
 			D3D12_RESOURCE_STATE_RENDER_TARGET,
@@ -515,5 +515,5 @@ void TexturedCubeDemo::populateCommandList()
 		)
 	);
 
-	CHECK_D3D_RESULT(drawCmdList->Close());
+	CHECK_D3D_RESULT(directCmdList->Close());
 }
