@@ -60,7 +60,11 @@ protected:
 
 	Microsoft::WRL::ComPtr<IDXGIFactory4> m_dxgiFactory;
 	Microsoft::WRL::ComPtr<ID3D12Device> m_device;
-	Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_directCmdQueue;
+
+	// Direct Command Queue Related
+	ID3D12CommandQueue * m_directCmdQueue;
+	ID3D12CommandAllocator * m_directCmdAllocator[NUM_BUFFERED_FRAMES];
+	ID3D12GraphicsCommandList * m_drawCmdList[NUM_BUFFERED_FRAMES];
 
 	// SwapChain objects.
 	Microsoft::WRL::ComPtr<IDXGISwapChain3> m_swapChain;
@@ -118,6 +122,8 @@ private:
 
 	// Window title.
 	std::wstring m_title;
+
+	void createDrawCommandLists();
 };
 
 

@@ -227,7 +227,7 @@ D3D12DemoBase::D3D12DemoBase (
 static void createCommandQueue (
 	_In_ ID3D12Device * device,
 	_In_ D3D12_COMMAND_LIST_TYPE queueType,
-	_Out_ ComPtr<ID3D12CommandQueue> & commandQueue
+	_Out_ ID3D12CommandQueue * & commandQueue
 ) {
 	// Describe and create the direct command queue.
 	D3D12_COMMAND_QUEUE_DESC queueDesc = {};
@@ -268,9 +268,11 @@ void D3D12DemoBase::initializeDemo()
 	::createCommandQueue(m_device.Get(), D3D12_COMMAND_LIST_TYPE_DIRECT, m_directCmdQueue);
 	NAME_D3D12_OBJECT(m_directCmdQueue);
 
+	createDrawCommandLists();
+
 	::createSwapChain (
 		m_dxgiFactory.Get(),
-		m_directCmdQueue.Get(),
+		m_directCmdQueue,
 		m_windowWidth,
 		m_windowHeight,
 		NUM_BUFFERED_FRAMES,
@@ -340,6 +342,43 @@ void D3D12DemoBase::initializeDemo()
 		}
 	}
 }
+
+//---------------------------------------------------------------------------------------
+void D3D12DemoBase::createDrawCommandLists()
+{
+	//-- Create command allocator for managing command list memory.
+	for (int i(0); i < NUM_BUFFERED_FRAMES; ++i) {
+		CHECK_D3D_RESULT(
+			m_device->CreateCommandAllocator (
+				D3D12_COMMAND_LIST_TYPE_DIRECT,
+				IID_PPV_ARGS(&m_directCmdAllocator[i])
+			)
+		);
+	}
+	NAME_D3D12_OBJECT_ARRAY(m_directCmdAllocator, NUM_BUFFERED_FRAMES);
+
+
+	//-- Create the direct command lists which will hold our rendering commands:
+	{
+		// Create one command list for each swap chain buffer.
+		for (uint i(0); i < NUM_BUFFERED_FRAMES; ++i) {
+			CHECK_D3D_RESULT(
+				m_device->CreateCommandList (
+					0,
+					D3D12_COMMAND_LIST_TYPE_DIRECT,
+					m_directCmdAllocator[i],
+					nullptr, // Will set pipeline state later before drawing
+					IID_PPV_ARGS(&m_drawCmdList[i])
+				)
+			);
+			// Stop recording, will reset this later before issuing drawing commands.
+			m_drawCmdList[i]->Close();
+		}
+		NAME_D3D12_OBJECT_ARRAY(m_drawCmdList, NUM_BUFFERED_FRAMES);
+	}
+
+}
+
 
 //---------------------------------------------------------------------------------------
 void D3D12DemoBase::buildNextFrame()

@@ -30,40 +30,8 @@ void IndexRendering::initializeDemo()
 
 
 //---------------------------------------------------------------------------------------
-// Loads the rendering pipeline dependencies such as device, command queue, swap chain,
-// render target views and command allocator.
 void IndexRendering::loadRenderPipelineDependencies()
 {
-    // Create command allocator for managing command list memory
-	for (int i(0); i < NUM_BUFFERED_FRAMES; ++i) {
-		CHECK_D3D_RESULT(
-			m_device->CreateCommandAllocator(
-				D3D12_COMMAND_LIST_TYPE_DIRECT,
-				IID_PPV_ARGS(&m_commandAllocator[i])
-			)
-		);
-	}
-    NAME_D3D12_OBJECT_ARRAY(m_commandAllocator, NUM_BUFFERED_FRAMES);
-
-
-    // Create the draw command lists which will hold our rendering commands.
-	// Create one command list for each swap chain buffer.
-    for (uint i(0); i < NUM_BUFFERED_FRAMES; ++i) {
-        CHECK_D3D_RESULT(
-            m_device->CreateCommandList (
-                0,
-                D3D12_COMMAND_LIST_TYPE_DIRECT,
-                m_commandAllocator[i].Get(),
-                nullptr, // Will set pipeline state later before drawing
-                IID_PPV_ARGS(&m_drawCommandList[i])
-            )
-        );
-        // Stop recording, will reset this later before issuing drawing commands.
-        m_drawCommandList[i]->Close();
-    }
-    NAME_D3D12_OBJECT_ARRAY(m_drawCommandList, NUM_BUFFERED_FRAMES);
-
-
 	// Create copy command allocator for managing memory for copy command list.
 	CHECK_D3D_RESULT(
 		m_device->CreateCommandAllocator(
@@ -79,7 +47,7 @@ void IndexRendering::loadRenderPipelineDependencies()
         m_device->CreateCommandList (
             0,
             D3D12_COMMAND_LIST_TYPE_DIRECT,
-            m_copyCommandAllocator.Get(),
+            m_copyCommandAllocator,
             nullptr,
             IID_PPV_ARGS(&m_copyCommandList)
          )
@@ -333,10 +301,10 @@ void IndexRendering::createVertexDataBuffers ()
     CHECK_D3D_RESULT (
         m_copyCommandList->Close()
     );
-    ID3D12CommandList * commandLists[] = { m_copyCommandList.Get() };
+    ID3D12CommandList * commandLists[] = { m_copyCommandList };
     m_directCmdQueue->ExecuteCommandLists(_countof(commandLists), commandLists);
 
-	waitForGpuCompletion(m_directCmdQueue.Get());
+	waitForGpuCompletion(m_directCmdQueue);
 }
 
 //---------------------------------------------------------------------------------------
@@ -351,15 +319,15 @@ void IndexRendering::render()
 	populateCommandList();
 
 	// Execute the command list.
-	ID3D12CommandList* commandLists[] = { m_drawCommandList[m_frameIndex].Get() };
+	ID3D12CommandList* commandLists[] = { m_drawCmdList[m_frameIndex] };
 	m_directCmdQueue->ExecuteCommandLists(_countof(commandLists), commandLists);
 }
 
 //---------------------------------------------------------------------------------------
 void IndexRendering::populateCommandList()
 {
-	auto * cmdAllocator = m_commandAllocator[m_frameIndex].Get();
-	auto & drawCmdList = m_drawCommandList[m_frameIndex];
+	auto * cmdAllocator = m_directCmdAllocator[m_frameIndex];
+	auto & drawCmdList = m_drawCmdList[m_frameIndex];
 
 	CHECK_D3D_RESULT (
 		cmdAllocator->Reset()

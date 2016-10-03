@@ -24,12 +24,11 @@ private:
 		DirectX::XMFLOAT4 color;
 	};
 
-	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> m_commandAllocator[NUM_BUFFERED_FRAMES];
-	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_drawCommandList[NUM_BUFFERED_FRAMES];
-	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> m_copyCommandAllocator;
-    Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_copyCommandList;
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature;
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineState;
+
+	ID3D12CommandAllocator * m_copyCommandAllocator;
+    ID3D12GraphicsCommandList * m_copyCommandList;
 
 	// App resources.
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_vertexBuffer;

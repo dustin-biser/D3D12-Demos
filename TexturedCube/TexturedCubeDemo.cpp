@@ -44,37 +44,6 @@ void TexturedCubeDemo::loadPipelineDependencies()
 			m_device->CreateDescriptorHeap(&cbvDescHeapDescriptor, IID_PPV_ARGS(&m_cbvDescHeap))
 		);
 	}
-
-    //-- Create command allocator for managing command list memory.
-	for(int i(0); i < NUM_BUFFERED_FRAMES; ++i) {
-		CHECK_D3D_RESULT(
-			m_device->CreateCommandAllocator (
-				D3D12_COMMAND_LIST_TYPE_DIRECT,
-				IID_PPV_ARGS(&m_cmdAllocator[i])
-			)
-		);
-	}
-	NAME_D3D12_OBJECT_ARRAY(m_cmdAllocator, NUM_BUFFERED_FRAMES);
-
-
-    //-- Create the direct command lists which will hold our rendering commands:
-	{
-		// Create one command list for each swap chain buffer.
-		for (uint i(0); i < NUM_BUFFERED_FRAMES; ++i) {
-			CHECK_D3D_RESULT(
-				m_device->CreateCommandList (
-					0,
-					D3D12_COMMAND_LIST_TYPE_DIRECT,
-					m_cmdAllocator[i].Get(),
-					nullptr, // Will set pipeline state later before drawing
-					IID_PPV_ARGS(&m_drawCmdList[i])
-				)
-			);
-			// Stop recording, will reset this later before issuing drawing commands.
-			m_drawCmdList[i]->Close();
-		}
-		NAME_D3D12_OBJECT_ARRAY(m_drawCmdList, NUM_BUFFERED_FRAMES);
-	}
 }
 
 
@@ -460,7 +429,7 @@ void TexturedCubeDemo::render()
 	this->populateCommandList();
 
 	// Execute command list for the current frame index
-	ID3D12CommandList * commandLists[] = { m_drawCmdList[m_frameIndex].Get() };
+	ID3D12CommandList * commandLists[] = { m_drawCmdList[m_frameIndex]};
 	m_directCmdQueue->ExecuteCommandLists(_countof(commandLists), commandLists);
 }
 
@@ -474,7 +443,7 @@ void TexturedCubeDemo::cleanupDemo()
 //---------------------------------------------------------------------------------------
 void TexturedCubeDemo::populateCommandList()
 {
-	auto * cmdAllocator = m_cmdAllocator[m_frameIndex].Get();
+	auto * cmdAllocator = m_directCmdAllocator[m_frameIndex];
 	auto & drawCmdList = m_drawCmdList[m_frameIndex];
 
     CHECK_D3D_RESULT (

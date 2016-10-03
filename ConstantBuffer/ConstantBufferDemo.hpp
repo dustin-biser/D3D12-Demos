@@ -44,8 +44,6 @@ private:
 	// Pipeline objects.
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature;
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineState;
-	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> m_cmdAllocator[NUM_BUFFERED_FRAMES];
-	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_drawCmdList[NUM_BUFFERED_FRAMES];
 
 	// Depth/Stencil specific
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_dsvDescHeap;
