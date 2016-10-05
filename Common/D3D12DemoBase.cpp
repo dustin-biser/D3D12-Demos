@@ -295,11 +295,8 @@ void D3D12DemoBase::initializeDemo()
 		rtvDescHeapDescriptor.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 		rtvDescHeapDescriptor.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 		CHECK_D3D_RESULT (
-			m_device->CreateDescriptorHeap(&rtvDescHeapDescriptor, IID_PPV_ARGS(&m_rtvDescHeap.pHeap))
+			m_device->CreateDescriptorHeap(&rtvDescHeapDescriptor, IID_PPV_ARGS(&m_rtvDescHeap))
 		);
-
-		m_rtvDescHeap.handleIncrementSize = 
-			m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	}
 
 	//-- Create a RTV for each swapChain buffer.
@@ -309,18 +306,24 @@ void D3D12DemoBase::initializeDemo()
 		rtvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
 		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
 
+		// Get increment size between descriptors in RTV Descriptor Heap.
+		uint handleIncrementSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+
 		// Create a render target view for each frame.
 		for (uint n(0); n < NUM_BUFFERED_FRAMES; ++n) {
 			CHECK_D3D_RESULT (
 				m_swapChain->GetBuffer(n, IID_PPV_ARGS(&m_renderTarget[n].resource))
 			);
 
-			m_renderTarget[n].rtvHandle = m_rtvDescHeap.pHeap->GetCPUDescriptorHandleForHeapStart();
-			m_renderTarget[n].rtvHandle.ptr += n * m_rtvDescHeap.handleIncrementSize;
+			m_renderTarget[n].descriptorHandle = m_rtvDescHeap->GetCPUDescriptorHandleForHeapStart();
 
-			// Create RTV and store it at the heap location pointed to by descriptor heap handle.
+			// Offset handle to next descriptor location within descriptor heap.
+			m_renderTarget[n].descriptorHandle.ptr += n * handleIncrementSize;
+
+			// Create RTV and store its descriptor at the heap location reference by
+			// the descriptor handle.
 			m_device->CreateRenderTargetView (
-				m_renderTarget[n].resource, &rtvDesc, m_renderTarget[n].rtvHandle
+				m_renderTarget[n].resource, &rtvDesc, m_renderTarget[n].descriptorHandle
 			); 
 			NAME_D3D12_OBJECT(m_renderTarget[n].resource);
 		}

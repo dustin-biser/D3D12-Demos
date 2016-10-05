@@ -325,7 +325,7 @@ void IndexRendering::populateCommandList()
 	);
 
 	// Get handle to render target view.
-	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle (m_renderTarget[m_frameIndex].rtvHandle);
+	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle (m_renderTarget[m_frameIndex].descriptorHandle);
 
 	drawCmdList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
 
