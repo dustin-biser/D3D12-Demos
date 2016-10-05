@@ -48,10 +48,9 @@ static void GetHardwareAdapter (
 }
 
 //---------------------------------------------------------------------------------------
-static void CreateWarpDevice (
-	_In_ IDXGIFactory4 * dxgiFactory,
-	_In_ D3D_FEATURE_LEVEL featureLevel,
-	_Out_ Microsoft::WRL::ComPtr<ID3D12Device> & device
+void D3D12DemoBase::createWarpDevice (
+	IDXGIFactory4 * dxgiFactory,
+	D3D_FEATURE_LEVEL featureLevel
 ) {
 	ComPtr<IDXGIAdapter> warpAdapter;
 	CHECK_D3D_RESULT (
@@ -64,16 +63,15 @@ static void CreateWarpDevice (
 	std::wcout << "Adapter: " << adapterDesc.Description << std::endl;
 
 	CHECK_D3D_RESULT (
-		D3D12CreateDevice(warpAdapter.Get(), featureLevel, IID_PPV_ARGS(&device))
+		D3D12CreateDevice(warpAdapter.Get(), featureLevel, IID_PPV_ARGS(&m_device))
 	);
 
 }
 
 //---------------------------------------------------------------------------------------
-static void CreateHardwareDevice (
-	_In_ IDXGIFactory4 * dxgiFactory,
-	_In_ D3D_FEATURE_LEVEL featureLevel,
-	_Out_ Microsoft::WRL::ComPtr<ID3D12Device> & device
+void D3D12DemoBase::createHardwareDevice (
+	IDXGIFactory4 * dxgiFactory,
+	D3D_FEATURE_LEVEL featureLevel
 ) {
 	ComPtr<IDXGIAdapter1> hardwareAdapter;
 	::GetHardwareAdapter(dxgiFactory, featureLevel, &hardwareAdapter);
@@ -88,42 +86,36 @@ static void CreateHardwareDevice (
 	std::wcout << L"Adapter: " << adapterDesc.Description << std::endl;
 
 	CHECK_D3D_RESULT (
-		D3D12CreateDevice(hardwareAdapter.Get(), featureLevel, IID_PPV_ARGS(&device))
+		D3D12CreateDevice(hardwareAdapter.Get(), featureLevel, IID_PPV_ARGS(&m_device))
 	);
 }
 
 
 //---------------------------------------------------------------------------------------
-static void createDevice (
-	_In_ IDXGIFactory4 * dxgiFactory,
-	_In_ bool useWarpDevice,
-	_Out_ Microsoft::WRL::ComPtr<ID3D12Device> & device
+void D3D12DemoBase::createDevice (
+	IDXGIFactory4 * dxgiFactory,
+	bool useWarpDevice
 ) {
 	const D3D_FEATURE_LEVEL featureLevel(D3D_FEATURE_LEVEL_11_0);
 
 	if (useWarpDevice) {
-		::CreateWarpDevice(dxgiFactory, featureLevel, device);
+		createWarpDevice(dxgiFactory, featureLevel);
 	}
 	else {
-		::CreateHardwareDevice(dxgiFactory, featureLevel, device);
+		createHardwareDevice(dxgiFactory, featureLevel);
 	}
+	NAME_D3D12_OBJECT(m_device);
 }
 
 //---------------------------------------------------------------------------------------
-static void createSwapChain (
-	_In_ IDXGIFactory4 * dxgiFactory,
-	_In_ ID3D12CommandQueue * commandQueue,
-	_In_ uint framebufferWidth,
-	_In_ uint framebufferHeight,
-	_In_ uint numSwapChainBuffers,
-	_Out_ ComPtr<IDXGISwapChain3> & swapChain,
-	_Out_ HANDLE * frameLatencyWaitableObject
+void D3D12DemoBase::createSwapChain (
+	IDXGIFactory4 * dxgiFactory
 ) {
 	// Describe and create the swap chain.
 	DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
-	swapChainDesc.BufferCount = numSwapChainBuffers;
-	swapChainDesc.Width = framebufferWidth;
-	swapChainDesc.Height = framebufferHeight;
+	swapChainDesc.BufferCount = NUM_BUFFERED_FRAMES;
+	swapChainDesc.Width = m_windowWidth;
+	swapChainDesc.Height = m_windowHeight;
 	swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
@@ -133,7 +125,7 @@ static void createSwapChain (
 	ComPtr<IDXGISwapChain1> swapChain1;
 	CHECK_D3D_RESULT (
 		dxgiFactory->CreateSwapChainForHwnd (
-			commandQueue, // Swap chain needs the command queue so that it can force a flush on it.
+			m_directCmdQueue, // Swap chain needs the command queue so that it can force a flush on it.
 			Win32Application::GetHwnd(),
 			&swapChainDesc,
 			nullptr,
@@ -154,19 +146,19 @@ static void createSwapChain (
 	CHECK_D3D_RESULT (
 		swapChain1.As(&swapChain2)
 	);
-	swapChain2->SetMaximumFrameLatency(numSwapChainBuffers);
+	swapChain2->SetMaximumFrameLatency(NUM_BUFFERED_FRAMES);
 
 	// Get the frame latency waitable objects.
-	*frameLatencyWaitableObject = swapChain2->GetFrameLatencyWaitableObject();
+	m_frameLatencyWaitableObject = swapChain2->GetFrameLatencyWaitableObject();
 
+	// Assign interface object to m_swapChain so it persists past current scope.
 	CHECK_D3D_RESULT (
-		// Acquire the IDXGISwapChain3 interface.
-		swapChain1.As(&swapChain)
+		swapChain1.CopyTo(&m_swapChain)
 	);
 }
 
 //---------------------------------------------------------------------------------------
-void waitForFrameFence (
+void waitForGpuFence (
 	_In_ ID3D12Fence * fence,
 	_In_ uint64 completionValue,
 	_In_ HANDLE fenceEvent
@@ -192,16 +184,16 @@ D3D12DemoBase::D3D12DemoBase (
 	m_windowHeight(windowHeight),
 	m_title(name),
 	m_useWarpDevice(false),
-	m_fenceValue{} // default to all zeros.
+	m_fenceValue{0}
 {
 	// Default viewport to size of full window.
-	m_viewport.Width = float(windowWidth);
-	m_viewport.Height = float(windowHeight);
+	m_viewport.Width = static_cast<float>(windowWidth);
+	m_viewport.Height = static_cast<float>(windowHeight);
 	m_viewport.MaxDepth = 1.0f;
 
 	// Default to rendering to entire viewport.
-	m_scissorRect.right = long(windowWidth);
-	m_scissorRect.bottom = long(windowHeight);
+	m_scissorRect.right = static_cast<long>(windowWidth);
+	m_scissorRect.bottom = static_cast<long>(windowHeight);
 
     //-- Set working directory path:
     {
@@ -224,19 +216,18 @@ D3D12DemoBase::D3D12DemoBase (
 }
 
 //---------------------------------------------------------------------------------------
-static void createCommandQueue (
-	_In_ ID3D12Device * device,
-	_In_ D3D12_COMMAND_LIST_TYPE queueType,
-	_Out_ ID3D12CommandQueue * & commandQueue
-) {
+void D3D12DemoBase::createDirectCommandQueue ()
+{
 	// Describe and create the direct command queue.
 	D3D12_COMMAND_QUEUE_DESC queueDesc = {};
 	queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
-	queueDesc.Type = queueType;
+	queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
 
 	CHECK_D3D_RESULT (
-		device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&commandQueue))
+		m_device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&m_directCmdQueue))
 	);
+
+	NAME_D3D12_OBJECT(m_directCmdQueue);
 }
 
 //---------------------------------------------------------------------------------------
@@ -256,30 +247,22 @@ void D3D12DemoBase::initializeDemo()
 	}
 #endif
 
+	IDXGIFactory4 * dxgiFactory;
+
 	CHECK_D3D_RESULT (
-		::CreateDXGIFactory1(IID_PPV_ARGS(&m_dxgiFactory))
+		::CreateDXGIFactory1(IID_PPV_ARGS(&dxgiFactory))
 	);
 
 	// Create the device.
-	::createDevice(m_dxgiFactory.Get(), m_useWarpDevice, m_device);
-	NAME_D3D12_OBJECT(m_device);
+	createDevice(dxgiFactory, m_useWarpDevice);
 
-	// Create a direct D3D12CommandQueue.
-	::createCommandQueue(m_device.Get(), D3D12_COMMAND_LIST_TYPE_DIRECT, m_directCmdQueue);
-	NAME_D3D12_OBJECT(m_directCmdQueue);
+	createDirectCommandQueue();
 
 	createDrawCommandLists();
+
 	createCopyCommandList();
 
-	::createSwapChain (
-		m_dxgiFactory.Get(),
-		m_directCmdQueue,
-		m_windowWidth,
-		m_windowHeight,
-		NUM_BUFFERED_FRAMES,
-		m_swapChain,
-		&m_frameLatencyWaitableObject
-	);
+	createSwapChain(dxgiFactory);
 
 	// Set the current frame index to correspond with the current back buffer index.
 	m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
@@ -413,8 +396,8 @@ void D3D12DemoBase::createCopyCommandList()
 void D3D12DemoBase::buildNextFrame()
 {
 	// Wait until GPU has processed the previous indexed frame before building new one.
-	::waitForFrameFence (
-		m_frameFence[m_frameIndex].Get(),
+	::waitForGpuFence (
+		m_frameFence[m_frameIndex],
 		m_fenceValue[m_frameIndex],
 		m_frameFenceEvent[m_frameIndex]
 	);
@@ -443,14 +426,14 @@ void D3D12DemoBase::presentNextFrame()
 	}
 	else { 
 		// Start over and rebuild the frame again, rendering to the same indexed back buffer.
-		m_directCmdQueue->Signal(m_frameFence[m_frameIndex].Get(), m_currentFenceValue);
+		m_directCmdQueue->Signal(m_frameFence[m_frameIndex], m_currentFenceValue);
 		m_fenceValue[m_frameIndex] = m_currentFenceValue;
 		++m_currentFenceValue;
 	}
 }
 
 //---------------------------------------------------------------------------------------
-// Present to contents of the back-buffer, signal the frame-fence, then increment the
+// Present contents of back-buffer, signal the frame-fence, then increment
 // frame index so the next frame can be processed.
 void D3D12DemoBase::present()
 {
@@ -459,7 +442,7 @@ void D3D12DemoBase::present()
 		m_swapChain->Present(syncInterval, 0)
 	);
 
-	m_directCmdQueue->Signal(m_frameFence[m_frameIndex].Get(), m_currentFenceValue);
+	m_directCmdQueue->Signal(m_frameFence[m_frameIndex], m_currentFenceValue);
 	m_fenceValue[m_frameIndex] = m_currentFenceValue;
 	++m_currentFenceValue;
 
@@ -473,16 +456,16 @@ __forceinline bool D3D12DemoBase::swapChainWaitableObjectIsSignaled()
 }
 
 //---------------------------------------------------------------------------------------
-void D3D12DemoBase::waitForGpuCompletion(
+void D3D12DemoBase::waitForGpuCompletion (
 	ID3D12CommandQueue * commandQueue
 ) {
 	CHECK_D3D_RESULT (
-		commandQueue->Signal(m_frameFence[m_frameIndex].Get(), m_currentFenceValue)
+		commandQueue->Signal(m_frameFence[m_frameIndex], m_currentFenceValue)
 	);
 	m_fenceValue[m_frameIndex] = m_currentFenceValue;
 	++m_currentFenceValue;
 
-	::waitForFrameFence(m_frameFence[m_frameIndex].Get(),
+	::waitForGpuFence(m_frameFence[m_frameIndex],
 		m_fenceValue[m_frameIndex], m_frameFenceEvent[m_frameIndex]);
 }
 
@@ -492,13 +475,13 @@ void D3D12DemoBase::cleanupDemo()
 	// Ensure that the GPU is no longer referencing resources that are about to be
 	// cleaned up by the destructor.
 
-	m_directCmdQueue->Signal(m_frameFence[m_frameIndex].Get(), m_currentFenceValue);
+	m_directCmdQueue->Signal(m_frameFence[m_frameIndex], m_currentFenceValue);
 	m_fenceValue[m_frameIndex] = m_currentFenceValue;
 	++m_currentFenceValue;
 
 	// Wait for command queue to finish processing all buffered frames
 	for (int i = 0; i < NUM_BUFFERED_FRAMES; ++i) {
-		waitForFrameFence(m_frameFence[i].Get(), m_fenceValue[i], m_frameFenceEvent[i]);
+		waitForGpuFence(m_frameFence[i], m_fenceValue[i], m_frameFenceEvent[i]);
 	}
 
 	// Clean up event handles

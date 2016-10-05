@@ -58,8 +58,7 @@ protected:
 	// Set to true to use software rasterizer.
 	bool m_useWarpDevice;
 
-	Microsoft::WRL::ComPtr<IDXGIFactory4> m_dxgiFactory;
-	Microsoft::WRL::ComPtr<ID3D12Device> m_device;
+	ID3D12Device * m_device;
 
 	// Direct Command Queue Related
 	ID3D12CommandQueue * m_directCmdQueue;
@@ -71,7 +70,7 @@ protected:
 	ID3D12GraphicsCommandList * m_copyCmdList;
 
 	// SwapChain objects.
-	Microsoft::WRL::ComPtr<IDXGISwapChain3> m_swapChain;
+	IDXGISwapChain3 * m_swapChain;
 	HANDLE m_frameLatencyWaitableObject;
 
 	struct RenderTarget {
@@ -91,7 +90,7 @@ protected:
 
 	// Synchronization objects.
 	HANDLE m_frameFenceEvent[NUM_BUFFERED_FRAMES];
-	Microsoft::WRL::ComPtr<ID3D12Fence> m_frameFence[NUM_BUFFERED_FRAMES];
+	ID3D12Fence * m_frameFence[NUM_BUFFERED_FRAMES];
 	uint64 m_currentFenceValue;
 	uint64 m_fenceValue[NUM_BUFFERED_FRAMES];
 
@@ -127,14 +126,36 @@ private:
 	// Window title.
 	std::wstring m_title;
 
-	void createDrawCommandLists();
-	void createCopyCommandList();
-};
+	void createDirectCommandQueue ();
 
+	void createDrawCommandLists ();
+
+	void createCopyCommandList ();
+
+	void createSwapChain (
+		IDXGIFactory4 * dxgiFactory
+	);
+
+	void createDevice (
+		IDXGIFactory4 * dxgiFactory,
+		bool useWarpDevice
+	);
+
+	void createHardwareDevice (
+		IDXGIFactory4 * dxgiFactory,
+		D3D_FEATURE_LEVEL featureLevel
+	);
+
+	void createWarpDevice (
+		IDXGIFactory4 * dxgiFactory,
+		D3D_FEATURE_LEVEL featureLevel
+	);
+
+};
 
 // Causes current thread to wait on 'fenceEvent' until GPU fence value
 // is equal to 'completionValue'.
-void waitForFrameFence (
+void waitForGpuFence (
 	_In_ ID3D12Fence * fence,
 	_In_ uint64 completionValue,
 	_In_ HANDLE fenceEvent

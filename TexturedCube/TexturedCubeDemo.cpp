@@ -100,8 +100,8 @@ void TexturedCubeDemo::loadAssets()
 	createPipelineState(vertexShaderBlob.Get(), pixelShaderBlob.Get());
 
 	// Create upload buffer to hold graphics resources
-	m_uploadBuffer = std::make_shared<ResourceUploadBuffer>(
-		m_device.Get(),
+	m_uploadBuffer = std::make_shared<ResourceUploadBuffer> (
+		m_device,
 		128 * 1024 // 128 KB
 	);
 

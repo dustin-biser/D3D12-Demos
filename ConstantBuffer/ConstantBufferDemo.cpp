@@ -101,7 +101,7 @@ void ConstantBufferDemo::loadAssets()
 
 	// Create upload buffer to hold graphics resources
 	m_uploadBuffer = std::make_shared<ResourceUploadBuffer>(
-		m_device.Get(),
+		m_device,
 		128 * 1024 // 128 KB
 	);
 
