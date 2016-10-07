@@ -4,8 +4,7 @@
 #include <vector>
 #include <DirectXMath.h>
 
-#include "D3D12DemoBase.hpp"
-#include "ResourceUploadBuffer.hpp"
+#include "Common/D3D12DemoBase.hpp"
 
 class QueryVideoMemoryDemo : public D3D12DemoBase {
 public:

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <memory>
-#include "D3D12DemoBase.hpp"
+#include "Common/D3D12DemoBase.hpp"
 
 
 class IndexRendering : public D3D12DemoBase {

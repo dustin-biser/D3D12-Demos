@@ -14,7 +14,7 @@
     <ProjectGuid>{2366B8F0-2F2A-49A8-93CC-0EF679E55E61}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>D3D12HelloTriangle</RootNamespace>
-    <ProjectName>TexturedCube</ProjectName>
+    <ProjectName>Texture</ProjectName>
     <WindowsTargetPlatformVersion>10.0.10240.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -45,14 +45,14 @@
     <LinkIncremental>true</LinkIncremental>
     <OutDir>bin\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>obj\$(Platform)\$(Configuration)\</IntDir>
-    <IncludePath>$(SolutionDir)External\;$(IncludePath)</IncludePath>
+    <IncludePath>$(IncludePath)</IncludePath>
     <SourcePath>$(SourcePath)</SourcePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>bin\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>obj\$(Platform)\$(Configuration)\</IntDir>
-    <IncludePath>$(SolutionDir)External\;$(IncludePath)</IncludePath>
+    <IncludePath>$(IncludePath)</IncludePath>
     <SourcePath>$(SourcePath)</SourcePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -62,7 +62,7 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(ProjectDir)Assets\Shaders;$(SolutionDir)Common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(ProjectDir)Assets\Shaders;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <CompileAsWinRT>false</CompileAsWinRT>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <MultiProcessorCompilation>false</MultiProcessorCompilation>
@@ -99,7 +99,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(ProjectDir)Assets\Shaders;$(SolutionDir)Common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(ProjectDir)Assets\Shaders;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <CompileAsWinRT>false</CompileAsWinRT>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <MultiProcessorCompilation>false</MultiProcessorCompilation>
@@ -135,17 +135,19 @@
     <ClInclude Include="..\Common\d3dx12.h" />
     <ClInclude Include="..\Common\D3D12DemoBase.hpp" />
     <ClInclude Include="..\Common\DemoUtils.hpp" />
+    <ClInclude Include="..\Common\ImageIO.hpp" />
     <ClInclude Include="..\Common\NumericTypes.hpp" />
     <ClInclude Include="..\Common\pch.h" />
     <ClInclude Include="..\Common\ResourceUploadBuffer.hpp" />
     <ClInclude Include="..\Common\Win32Application.hpp" />
-    <ClInclude Include="Assets\Shaders\ConstantBufferDefines.hpp" />
-    <ClInclude Include="Assets\Shaders\HLSL_DirectXMath_Conversion.hpp" />
-    <ClInclude Include="TexturedCubeDemo.hpp" />
+    <ClInclude Include="ConstantBufferDefines.hpp" />
+    <ClInclude Include="HLSL_DirectXMath_Conversion.hpp" />
+    <ClInclude Include="TextureDemo.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Common\D3D12DemoBase.cpp" />
     <ClCompile Include="..\Common\DemoUtils.cpp" />
+    <ClCompile Include="..\Common\ImageIO.cpp" />
     <ClCompile Include="..\Common\pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
@@ -153,7 +155,7 @@
     </ClCompile>
     <ClCompile Include="..\Common\ResourceUploadBuffer.cpp" />
     <ClCompile Include="..\Common\Win32Application.cpp" />
-    <ClCompile Include="TexturedCubeDemo.cpp" />
+    <ClCompile Include="TextureDemo.cpp" />
     <ClCompile Include="Main.cpp" />
   </ItemGroup>
   <ItemGroup>

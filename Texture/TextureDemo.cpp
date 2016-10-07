@@ -1,6 +1,6 @@
 #include "pch.h"
 
-#include "TexturedCubeDemo.hpp"
+#include "TextureDemo.hpp"
 using namespace DirectX;
 using Microsoft::WRL::ComPtr;
 
@@ -8,9 +8,11 @@ using Microsoft::WRL::ComPtr;
 #include <iostream>
 using namespace std;
 
+#include "Common/ImageIO.hpp"
+
 
 //---------------------------------------------------------------------------------------
-TexturedCubeDemo::TexturedCubeDemo (
+TextureDemo::TextureDemo (
     uint width, 
     uint height,
     std::wstring name
@@ -22,7 +24,7 @@ TexturedCubeDemo::TexturedCubeDemo (
 
 
 //---------------------------------------------------------------------------------------
-void TexturedCubeDemo::initializeDemo()
+void TextureDemo::initializeDemo()
 {
 	loadPipelineDependencies();
 
@@ -32,7 +34,7 @@ void TexturedCubeDemo::initializeDemo()
 
 //---------------------------------------------------------------------------------------
 // Loads the rendering pipeline dependencies.
-void TexturedCubeDemo::loadPipelineDependencies()
+void TextureDemo::loadPipelineDependencies()
 {
 	//-- Describe and create the CBV Descriptor Heap.
 	{
@@ -48,7 +50,7 @@ void TexturedCubeDemo::loadPipelineDependencies()
 
 
 //---------------------------------------------------------------------------------------
-void TexturedCubeDemo::loadAssets()
+void TextureDemo::loadAssets()
 {
 	//-- Create root signature:
 	{
@@ -266,7 +268,7 @@ void TexturedCubeDemo::loadAssets()
 		NAME_D3D12_OBJECT(m_dsvDescHeap);
 
 		m_device->CreateDepthStencilView (
-			m_depthStencilBuffer.Get(),
+			m_depthStencilBuffer,
 			&depthStencilDesc,
 			m_dsvDescHeap->GetCPUDescriptorHandleForHeapStart()
 		);
@@ -275,7 +277,7 @@ void TexturedCubeDemo::loadAssets()
 
 
 //---------------------------------------------------------------------------------------
-void TexturedCubeDemo::createPipelineState (
+void TextureDemo::createPipelineState (
     ID3DBlob * vertexShaderBlob,
     ID3DBlob * pixelShaderBlob
 ) {
@@ -312,7 +314,7 @@ void TexturedCubeDemo::createPipelineState (
     // Describe and create the graphics pipeline state object (PSO).
     D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
     psoDesc.InputLayout = inputLayoutDesc;
-    psoDesc.pRootSignature = m_rootSignature.Get();
+    psoDesc.pRootSignature = m_rootSignature;
     psoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShaderBlob);
     psoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShaderBlob);
     psoDesc.RasterizerState = rasterizerState;
@@ -336,7 +338,15 @@ void TexturedCubeDemo::createPipelineState (
 }
 
 //---------------------------------------------------------------------------------------
-void TexturedCubeDemo::updateConstantBuffers()
+void TextureDemo::createTextureFromImageFile (
+	const char * path,
+	ID3D12GraphicsCommandList * uploadCmdList
+) {
+		
+}
+
+//---------------------------------------------------------------------------------------
+void TextureDemo::updateConstantBuffers()
 {
 	//-- Create and Upload SceneContants Data:
 	{
@@ -418,13 +428,13 @@ void TexturedCubeDemo::updateConstantBuffers()
 }
 
 //---------------------------------------------------------------------------------------
-void TexturedCubeDemo::update()
+void TextureDemo::update()
 {
 	this->updateConstantBuffers();
 }
 
 //---------------------------------------------------------------------------------------
-void TexturedCubeDemo::render()
+void TextureDemo::render()
 {
 	this->populateCommandList();
 
@@ -435,13 +445,26 @@ void TexturedCubeDemo::render()
 
 
 //---------------------------------------------------------------------------------------
-void TexturedCubeDemo::cleanupDemo()
+void TextureDemo::cleanupDemo()
 {
+	m_directCmdQueue->Signal(m_frameFence[m_frameIndex], m_currentFenceValue);
+	m_fenceValue[m_frameIndex] = m_currentFenceValue;
+	++m_currentFenceValue;
 
+	// Wait for command queue to finish processing all buffered frames
+	for (int i(0); i < NUM_BUFFERED_FRAMES; ++i) {
+		waitForGpuFence(m_frameFence[i], m_fenceValue[i], m_frameFenceEvent[i]);
+	}
+
+	m_rootSignature->Release();
+	m_pipelineState->Release();
+	m_dsvDescHeap->Release();
+	m_depthStencilBuffer->Release();
+	m_cbvDescHeap->Release();
 }
 
 //---------------------------------------------------------------------------------------
-void TexturedCubeDemo::populateCommandList()
+void TextureDemo::populateCommandList()
 {
 	auto * cmdAllocator = m_directCmdAllocator[m_frameIndex];
 	auto & directCmdList = m_drawCmdList[m_frameIndex];
@@ -451,14 +474,14 @@ void TexturedCubeDemo::populateCommandList()
     );
 
 	CHECK_D3D_RESULT (
-		directCmdList->Reset(cmdAllocator, m_pipelineState.Get())
+		directCmdList->Reset(cmdAllocator, m_pipelineState)
 	 );
 
-	directCmdList->SetPipelineState(m_pipelineState.Get());
+	directCmdList->SetPipelineState(m_pipelineState);
 
-	directCmdList->SetGraphicsRootSignature(m_rootSignature.Get());
+	directCmdList->SetGraphicsRootSignature(m_rootSignature);
 
-	ID3D12DescriptorHeap * ppHeaps[] = { m_cbvDescHeap.Get() };
+	ID3D12DescriptorHeap * ppHeaps[] = { m_cbvDescHeap };
 	directCmdList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
 	directCmdList->SetGraphicsRootConstantBufferView (
 		0, m_cbvDesc_SceneConstants[m_frameIndex].BufferLocation

@@ -1,6 +1,3 @@
-//
-// D3D12DemoBase.cpp
-//
 #include "pch.h"
 #include "D3D12DemoBase.hpp"
 
@@ -483,7 +480,7 @@ void D3D12DemoBase::cleanupDemo()
 	++m_currentFenceValue;
 
 	// Wait for command queue to finish processing all buffered frames
-	for (int i = 0; i < NUM_BUFFERED_FRAMES; ++i) {
+	for (int i(0); i < NUM_BUFFERED_FRAMES; ++i) {
 		waitForGpuFence(m_frameFence[i], m_fenceValue[i], m_frameFenceEvent[i]);
 	}
 
@@ -491,6 +488,20 @@ void D3D12DemoBase::cleanupDemo()
 	for (auto event : m_frameFenceEvent) {
 		CloseHandle(event);
 	}
+
+	for (int i(0); i < NUM_BUFFERED_FRAMES; ++i) {
+		m_frameFence[i]->Release();
+		m_renderTarget[i].resource->Release();
+		m_drawCmdList[i]->Release();
+		m_directCmdAllocator[i]->Release();
+	}
+
+	m_directCmdQueue->Release();
+	m_rtvDescHeap->Release();
+	m_swapChain->Release();
+	m_copyCmdAllocator->Release();
+	m_copyCmdList->Release();
+	m_device->Release();
 }
 
 //---------------------------------------------------------------------------------------

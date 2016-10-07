@@ -80,6 +80,12 @@ void QueryVideoMemoryInfo (
 	_Out_ DXGI_QUERY_VIDEO_MEMORY_INFO & videoMemoryInfo
 );
 
+template <typename T>
+constexpr T RoundToNextMultiple (const T a, const T multiple)
+{
+	return ((a + multiple - 1) / multiple) * multiple;
+}
+
 
 // Force runtime to break with optional message.
 #define ForceBreak(message) \

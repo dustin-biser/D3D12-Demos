@@ -24,7 +24,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ConstantBuffer", "ConstantB
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "QueryVideoMemory", "QueryVideoMemory\QueryVideoMemory.vcxproj", "{4D2C1C99-98C6-4C1A-BAF6-A469495FB3F2}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TexturedCube", "TexturedCube\TexturedCube.vcxproj", "{2366B8F0-2F2A-49A8-93CC-0EF679E55E61}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Texture", "Texture\Texture.vcxproj", "{2366B8F0-2F2A-49A8-93CC-0EF679E55E61}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

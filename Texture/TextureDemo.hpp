@@ -4,14 +4,15 @@
 #include <vector>
 #include <DirectXMath.h>
 
-#include "D3D12DemoBase.hpp"
-#include "ResourceUploadBuffer.hpp"
+#include "Common/D3D12DemoBase.hpp"
+#include "Common/ResourceUploadBuffer.hpp"
+
 #include "ConstantBufferDefines.hpp"
 
 
-class TexturedCubeDemo : public D3D12DemoBase {
+class TextureDemo : public D3D12DemoBase {
 public:
-	TexturedCubeDemo (
+	TextureDemo (
         uint width,
         uint height,
         std::wstring name
@@ -31,7 +32,7 @@ private:
 	typedef ushort Index;
 
 	// Constant Buffer specific
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_cbvDescHeap;
+	ID3D12DescriptorHeap * m_cbvDescHeap;
 	SceneConstants m_sceneConstData[NUM_BUFFERED_FRAMES];
 	PointLight m_pointLightConstData[NUM_BUFFERED_FRAMES];
 
@@ -42,12 +43,12 @@ private:
 	void * m_cbv_SceneConstants_dataPtr[NUM_BUFFERED_FRAMES];
 
 	// Pipeline objects.
-	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature;
-	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineState;
+	ID3D12RootSignature * m_rootSignature;
+	ID3D12PipelineState * m_pipelineState;
 
 	// Depth/Stencil specific
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_dsvDescHeap;
-	Microsoft::WRL::ComPtr<ID3D12Resource> m_depthStencilBuffer;
+	ID3D12DescriptorHeap * m_dsvDescHeap;
+	ID3D12Resource * m_depthStencilBuffer;
 
 	// App resources.
 	std::vector<Vertex> m_vertexArray;
@@ -55,19 +56,26 @@ private:
 	D3D12_INPUT_LAYOUT_DESC m_inputLayoutDesc;
 	std::shared_ptr<ResourceUploadBuffer> m_uploadBuffer;
 
-	Microsoft::WRL::ComPtr<ID3D12Resource> m_vertexBuffer;
 	D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
-	Microsoft::WRL::ComPtr<ID3D12Resource> m_indexBuffer;
 	D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
     uint m_indexCount;
 
 	void loadPipelineDependencies();
+
 	void loadAssets();
+
 	void populateCommandList();
+
 	void updateConstantBuffers();
+
 	void createPipelineState (
 		ID3DBlob * vertexShaderBlob,
 		ID3DBlob * pixelShaderBlob
+	);
+
+	void createTextureFromImageFile (
+		const char * path,
+		ID3D12GraphicsCommandList * uploadCmdList
 	);
 };
 

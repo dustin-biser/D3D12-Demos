@@ -1,6 +1,3 @@
-//
-// D3D12DemoBase.hpp
-//
 #pragma once
 
 #include <sal.h>

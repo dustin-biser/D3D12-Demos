@@ -4,8 +4,9 @@
 #include <vector>
 #include <DirectXMath.h>
 
-#include "D3D12DemoBase.hpp"
-#include "ResourceUploadBuffer.hpp"
+#include "Common/D3D12DemoBase.hpp"
+#include "Common/ResourceUploadBuffer.hpp"
+
 #include "ConstantBufferDefines.hpp"
 
 

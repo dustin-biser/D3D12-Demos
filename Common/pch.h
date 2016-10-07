@@ -34,5 +34,5 @@
 #include <shellapi.h>
 #include <cstdlib>
 
-#include "NumericTypes.hpp"
-#include "DemoUtils.hpp"
+#include "Common/NumericTypes.hpp"
+#include "Common/DemoUtils.hpp"
