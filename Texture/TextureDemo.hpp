@@ -18,11 +18,16 @@ public:
         std::wstring name
     );
 
+	~TextureDemo();
+
 	void initializeDemo() override;
+
 	void update() override;
-	void render() override;
-	void cleanupDemo() override;
-	
+
+	void render (
+		ID3D12GraphicsCommandList * drawCmdList
+	) override;
+
 
 private:
 	struct Vertex {
@@ -30,6 +35,8 @@ private:
 		float normal[3];
 	};
 	typedef ushort Index;
+
+	std::vector<byte> m_imageData;
 
 	// Constant Buffer specific
 	ID3D12DescriptorHeap * m_cbvDescHeap;
@@ -46,10 +53,6 @@ private:
 	ID3D12RootSignature * m_rootSignature;
 	ID3D12PipelineState * m_pipelineState;
 
-	// Depth/Stencil specific
-	ID3D12DescriptorHeap * m_dsvDescHeap;
-	ID3D12Resource * m_depthStencilBuffer;
-
 	// App resources.
 	std::vector<Vertex> m_vertexArray;
 	std::vector<ushort> m_indexArray;
@@ -63,8 +66,6 @@ private:
 	void loadPipelineDependencies();
 
 	void loadAssets();
-
-	void populateCommandList();
 
 	void updateConstantBuffers();
 

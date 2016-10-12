@@ -13,9 +13,12 @@ public:
     );
 
 	void initializeDemo() override;
+
 	void update() override;
-	void render() override;
-	void cleanupDemo() override;
+
+	void render (
+		ID3D12GraphicsCommandList * drawCmdList
+	) override;
 
 private:
 	struct Vertex
@@ -35,7 +38,6 @@ private:
     uint m_indexCount;
 
 	void loadAssets();
-	void populateCommandList();
     void createRootSignature();
     void createVertexDataBuffers();
     void loadShaders (

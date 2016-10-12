@@ -131,7 +131,7 @@ void D3D12DemoBase::createSwapChain (
 		)
 	);
 
-	// This sample does not support full screen transitions.
+	// Prevent full screen transitions for now.
 	CHECK_D3D_RESULT (
 		dxgiFactory->MakeWindowAssociation(
 			Win32Application::GetHwnd(),
@@ -145,7 +145,7 @@ void D3D12DemoBase::createSwapChain (
 	);
 	swapChain2->SetMaximumFrameLatency(NUM_BUFFERED_FRAMES);
 
-	// Get the frame latency waitable objects.
+	// Acquire handle to frame latency waitable object.
 	m_frameLatencyWaitableObject = swapChain2->GetFrameLatencyWaitableObject();
 
 	// Assign interface object to m_swapChain so it persists past current scope.
@@ -230,7 +230,27 @@ void D3D12DemoBase::createDirectCommandQueue ()
 //---------------------------------------------------------------------------------------
 D3D12DemoBase::~D3D12DemoBase()
 {
+	// Clean up event handles
+	for (auto event : m_frameFenceEvent) {
+		CloseHandle(event);
+	}
 
+	for (int i(0); i < NUM_BUFFERED_FRAMES; ++i) {
+		m_frameFence[i]->Release();
+		m_renderTarget[i].resource->Release();
+		m_drawCmdList[i]->Release();
+		m_directCmdAllocator[i]->Release();
+	}
+
+	m_directCmdQueue->Release();
+	m_rtvDescHeap->Release();
+	m_swapChain->Release();
+	m_copyCmdAllocator->Release();
+	m_copyCmdList->Release();
+	m_depthStencilBuffer->Release();
+	m_dsvDescHeap->Release();
+
+	m_device->Release();
 }
 
 //---------------------------------------------------------------------------------------
@@ -264,6 +284,7 @@ void D3D12DemoBase::initializeDemo()
 	// Set the current frame index to correspond with the current back buffer index.
 	m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
 
+	createDepthStencilBuffer();
 
 	// Create synchronization primitive.
 	for (int i(0); i < NUM_BUFFERED_FRAMES; ++i) {
@@ -325,7 +346,52 @@ void D3D12DemoBase::initializeDemo()
 			NAME_D3D12_OBJECT(m_renderTarget[n].resource);
 		}
 	}
+
 }
+//---------------------------------------------------------------------------------------
+void D3D12DemoBase::createDepthStencilBuffer()
+{
+	// create a depth stencil descriptor heap so we can get a pointer to the depth stencil buffer
+	D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDescriptor = {};
+	dsvHeapDescriptor.NumDescriptors = 1;
+	dsvHeapDescriptor.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+	dsvHeapDescriptor.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+	CHECK_D3D_RESULT (
+		m_device->CreateDescriptorHeap(&dsvHeapDescriptor, IID_PPV_ARGS(&m_dsvDescHeap))
+	);
+	NAME_D3D12_OBJECT(m_dsvDescHeap);
+
+	D3D12_DEPTH_STENCIL_VIEW_DESC depthStencilDesc = {};
+	depthStencilDesc.Format = DXGI_FORMAT_D32_FLOAT;
+	depthStencilDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+	depthStencilDesc.Flags = D3D12_DSV_FLAG_NONE;
+
+	D3D12_CLEAR_VALUE depthOptimizedClearValue = {};
+	depthOptimizedClearValue.Format = DXGI_FORMAT_D32_FLOAT;
+	depthOptimizedClearValue.DepthStencil.Depth = 1.0f;
+	depthOptimizedClearValue.DepthStencil.Stencil = 0;
+
+	// Create Depth-Stencil Buffer resource.
+	CHECK_D3D_RESULT(
+		m_device->CreateCommittedResource (
+			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+			D3D12_HEAP_FLAG_NONE,
+			&CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT_D32_FLOAT, m_windowWidth, m_windowHeight,
+				1, 0, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL),
+			D3D12_RESOURCE_STATE_DEPTH_WRITE,
+			&depthOptimizedClearValue,
+			IID_PPV_ARGS(&m_depthStencilBuffer)
+		)
+	);
+	NAME_D3D12_OBJECT(m_depthStencilBuffer);
+
+	m_device->CreateDepthStencilView (
+		m_depthStencilBuffer,
+		&depthStencilDesc,
+		m_dsvDescHeap->GetCPUDescriptorHandleForHeapStart()
+	);
+}
+
 
 //---------------------------------------------------------------------------------------
 void D3D12DemoBase::createDrawCommandLists()
@@ -411,7 +477,10 @@ void D3D12DemoBase::buildNextFrame()
 		WaitForSingleObject(m_frameLatencyWaitableObject, INFINITE);
 	}
 
-	render();
+	auto drawCmdList = m_drawCmdList[m_frameIndex];
+	prepareRender(m_directCmdAllocator[m_frameIndex], drawCmdList);
+	render(drawCmdList);
+	finalizeRender(drawCmdList, m_directCmdQueue);
 }
 
 //---------------------------------------------------------------------------------------
@@ -470,41 +539,6 @@ void D3D12DemoBase::waitForGpuCompletion (
 }
 
 //---------------------------------------------------------------------------------------
-void D3D12DemoBase::cleanupDemo()
-{
-	// Ensure that the GPU is no longer referencing resources that are about to be
-	// cleaned up by the destructor.
-
-	m_directCmdQueue->Signal(m_frameFence[m_frameIndex], m_currentFenceValue);
-	m_fenceValue[m_frameIndex] = m_currentFenceValue;
-	++m_currentFenceValue;
-
-	// Wait for command queue to finish processing all buffered frames
-	for (int i(0); i < NUM_BUFFERED_FRAMES; ++i) {
-		waitForGpuFence(m_frameFence[i], m_fenceValue[i], m_frameFenceEvent[i]);
-	}
-
-	// Clean up event handles
-	for (auto event : m_frameFenceEvent) {
-		CloseHandle(event);
-	}
-
-	for (int i(0); i < NUM_BUFFERED_FRAMES; ++i) {
-		m_frameFence[i]->Release();
-		m_renderTarget[i].resource->Release();
-		m_drawCmdList[i]->Release();
-		m_directCmdAllocator[i]->Release();
-	}
-
-	m_directCmdQueue->Release();
-	m_rtvDescHeap->Release();
-	m_swapChain->Release();
-	m_copyCmdAllocator->Release();
-	m_copyCmdList->Release();
-	m_device->Release();
-}
-
-//---------------------------------------------------------------------------------------
 void D3D12DemoBase::onKeyDown(uint8 key)
 {
 	// Empty, to be overridden by derived class
@@ -513,9 +547,94 @@ void D3D12DemoBase::onKeyDown(uint8 key)
 //---------------------------------------------------------------------------------------
 void D3D12DemoBase::onKeyUp(uint8 key)
 {
-
 	// Empty, to be overridden by derived class
 }
+
+//---------------------------------------------------------------------------------------
+void D3D12DemoBase::prepareRender (
+	ID3D12CommandAllocator * commandAllocator,
+	ID3D12GraphicsCommandList * drawCmdList
+) {
+	CHECK_D3D_RESULT (
+		commandAllocator->Reset()
+	);
+
+	CHECK_D3D_RESULT (
+		// Forgo setting pipeline-state for now.
+		// Let dervived class set it within its render(...) method.
+		drawCmdList->Reset(commandAllocator, nullptr)
+	);
+
+	drawCmdList->RSSetViewports(1, &m_viewport);
+	drawCmdList->RSSetScissorRects(1, &m_scissorRect);
+
+	// Indicate that the back buffer for the current frame will be used as a render target.
+	drawCmdList->ResourceBarrier (1,
+		&CD3DX12_RESOURCE_BARRIER::Transition (
+			m_renderTarget[m_frameIndex].resource,
+			D3D12_RESOURCE_STATE_PRESENT,
+			D3D12_RESOURCE_STATE_RENDER_TARGET
+		)
+	);
+
+	// Acquire handle to Depth-Stencil View.
+	D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle (m_dsvDescHeap->GetCPUDescriptorHandleForHeapStart());
+
+	// Acquire handle to Render Target View.
+	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle (m_renderTarget[m_frameIndex].descriptorHandle);
+
+	drawCmdList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
+
+	// Clear render target.
+	const float clearColor[] = {0.0f, 0.2f, 0.4f, 1.0f};
+	drawCmdList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+
+	// Clear the depth/stencil buffer.
+	drawCmdList->ClearDepthStencilView (dsvHandle,
+		D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr
+	);
+}
+
+//---------------------------------------------------------------------------------------
+void D3D12DemoBase::finalizeRender (
+	ID3D12GraphicsCommandList * drawCmdList,
+	ID3D12CommandQueue * commandQueue
+) {
+	// Indicate that the back buffer will now be used to present.
+	drawCmdList->ResourceBarrier (1,
+		&CD3DX12_RESOURCE_BARRIER::Transition (
+			m_renderTarget[m_frameIndex].resource,
+			D3D12_RESOURCE_STATE_RENDER_TARGET,
+			D3D12_RESOURCE_STATE_PRESENT
+		)
+	);
+
+	CHECK_D3D_RESULT (
+		drawCmdList->Close()
+	);
+
+	// Execute the command list.
+	ID3D12CommandList* commandLists[] = {drawCmdList};
+	commandQueue->ExecuteCommandLists(_countof(commandLists), commandLists);
+}
+
+//---------------------------------------------------------------------------------------
+void D3D12DemoBase::prepareCleanup()
+{
+	// Signal command-queue 
+	m_directCmdQueue->Signal(m_frameFence[m_frameIndex], m_currentFenceValue);
+	m_fenceValue[m_frameIndex] = m_currentFenceValue;
+	++m_currentFenceValue;
+
+	// Wait for command queue to finish processing all buffered frames.
+	for (int i(0); i < NUM_BUFFERED_FRAMES; ++i) {
+		waitForGpuFence(m_frameFence[i], m_fenceValue[i], m_frameFenceEvent[i]);
+	}
+
+	// Now it is safe to Release() D3D resources.
+}
+
+
 
 //---------------------------------------------------------------------------------------
 uint D3D12DemoBase::getWindowWidth() const {

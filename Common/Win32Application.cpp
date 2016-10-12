@@ -119,10 +119,8 @@ int Win32Application::Run (
         }
 	}
 
-	// Clean up derived class specific items
-	demo->cleanupDemo(); 
-	// Clean up base class specific items
-	demo->D3D12DemoBase::cleanupDemo(); 
+	// Flush command-queue before releasing resources.
+	demo->prepareCleanup();
 
 	// Return this part of the WM_QUIT message to Windows.
 	return static_cast<char>(msg.wParam);

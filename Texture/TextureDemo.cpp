@@ -24,6 +24,14 @@ TextureDemo::TextureDemo (
 
 
 //---------------------------------------------------------------------------------------
+TextureDemo::~TextureDemo()
+{
+	m_rootSignature->Release();
+	m_pipelineState->Release();
+	m_cbvDescHeap->Release();
+}
+
+//---------------------------------------------------------------------------------------
 void TextureDemo::initializeDemo()
 {
 	loadPipelineDependencies();
@@ -231,48 +239,6 @@ void TextureDemo::loadAssets()
 
 		m_device->CreateConstantBufferView(&m_cbvDesc_PointLight[i], cbvDescHeapHandle);
 	}
-
-
-	// Create the depth/stencil buffer
-	{
-		// create a depth stencil descriptor heap so we can get a pointer to the depth stencil buffer
-		D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDescriptor = {};
-		dsvHeapDescriptor.NumDescriptors = 1;
-		dsvHeapDescriptor.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
-		dsvHeapDescriptor.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-		CHECK_D3D_RESULT (
-			m_device->CreateDescriptorHeap(&dsvHeapDescriptor, IID_PPV_ARGS(&m_dsvDescHeap))
-		);
-
-		D3D12_DEPTH_STENCIL_VIEW_DESC depthStencilDesc = {};
-		depthStencilDesc.Format = DXGI_FORMAT_D32_FLOAT;
-		depthStencilDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
-		depthStencilDesc.Flags = D3D12_DSV_FLAG_NONE;
-
-		D3D12_CLEAR_VALUE depthOptimizedClearValue = {};
-		depthOptimizedClearValue.Format = DXGI_FORMAT_D32_FLOAT;
-		depthOptimizedClearValue.DepthStencil.Depth = 1.0f;
-		depthOptimizedClearValue.DepthStencil.Stencil = 0;
-
-		CHECK_D3D_RESULT(
-			m_device->CreateCommittedResource (
-				&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-				D3D12_HEAP_FLAG_NONE,
-				&CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT_D32_FLOAT, m_windowWidth, m_windowHeight,
-					1, 0, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL),
-				D3D12_RESOURCE_STATE_DEPTH_WRITE,
-				&depthOptimizedClearValue,
-				IID_PPV_ARGS(&m_depthStencilBuffer)
-			)
-		);
-		NAME_D3D12_OBJECT(m_dsvDescHeap);
-
-		m_device->CreateDepthStencilView (
-			m_depthStencilBuffer,
-			&depthStencilDesc,
-			m_dsvDescHeap->GetCPUDescriptorHandleForHeapStart()
-		);
-	}
 }
 
 
@@ -342,7 +308,18 @@ void TextureDemo::createTextureFromImageFile (
 	const char * path,
 	ID3D12GraphicsCommandList * uploadCmdList
 ) {
-		
+	int width(0);
+	int height(0);
+
+	//m_imageData = LoadImageFromMemory (RubyTexture, sizeof (RubyTexture),
+	//	1 /* tight row packing */, &width, &height);
+
+
+
+	//************************************
+	// TODO Dustin - Finish this method
+	//************************************
+
 }
 
 //---------------------------------------------------------------------------------------
@@ -434,109 +411,28 @@ void TextureDemo::update()
 }
 
 //---------------------------------------------------------------------------------------
-void TextureDemo::render()
-{
-	this->populateCommandList();
+void TextureDemo::render (
+	ID3D12GraphicsCommandList * drawCmdList
+) {
+	drawCmdList->SetPipelineState(m_pipelineState);
 
-	// Execute command list for the current frame index
-	ID3D12CommandList * commandLists[] = { m_drawCmdList[m_frameIndex]};
-	m_directCmdQueue->ExecuteCommandLists(_countof(commandLists), commandLists);
-}
+	drawCmdList->SetGraphicsRootSignature(m_rootSignature);
 
-
-//---------------------------------------------------------------------------------------
-void TextureDemo::cleanupDemo()
-{
-	m_directCmdQueue->Signal(m_frameFence[m_frameIndex], m_currentFenceValue);
-	m_fenceValue[m_frameIndex] = m_currentFenceValue;
-	++m_currentFenceValue;
-
-	// Wait for command queue to finish processing all buffered frames
-	for (int i(0); i < NUM_BUFFERED_FRAMES; ++i) {
-		waitForGpuFence(m_frameFence[i], m_fenceValue[i], m_frameFenceEvent[i]);
-	}
-
-	m_rootSignature->Release();
-	m_pipelineState->Release();
-	m_dsvDescHeap->Release();
-	m_depthStencilBuffer->Release();
-	m_cbvDescHeap->Release();
-}
-
-//---------------------------------------------------------------------------------------
-void TextureDemo::populateCommandList()
-{
-	auto * cmdAllocator = m_directCmdAllocator[m_frameIndex];
-	auto & directCmdList = m_drawCmdList[m_frameIndex];
-
-    CHECK_D3D_RESULT (
-        cmdAllocator->Reset()
-    );
-
-	CHECK_D3D_RESULT (
-		directCmdList->Reset(cmdAllocator, m_pipelineState)
-	 );
-
-	directCmdList->SetPipelineState(m_pipelineState);
-
-	directCmdList->SetGraphicsRootSignature(m_rootSignature);
-
-	ID3D12DescriptorHeap * ppHeaps[] = { m_cbvDescHeap };
-	directCmdList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
-	directCmdList->SetGraphicsRootConstantBufferView (
+	ID3D12DescriptorHeap * ppHeaps[] = {m_cbvDescHeap};
+	drawCmdList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
+	drawCmdList->SetGraphicsRootConstantBufferView (
 		0, m_cbvDesc_SceneConstants[m_frameIndex].BufferLocation
 	);
-	directCmdList->SetGraphicsRootConstantBufferView (
+	drawCmdList->SetGraphicsRootConstantBufferView (
 		1, m_cbvDesc_PointLight[m_frameIndex].BufferLocation
 	);
 
-	directCmdList->RSSetViewports(1, &m_viewport);
-	directCmdList->RSSetScissorRects(1, &m_scissorRect);
+	drawCmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-	// Indicate that the back buffer will be used as a render target.
-	directCmdList->ResourceBarrier (1,
-		&CD3DX12_RESOURCE_BARRIER::Transition (
-			m_renderTarget[m_frameIndex].resource,
-			D3D12_RESOURCE_STATE_PRESENT,
-			D3D12_RESOURCE_STATE_RENDER_TARGET
-		)
-	);
-
-	// Get a handle to the depth/stencil buffer.
-	D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle (m_dsvDescHeap->GetCPUDescriptorHandleForHeapStart());
-
-	// Get handle to render target view.
-	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle (m_renderTarget[m_frameIndex].descriptorHandle);
-
-	directCmdList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
-
-	// Record commands.
-	const float clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
-	directCmdList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
-
-	// clear the depth/stencil buffer
-	directCmdList->ClearDepthStencilView (
-		m_dsvDescHeap->GetCPUDescriptorHandleForHeapStart(),
-		D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr
-	);
-
-	directCmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	
 	const uint inputSlot0 = 0;
-	directCmdList->IASetVertexBuffers(inputSlot0, 1, &m_vertexBufferView);
-	directCmdList->IASetIndexBuffer(&m_indexBufferView);
-	
+	drawCmdList->IASetVertexBuffers(inputSlot0, 1, &m_vertexBufferView);
+	drawCmdList->IASetIndexBuffer(&m_indexBufferView);
+
 	UINT numIndices = static_cast<UINT>(m_indexArray.size());
-	directCmdList->DrawIndexedInstanced(numIndices, 1, 0, 0, 0);
-
-	// Indicate that the back buffer will now be used to present.
-	directCmdList->ResourceBarrier (1,
-		&CD3DX12_RESOURCE_BARRIER::Transition (
-			m_renderTarget[m_frameIndex].resource,
-			D3D12_RESOURCE_STATE_RENDER_TARGET,
-			D3D12_RESOURCE_STATE_PRESENT
-		)
-	);
-
-	CHECK_D3D_RESULT(directCmdList->Close());
+	drawCmdList->DrawIndexedInstanced(numIndices, 1, 0, 0, 0);
 }

@@ -286,72 +286,16 @@ void IndexRendering::update()
 }
 
 //---------------------------------------------------------------------------------------
-void IndexRendering::render()
-{
-	populateCommandList();
-
-	// Execute the command list.
-	ID3D12CommandList* commandLists[] = { m_drawCmdList[m_frameIndex] };
-	m_directCmdQueue->ExecuteCommandLists(_countof(commandLists), commandLists);
-}
-
-//---------------------------------------------------------------------------------------
-void IndexRendering::populateCommandList()
-{
-	auto * cmdAllocator = m_directCmdAllocator[m_frameIndex];
-	auto & drawCmdList = m_drawCmdList[m_frameIndex];
-
-	CHECK_D3D_RESULT (
-		cmdAllocator->Reset()
-	);
-
-	CHECK_D3D_RESULT (
-		drawCmdList->Reset(cmdAllocator, m_pipelineState.Get())
-	);
-
+void IndexRendering::render (
+	ID3D12GraphicsCommandList * drawCmdList
+) {
 	// Set necessary state.
 	drawCmdList->SetPipelineState(m_pipelineState.Get());
 	drawCmdList->SetGraphicsRootSignature(m_rootSignature.Get());
-	drawCmdList->RSSetViewports(1, &m_viewport);
-	drawCmdList->RSSetScissorRects(1, &m_scissorRect);
 
-	// Indicate that the back buffer will be used as a render target.
-	drawCmdList->ResourceBarrier (1,
-		&CD3DX12_RESOURCE_BARRIER::Transition (
-			m_renderTarget[m_frameIndex].resource,
-			D3D12_RESOURCE_STATE_PRESENT,
-			D3D12_RESOURCE_STATE_RENDER_TARGET
-		)
-	);
-
-	// Get handle to render target view.
-	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle (m_renderTarget[m_frameIndex].descriptorHandle);
-
-	drawCmdList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
-
-	// Record commands.
-	const float clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
-	drawCmdList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
 	drawCmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	drawCmdList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
 	drawCmdList->IASetIndexBuffer(&m_indexBufferView);
+
 	drawCmdList->DrawIndexedInstanced(m_indexCount, 1, 0, 0, 0);
-
-	// Indicate that the back buffer will now be used to present.
-	drawCmdList->ResourceBarrier (1,
-		&CD3DX12_RESOURCE_BARRIER::Transition (
-			m_renderTarget[m_frameIndex].resource,
-			D3D12_RESOURCE_STATE_RENDER_TARGET,
-			D3D12_RESOURCE_STATE_PRESENT
-		)
-	);
-
-	CHECK_D3D_RESULT(drawCmdList->Close());
 }
-
-//---------------------------------------------------------------------------------------
-void IndexRendering::cleanupDemo()
-{
-
-}
-

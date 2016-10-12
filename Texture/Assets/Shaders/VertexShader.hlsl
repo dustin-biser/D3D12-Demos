@@ -1,5 +1,5 @@
 #include "PSInput.hlsli"
-#include "ConstantBufferDefines.hpp"
+#include "../../ConstantBufferDefines.hpp"
 
 ConstantBuffer<SceneConstants> sceneConstants : register(b0, space0);
 

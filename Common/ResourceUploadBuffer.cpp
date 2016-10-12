@@ -82,7 +82,7 @@ ResourceUploadBuffer::ResourceUploadBuffer (
 	//-- Map the full buffer range, so CPU can write to it.
 	void * bufferStart;
 	CD3DX12_RANGE readRange(0,0); // No CPU reads will be done from the resource.
-	impl->resourceBuffer->Map(0, &readRange, &bufferStart);
+	impl->resourceBuffer->Map(0, /*&readRange*/ nullptr, &bufferStart);
 
 	impl->dataCur = impl->dataBegin = reinterpret_cast<byte *>(bufferStart);
 	impl->dataEnd = impl->dataBegin + sizeInBytes;
@@ -92,6 +92,7 @@ ResourceUploadBuffer::ResourceUploadBuffer (
 //---------------------------------------------------------------------------------------
 ResourceUploadBuffer::~ResourceUploadBuffer()
 {
+	impl->resourceBuffer->Unmap(0, nullptr);
 	delete impl;
 }
 

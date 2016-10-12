@@ -19,10 +19,13 @@ public:
     );
 
 	void initializeDemo() override;
+
 	void update() override;
-	void render() override;
-	void cleanupDemo() override;
-	
+
+	void render (
+		ID3D12GraphicsCommandList * drawCmdList
+	) override;
+
 
 private:
 	struct Vertex {
@@ -45,10 +48,6 @@ private:
 	// Pipeline objects.
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature;
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineState;
-
-	// Depth/Stencil specific
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_dsvDescHeap;
-	Microsoft::WRL::ComPtr<ID3D12Resource> m_depthStencilBuffer;
 
 	// App resources.
 	std::vector<Vertex> m_vertexArray;

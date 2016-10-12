@@ -24,7 +24,7 @@
 #if defined(_DEBUG)
 	// Assigns a default name to a single D3D12 object to aid in identification
 	// of the object during graphics debugging.
-	// @param x - ComPtr<T> where T is a D3D12 object type.
+	// @param x - pointer to a D3D12 object type.
 #define NAME_D3D12_OBJECT(x) \
 	x->SetName(L#x);
 #else

@@ -15,9 +15,12 @@ public:
     );
 
 	void initializeDemo() override;
+
 	void update() override;
-	void render() override;
-	void cleanupDemo() override;
+
+	void render (
+		ID3D12GraphicsCommandList * drawCmdList
+	) override;
 
 	void OutputMemoryBudgets();
 

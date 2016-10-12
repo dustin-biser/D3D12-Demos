@@ -22,15 +22,35 @@ public:
 	virtual ~D3D12DemoBase();
 
 	virtual void initializeDemo();
-	virtual void update() = 0;
-	virtual void render() = 0;
-	virtual void cleanupDemo();
 
-	virtual void onKeyDown(uint8 key);
-	virtual void onKeyUp(uint8 key);
+	virtual void update() = 0;
+
+	virtual void render (
+		ID3D12GraphicsCommandList * drawCmdList
+	) = 0;
+
+	virtual void onKeyDown (
+		uint8 key
+	);
+	virtual void onKeyUp (
+		uint8 key
+	);
+
+	void prepareRender (
+		ID3D12CommandAllocator * commandAllocator,
+		ID3D12GraphicsCommandList * drawCmdList
+	);
+
+	void finalizeRender (
+		ID3D12GraphicsCommandList * drawCmdList,
+		ID3D12CommandQueue * commandQueue
+	);
 
 	void buildNextFrame();
+
 	void presentNextFrame();
+
+	void prepareCleanup();
 
 	uint getWindowWidth() const;
 
@@ -66,9 +86,12 @@ protected:
 	ID3D12CommandAllocator * m_copyCmdAllocator;
 	ID3D12GraphicsCommandList * m_copyCmdList;
 
-	// SwapChain objects.
 	IDXGISwapChain3 * m_swapChain;
 	HANDLE m_frameLatencyWaitableObject;
+
+	// Depth/Stencil specific
+	ID3D12DescriptorHeap * m_dsvDescHeap;
+	ID3D12Resource * m_depthStencilBuffer;
 
 	struct RenderTarget {
 		// Handle to render target view within descriptor heap.
@@ -91,7 +114,6 @@ protected:
 	void present();
 
 	__forceinline bool swapChainWaitableObjectIsSignaled();
-
 
 	// Issues a Signal from 'commanQueue', and causes current thread to block
 	// until GPU completes the Signal.
@@ -128,6 +150,8 @@ private:
 	void createSwapChain (
 		IDXGIFactory4 * dxgiFactory
 	);
+
+	void createDepthStencilBuffer();
 
 	void createDevice (
 		IDXGIFactory4 * dxgiFactory,

@@ -20,11 +20,9 @@ QueryVideoMemoryDemo::QueryVideoMemoryDemo (
 
 }
 
-
 //---------------------------------------------------------------------------------------
 void QueryVideoMemoryDemo::initializeDemo()
 {
-
 	OutputMemoryBudgets();
 }
 
@@ -61,15 +59,8 @@ void QueryVideoMemoryDemo::update()
 }
 
 //---------------------------------------------------------------------------------------
-void QueryVideoMemoryDemo::render()
-{
+void QueryVideoMemoryDemo::render (
+	ID3D12GraphicsCommandList * drawCmdList
+) {
 
 }
-
-
-//---------------------------------------------------------------------------------------
-void QueryVideoMemoryDemo::cleanupDemo()
-{
-
-}
-
