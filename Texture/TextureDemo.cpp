@@ -28,77 +28,16 @@ TextureDemo::~TextureDemo()
 {
 	m_rootSignature->Release();
 	m_pipelineState->Release();
-	m_cbvDescHeap->Release();
 }
 
 //---------------------------------------------------------------------------------------
 void TextureDemo::initializeDemo()
 {
-	loadPipelineDependencies();
+	createRootSignature();
 
-	loadAssets();
-}
+	createConstantBuffers();
 
-
-//---------------------------------------------------------------------------------------
-// Loads the rendering pipeline dependencies.
-void TextureDemo::loadPipelineDependencies()
-{
-	//-- Describe and create the CBV Descriptor Heap.
-	{
-		D3D12_DESCRIPTOR_HEAP_DESC cbvDescHeapDescriptor = {};
-		cbvDescHeapDescriptor.NumDescriptors = 2 * NUM_BUFFERED_FRAMES;
-		cbvDescHeapDescriptor.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-		cbvDescHeapDescriptor.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-		CHECK_D3D_RESULT (
-			m_device->CreateDescriptorHeap(&cbvDescHeapDescriptor, IID_PPV_ARGS(&m_cbvDescHeap))
-		);
-	}
-}
-
-
-//---------------------------------------------------------------------------------------
-void TextureDemo::loadAssets()
-{
-	//-- Create root signature:
-	{
-		// Two root parameters:
-		// First parameter is CBV for SceneConstants
-		// Second parameter is CBV for PointLight
-		CD3DX12_ROOT_PARAMETER rootParameters[2];
-
-		uint b0(0);
-		uint space0(0);
-		uint space1(1);
-		rootParameters[0].InitAsConstantBufferView(b0, space0);
-		rootParameters[1].InitAsConstantBufferView(b0, space1);
-
-		// Allow input layout and deny unnecessary access for certain pipeline stages
-		D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags =
-			/* Allow */
-			D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
-			/* Deny */
-			D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
-			D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
-			D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
-
-		CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
-		rootSignatureDesc.Init(_countof(rootParameters), rootParameters, 0, nullptr,
-			rootSignatureFlags);
-
-		ComPtr<ID3DBlob> signature;
-		ComPtr<ID3DBlob> error;
-
-		CHECK_D3D_RESULT(
-			D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1,
-				&signature, &error)
-		);
-
-		CHECK_D3D_RESULT(
-			m_device->CreateRootSignature(0, signature->GetBufferPointer(),
-				signature->GetBufferSize(), IID_PPV_ARGS(&m_rootSignature))
-		);
-	}
+	uploadVertexDataToGpu();
 
 	//-- Load shader byte code:
 	ComPtr<ID3DBlob> vertexShaderBlob;
@@ -108,15 +47,113 @@ void TextureDemo::loadAssets()
 
 	// Create the pipeline state object.
 	createPipelineState(vertexShaderBlob.Get(), pixelShaderBlob.Get());
+}
 
-	// Create upload buffer to hold graphics resources
-	m_uploadBuffer = std::make_shared<ResourceUploadBuffer> (
-		m_device,
-		128 * 1024 // 128 KB
+
+//---------------------------------------------------------------------------------------
+void TextureDemo::createRootSignature()
+{
+	// Two root parameters:
+	// First parameter is CBV for SceneConstants
+	// Second parameter is CBV for PointLight
+	CD3DX12_ROOT_PARAMETER rootParameters[2];
+
+	uint b0(0);
+	uint space0(0);
+	uint space1(1);
+	rootParameters[0].InitAsConstantBufferView(b0, space0);
+	rootParameters[1].InitAsConstantBufferView(b0, space1);
+
+	// Allow input layout and deny unnecessary access for certain pipeline stages
+	D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags =
+		/* Allow */
+		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
+		/* Deny */
+		D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
+		D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
+		D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
+
+	CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
+	rootSignatureDesc.Init(_countof(rootParameters), rootParameters, 0, nullptr,
+		rootSignatureFlags);
+
+	ComPtr<ID3DBlob> signature;
+	ComPtr<ID3DBlob> error;
+
+	CHECK_D3D_RESULT(
+		D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1,
+			&signature, &error)
 	);
 
+	CHECK_D3D_RESULT(
+		m_device->CreateRootSignature(0, signature->GetBufferPointer(),
+			signature->GetBufferSize(), IID_PPV_ARGS(&m_rootSignature))
+	);
+
+}
+
+
+//---------------------------------------------------------------------------------------
+void TextureDemo::createConstantBuffers()
+{
+	//-- Create SceneConstant constant buffers within upload heap:
+	for (int i(0); i < NUM_BUFFERED_FRAMES; ++i) {
+		const auto uploadHeapProperties = CD3DX12_HEAP_PROPERTIES (D3D12_HEAP_TYPE_UPLOAD);
+		const auto constantBufferDesc = CD3DX12_RESOURCE_DESC::Buffer (
+			sizeof (SceneConstants)
+		);
+
+		m_device->CreateCommittedResource (
+			&uploadHeapProperties,
+			D3D12_HEAP_FLAG_NONE,
+			&constantBufferDesc,
+			D3D12_RESOURCE_STATE_GENERIC_READ,
+			nullptr,
+			IID_PPV_ARGS (&m_constantBuffer_sceneConstant[i])
+		);
+
+		ZeroMemory(&m_sceneConstData[i], sizeof(SceneConstants));
+
+		void * p;
+		m_constantBuffer_sceneConstant[i]->Map (0, nullptr, &p);
+		::memcpy(p, &m_sceneConstData[i], sizeof (SceneConstants));
+		m_constantBuffer_sceneConstant[i]->Unmap (0, nullptr);
+	}
+
+	//-- Create PointLight constant buffers within upload heap:
+	for (int i(0); i < NUM_BUFFERED_FRAMES; ++i) {
+		const auto uploadHeapProperties = CD3DX12_HEAP_PROPERTIES (D3D12_HEAP_TYPE_UPLOAD);
+		const auto constantBufferDesc = CD3DX12_RESOURCE_DESC::Buffer (
+			sizeof (PointLight)
+		);
+
+		m_device->CreateCommittedResource (
+			&uploadHeapProperties,
+			D3D12_HEAP_FLAG_NONE,
+			&constantBufferDesc,
+			D3D12_RESOURCE_STATE_GENERIC_READ,
+			nullptr,
+			IID_PPV_ARGS (&m_constantBuffer_pointLight[i])
+		);
+
+		ZeroMemory(&m_sceneConstData[i], sizeof(PointLight));
+
+		void * p;
+		m_constantBuffer_pointLight[i]->Map (0, nullptr, &p);
+		::memcpy(p, &m_sceneConstData[i], sizeof(PointLight));
+		m_constantBuffer_pointLight[i]->Unmap (0, nullptr);
+	}
+	
+}
+
+//---------------------------------------------------------------------------------------
+void TextureDemo::uploadVertexDataToGpu()
+{
+	// Create upload buffer for uploading vertex/index data to default heap.
+    ComPtr<ID3D12Resource> uploadBuffer_vertexData;
+
 	// Cube vertex data.
-	m_vertexArray = {
+	Vertex vertexArray[] = {
 		// Positions             Normals
 		// Bottom
 		{ -0.5f, -0.5f,  0.5f,   0.0f, -1.0f,  0.0f}, // 0
@@ -156,20 +193,8 @@ void TextureDemo::loadAssets()
 	};
 
 
-	// Upload vertex data and create Vertex Buffer View:
-	{
-		size_t vertexSize = sizeof(Vertex);
-		size_t dataBytes = m_vertexArray.size() * vertexSize;
-		m_uploadBuffer->uploadVertexData(
-			m_vertexArray.data(),
-			dataBytes,
-			vertexSize,
-			m_vertexBufferView
-		);
-	}
-
 	// Create Index data
-	m_indexArray = {
+	Index indexArray[] = {
 		// Bottom
 		3,1,0, 3,2,1,
 		// Top
@@ -183,64 +208,131 @@ void TextureDemo::loadAssets()
 		// Front
 		20,21,23, 21,22,23
 	};
+	m_numIndices = _countof(indexArray);
 
-	//-- Upload index data and create Index Buffer View:
+
+	const int uploadBufferSize = sizeof(vertexArray) + sizeof(indexArray);
+	const auto uploadHeapProperties = CD3DX12_HEAP_PROPERTIES (D3D12_HEAP_TYPE_UPLOAD);
+	const auto uploadBufferDesc = CD3DX12_RESOURCE_DESC::Buffer (uploadBufferSize);
+
+	// Create upload buffer.
+	m_device->CreateCommittedResource (
+		&uploadHeapProperties,
+		D3D12_HEAP_FLAG_NONE,
+		&uploadBufferDesc,
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS (&uploadBuffer_vertexData)
+	);
+	NAME_D3D12_OBJECT(uploadBuffer_vertexData);
+
+	// Allocate vertex and index buffers within the default heap
 	{
-		size_t indexSize = sizeof(Index);
-		size_t dataBytes = m_indexArray.size() * indexSize;
+		const auto defaultHeapProperties = CD3DX12_HEAP_PROPERTIES (D3D12_HEAP_TYPE_DEFAULT);
 
-		m_uploadBuffer->uploadIndexData(
-			m_indexArray.data(),
-			dataBytes,
-			indexSize,
-			m_indexBufferView
+		const auto vertexBufferDesc = CD3DX12_RESOURCE_DESC::Buffer (sizeof(vertexArray));
+		m_device->CreateCommittedResource (
+			&defaultHeapProperties,
+			D3D12_HEAP_FLAG_NONE,
+			&vertexBufferDesc,
+			D3D12_RESOURCE_STATE_COPY_DEST,
+			nullptr,
+			IID_PPV_ARGS (&m_vertexBuffer)
+		);
+		NAME_D3D12_OBJECT(m_vertexBuffer);
+
+		const auto indexBufferDesc = CD3DX12_RESOURCE_DESC::Buffer (sizeof(indexArray));
+		m_device->CreateCommittedResource (
+			&defaultHeapProperties,
+			D3D12_HEAP_FLAG_NONE,
+			&indexBufferDesc,
+			D3D12_RESOURCE_STATE_COPY_DEST,
+			nullptr,
+			IID_PPV_ARGS (&m_indexBuffer)
+		);
+		NAME_D3D12_OBJECT(m_indexBuffer);
+	}
+
+	// Initialize vertex buffer view
+	m_vertexBufferView.BufferLocation = m_vertexBuffer->GetGPUVirtualAddress();
+	m_vertexBufferView.SizeInBytes = sizeof(vertexArray);
+	m_vertexBufferView.StrideInBytes = sizeof(Vertex);
+
+	// Initialize index buffer view
+	m_indexBufferView.BufferLocation = m_indexBuffer->GetGPUVirtualAddress();
+	m_indexBufferView.SizeInBytes = sizeof(indexArray);
+	m_indexBufferView.Format = DXGI_FORMAT_R16_UINT;
+	
+
+	// Copy vertex data in CPU memory to upload buffer
+	{
+		void * p;
+		// Set read range to zero, since we are only going to upload data to upload buffer
+		// rather than read data from it.
+		D3D12_RANGE readRange = {0, 0};
+		uploadBuffer_vertexData->Map(0, &readRange, &p);
+		::memcpy(p, vertexArray, sizeof(vertexArray));
+		::memcpy(static_cast<byte *>(p) + sizeof(vertexArray), indexArray, sizeof(indexArray));
+
+		// Finished uploading data to uploadBuffer, so unmap it.
+		D3D12_RANGE writtenRange = {0, sizeof(vertexArray) + sizeof(indexArray)};
+		uploadBuffer_vertexData->Unmap(0, &writtenRange);
+	}
+
+	// Copy data from upload buffer on CPU into the index/vertex buffer on 
+	// the GPU.
+	{
+		uint64 dstOffset = 0;
+		uint64 srcOffset = 0;
+		m_copyCmdList->CopyBufferRegion (
+			m_vertexBuffer,
+			dstOffset,
+			uploadBuffer_vertexData.Get(),
+			srcOffset,
+			sizeof(vertexArray)
+		);
+
+		dstOffset = 0;
+		srcOffset = sizeof(vertexArray);
+		m_copyCmdList->CopyBufferRegion (
+			m_indexBuffer,
+			dstOffset,
+			uploadBuffer_vertexData.Get(),
+			srcOffset,
+			sizeof(indexArray)
 		);
 	}
 
-	// Create SceneConstants ConstantBuffer storage within upload heap, duplicating
-	// storage space for each buffered frame.
-	for (int i(0); i < NUM_BUFFERED_FRAMES; ++i) {
-		ZeroMemory(&m_sceneConstData[i], sizeof(SceneConstants));
-		m_uploadBuffer->uploadConstantBufferData(
-			reinterpret_cast<const void *>(&m_sceneConstData[i]),
-			sizeof(SceneConstants),
-			m_cbvDesc_SceneConstants[i],
-			&m_cbv_SceneConstants_dataPtr[i]
-		);
+
+	// Batch resource barriers marking state transitions.
+	{
+		const CD3DX12_RESOURCE_BARRIER barriers[2] = {
+
+			CD3DX12_RESOURCE_BARRIER::Transition (
+				m_vertexBuffer,
+				D3D12_RESOURCE_STATE_COPY_DEST,
+				D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER
+			),
+
+			CD3DX12_RESOURCE_BARRIER::Transition (
+				m_indexBuffer,
+				D3D12_RESOURCE_STATE_COPY_DEST,
+				D3D12_RESOURCE_STATE_INDEX_BUFFER
+			)
+		};
+
+		m_copyCmdList->ResourceBarrier(2, barriers);
 	}
 
-	// Create PointLight ConstantBuffer storage within upload heap, duplicating
-	// storage space for each buffered frame.
-	for (int i(0); i < NUM_BUFFERED_FRAMES; ++i) {
-		ZeroMemory(&m_pointLightConstData[i], sizeof(PointLight));
-		m_uploadBuffer->uploadConstantBufferData (
-			reinterpret_cast<const void *>(&m_pointLightConstData[i]),
-			sizeof(PointLight),
-			m_cbvDesc_PointLight[i],
-			&m_cbv_PointLight_dataPtr[i]
-		);
-	}
+	// Close command list and execute it on the direct command queue. 
+	CHECK_D3D_RESULT (
+		m_copyCmdList->Close()
+	);
+	ID3D12CommandList * commandLists[] = {m_copyCmdList};
+	m_directCmdQueue->ExecuteCommandLists(_countof(commandLists), commandLists);
 
-
-	//-- Create CBV on the CBV-Heap that references our ConstantBuffer data.
-	for (int i(0); i < NUM_BUFFERED_FRAMES; ++i) {
-		CD3DX12_CPU_DESCRIPTOR_HANDLE cbvDescHeapHandle(
-			m_cbvDescHeap->GetCPUDescriptorHandleForHeapStart()
-		);
-
-		m_device->CreateConstantBufferView(&m_cbvDesc_SceneConstants[i], cbvDescHeapHandle);
-
-		// Increment cbvDescHandle to point to next descriptor in cbvHeap.
-		uint descriptorIncrementSize =
-			m_device->GetDescriptorHandleIncrementSize(
-				D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV
-			);
-		cbvDescHeapHandle.Offset(1, descriptorIncrementSize);
-
-		m_device->CreateConstantBufferView(&m_cbvDesc_PointLight[i], cbvDescHeapHandle);
-	}
+	waitForGpuCompletion(m_directCmdQueue);
 }
-
 
 //---------------------------------------------------------------------------------------
 void TextureDemo::createPipelineState (
@@ -418,13 +510,12 @@ void TextureDemo::render (
 
 	drawCmdList->SetGraphicsRootSignature(m_rootSignature);
 
-	ID3D12DescriptorHeap * ppHeaps[] = {m_cbvDescHeap};
-	drawCmdList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
+	//-- Set CBVs within root signature:
 	drawCmdList->SetGraphicsRootConstantBufferView (
-		0, m_cbvDesc_SceneConstants[m_frameIndex].BufferLocation
+		0, m_constantBuffer_sceneConstant[m_frameIndex]->GetGPUVirtualAddress()
 	);
 	drawCmdList->SetGraphicsRootConstantBufferView (
-		1, m_cbvDesc_PointLight[m_frameIndex].BufferLocation
+		1, m_constantBuffer_pointLight[m_frameIndex]->GetGPUVirtualAddress()
 	);
 
 	drawCmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -433,6 +524,5 @@ void TextureDemo::render (
 	drawCmdList->IASetVertexBuffers(inputSlot0, 1, &m_vertexBufferView);
 	drawCmdList->IASetIndexBuffer(&m_indexBufferView);
 
-	UINT numIndices = static_cast<UINT>(m_indexArray.size());
-	drawCmdList->DrawIndexedInstanced(numIndices, 1, 0, 0, 0);
+	drawCmdList->DrawIndexedInstanced(m_numIndices, 1, 0, 0, 0);
 }

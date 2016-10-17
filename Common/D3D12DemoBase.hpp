@@ -82,7 +82,7 @@ protected:
 	ID3D12CommandAllocator * m_directCmdAllocator[NUM_BUFFERED_FRAMES];
 	ID3D12GraphicsCommandList * m_drawCmdList[NUM_BUFFERED_FRAMES];
 
-	// Copy Command Related
+	// Copy Command Related.  Useful for uploading data to GPU.
 	ID3D12CommandAllocator * m_copyCmdAllocator;
 	ID3D12GraphicsCommandList * m_copyCmdList;
 

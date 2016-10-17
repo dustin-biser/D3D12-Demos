@@ -477,9 +477,13 @@ void D3D12DemoBase::buildNextFrame()
 		WaitForSingleObject(m_frameLatencyWaitableObject, INFINITE);
 	}
 
+	// Acquire commandList corresponding to current frame index.
 	auto drawCmdList = m_drawCmdList[m_frameIndex];
+
 	prepareRender(m_directCmdAllocator[m_frameIndex], drawCmdList);
+
 	render(drawCmdList);
+
 	finalizeRender(drawCmdList, m_directCmdQueue);
 }
 
