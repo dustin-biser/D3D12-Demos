@@ -10,9 +10,9 @@ struct SceneConstants
     mat4 normalMatrix;
 };
 
-struct PointLight
+struct DirectionalLight
 {
-	float4 position_eyeSpace;
+	float4 direction;
 	float4 color;
 };
 

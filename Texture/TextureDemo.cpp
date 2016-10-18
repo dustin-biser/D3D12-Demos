@@ -124,7 +124,7 @@ void TextureDemo::createConstantBuffers()
 	for (int i(0); i < NUM_BUFFERED_FRAMES; ++i) {
 		const auto uploadHeapProperties = CD3DX12_HEAP_PROPERTIES (D3D12_HEAP_TYPE_UPLOAD);
 		const auto constantBufferDesc = CD3DX12_RESOURCE_DESC::Buffer (
-			sizeof (PointLight)
+			sizeof (DirectionalLight)
 		);
 
 		m_device->CreateCommittedResource (
@@ -136,11 +136,11 @@ void TextureDemo::createConstantBuffers()
 			IID_PPV_ARGS (&m_constantBuffer_pointLight[i])
 		);
 
-		ZeroMemory(&m_sceneConstData[i], sizeof(PointLight));
+		ZeroMemory(&m_sceneConstData[i], sizeof(DirectionalLight));
 
 		void * p;
 		m_constantBuffer_pointLight[i]->Map (0, nullptr, &p);
-		::memcpy(p, &m_sceneConstData[i], sizeof(PointLight));
+		::memcpy(p, &m_sceneConstData[i], sizeof(DirectionalLight));
 		m_constantBuffer_pointLight[i]->Unmap (0, nullptr);
 	}
 	
@@ -152,63 +152,20 @@ void TextureDemo::uploadVertexDataToGpu()
 	// Create upload buffer for uploading vertex/index data to default heap.
     ComPtr<ID3D12Resource> uploadBuffer_vertexData;
 
-	// Cube vertex data.
+	// Quad vertex data.
 	Vertex vertexArray[] = {
-		// Positions             Normals
-		// Bottom
-		{ -0.5f, -0.5f,  0.5f,   0.0f, -1.0f,  0.0f}, // 0
-		{  0.5f, -0.5f,  0.5f,   0.0f, -1.0f,  0.0f}, // 1
-		{  0.5f, -0.5f, -0.5f,   0.0f, -1.0f,  0.0f}, // 2
-		{ -0.5f, -0.5f, -0.5f,   0.0f, -1.0f,  0.0f}, // 3
-
-		// Top
-		{ -0.5f,  0.5f,  0.5f,   0.0f,  1.0f,  0.0f}, // 4
-		{  0.5f,  0.5f,  0.5f,   0.0f,  1.0f,  0.0f}, // 5
-		{  0.5f,  0.5f, -0.5f,   0.0f,  1.0f,  0.0f}, // 6
-		{ -0.5f,  0.5f, -0.5f,   0.0f,  1.0f,  0.0f}, // 7
-
-		// Left 
-		{ -0.5f, -0.5f,  0.5f,  -1.0f,  0.0f,  0.0f}, // 8
-		{ -0.5f, -0.5f, -0.5f,  -1.0f,  0.0f,  0.0f}, // 9
-		{ -0.5f,  0.5f,  0.5f,  -1.0f,  0.0f,  0.0f}, // 10
-		{ -0.5f,  0.5f, -0.5f,  -1.0f,  0.0f,  0.0f}, // 11
-
-		// Back 
-		{ -0.5f, -0.5f, -0.5f,   0.0f,  0.0f, -1.0f}, // 12
-		{  0.5f, -0.5f, -0.5f,   0.0f,  0.0f, -1.0f}, // 13
-		{  0.5f,  0.5f, -0.5f,   0.0f,  0.0f, -1.0f}, // 14
-		{ -0.5f,  0.5f, -0.5f,   0.0f,  0.0f, -1.0f}, // 15
-
-		// Right 
-		{  0.5f, -0.5f,  0.5f,   1.0f,  0.0f,  0.0f}, // 16
-		{  0.5f, -0.5f, -0.5f,   1.0f,  0.0f,  0.0f}, // 17
-		{  0.5f,  0.5f, -0.5f,   1.0f,  0.0f,  0.0f}, // 18
-		{  0.5f,  0.5f,  0.5f,   1.0f,  0.0f,  0.0f}, // 19
-
-		// Front 
-		{ -0.5f, -0.5f,  0.5f,   0.0f,  0.0f,  1.0f}, // 20
-		{  0.5f, -0.5f,  0.5f,   0.0f,  0.0f,  1.0f}, // 21
-		{  0.5f,  0.5f,  0.5f,   0.0f,  0.0f,  1.0f}, // 22
-		{ -0.5f,  0.5f,  0.5f,   0.0f,  0.0f,  1.0f}, // 23
+		// Positions             Normals               TexCords
+		{ -0.5f, -0.5f,  0.0f,   0.0f,  1.0f,  0.0f,   0.0f, 0.0f}, // 0
+		{  0.5f, -0.5f,  0.0f,   0.0f,  1.0f,  0.0f,   1.0f, 0.0f}, // 1
+		{  0.5f,  0.5f,  0.0f,   0.0f,  1.0f,  0.0f,   1.0f, 1.0f}, // 2
+		{ -0.5f,  0.5f,  0.0f,   0.0f,  1.0f,  0.0f,   0.0f, 1.0f}  // 3
 	};
 
-
-	// Create Index data
+	// Create index data
 	Index indexArray[] = {
-		// Bottom
-		3,1,0, 3,2,1,
-		// Top
-		7,4,5, 7,5,6,
-		// Left
-		8,10,9, 10,11,9,
-		// Back
-		12,15,13, 15,14,13,
-		// Right
-		16,17,19, 17,18,19,
-		// Front
-		20,21,23, 21,22,23
+		0,1,2, 0,2,3,
 	};
-	m_numIndices = _countof(indexArray);
+	m_numIndices = std::extent<decltype(indexArray)>::value;
 
 
 	const int uploadBufferSize = sizeof(vertexArray) + sizeof(indexArray);
@@ -340,7 +297,7 @@ void TextureDemo::createPipelineState (
     ID3DBlob * pixelShaderBlob
 ) {
     // Define the vertex input layout.
-    D3D12_INPUT_ELEMENT_DESC inputElementDescriptor[2];
+    D3D12_INPUT_ELEMENT_DESC inputElementDescriptor[3];
 
     // Positions
     inputElementDescriptor[0].SemanticName = "POSITION";
@@ -359,6 +316,15 @@ void TextureDemo::createPipelineState (
     inputElementDescriptor[1].AlignedByteOffset = sizeof(float) * 3;
     inputElementDescriptor[1].InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
     inputElementDescriptor[1].InstanceDataStepRate = 0;
+
+    // Normals
+    inputElementDescriptor[2].SemanticName = "TEXCOORD";
+    inputElementDescriptor[2].SemanticIndex = 0;
+    inputElementDescriptor[2].Format = DXGI_FORMAT_R32G32_FLOAT;
+    inputElementDescriptor[2].InputSlot = 0;
+    inputElementDescriptor[2].AlignedByteOffset = sizeof(float) * 6;
+    inputElementDescriptor[2].InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
+    inputElementDescriptor[2].InstanceDataStepRate = 0;
 
     // Describe the rasterizer state
     CD3DX12_RASTERIZER_DESC rasterizerState(D3D12_DEFAULT);
@@ -440,12 +406,9 @@ void TextureDemo::updateConstantBuffers()
 		XMMATRIX projectMatrix;
 		{
 			// Undefine Windows' dumb defines
-			#ifdef near
 			#undef near
-			#endif
-			#ifdef far
-			#undef far
-			#endif
+			#undef far 
+
 
 			float near(0.1f);
 			float far(200.0f);
@@ -474,25 +437,14 @@ void TextureDemo::updateConstantBuffers()
 		XMStoreFloat4x4(&m_sceneConstData[m_frameIndex].normalMatrix, XMMatrixTranspose(normalMatrix));
 
 
-		XMVECTOR lightPosition{ -5.0f, 5.0f,  5.0f, 1.0f };
+		XMVECTOR lightDirection{ -5.0f, 5.0f,  5.0f, 1.0f };
 
 		// Transform lightPosition into View Space
-		lightPosition = XMVector4Transform(lightPosition, viewMatrix);
-		XMStoreFloat4(&m_pointLightConstData[m_frameIndex].position_eyeSpace, lightPosition);
+		lightDirection = XMVector4Transform(lightDirection, viewMatrix);
+		XMStoreFloat4(&m_pointLightConstData[m_frameIndex].direction, lightDirection);
 
 		// White light
 		m_pointLightConstData[m_frameIndex].color = XMFLOAT4{ 1.0f, 1.0f, 1.0f, 1.0f };
-
-
-		// Update SceneConstants ConstantBuffer data:
-		memcpy (m_cbv_SceneConstants_dataPtr[m_frameIndex], 
-				&m_sceneConstData[m_frameIndex],
-				sizeof(SceneConstants));
-
-		// Update PointLight ConstantBuffer data:
-		memcpy (m_cbv_PointLight_dataPtr[m_frameIndex], 
-				&m_pointLightConstData[m_frameIndex],
-				sizeof(PointLight) );
 	}
 }
 

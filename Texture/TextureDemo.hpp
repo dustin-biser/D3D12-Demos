@@ -32,6 +32,7 @@ private:
 	struct Vertex {
 		float position[3];
 		float normal[3];
+		float texCoord[2];
 	};
 	typedef ushort Index;
 
@@ -40,7 +41,7 @@ private:
 	// Constant Buffer specific
 	SceneConstants m_sceneConstData[NUM_BUFFERED_FRAMES];
 	ID3D12Resource * m_constantBuffer_sceneConstant[NUM_BUFFERED_FRAMES];
-	PointLight m_pointLightConstData[NUM_BUFFERED_FRAMES];
+	DirectionalLight m_pointLightConstData[NUM_BUFFERED_FRAMES];
 	ID3D12Resource * m_constantBuffer_pointLight[NUM_BUFFERED_FRAMES];
 
 	// Pipeline objects.
