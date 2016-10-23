@@ -174,12 +174,12 @@ void waitForGpuFence (
 D3D12DemoBase::D3D12DemoBase (
 	uint windowWidth,
 	uint windowHeight,
-	std::wstring name
+	std::wstring windowTitle
 ) :
 	m_frameIndex(0),
 	m_windowWidth(windowWidth),
 	m_windowHeight(windowHeight),
-	m_title(name),
+	m_windowTitle(windowTitle),
 	m_useWarpDevice(false),
 	m_fenceValue{0}
 {
@@ -210,6 +210,11 @@ D3D12DemoBase::D3D12DemoBase (
 	if (!DirectX::XMVerifyCPUSupport()) {
 		ForceBreak("No support for DirectXMath.");
 	}
+
+	// Initialize COM library.
+	CHECK_WIN_RESULT (
+		CoInitializeEx(nullptr, COINIT_MULTITHREADED)
+	);
 }
 
 //---------------------------------------------------------------------------------------
@@ -251,6 +256,9 @@ D3D12DemoBase::~D3D12DemoBase()
 	m_dsvDescHeap->Release();
 
 	m_device->Release();
+
+	// Uninitialize COM library.
+	CoUninitialize();
 }
 
 //---------------------------------------------------------------------------------------
@@ -654,31 +662,25 @@ uint D3D12DemoBase::getWindowHeight() const {
 
 //---------------------------------------------------------------------------------------
 const WCHAR * D3D12DemoBase::getWindowTitle() const {
-	return m_title.c_str();
+	return m_windowTitle.c_str();
 }
 
 
 //---------------------------------------------------------------------------------------
-std::wstring D3D12DemoBase::getAssetPath(LPCWSTR assetName)
-{
-    assert(assetName);
+std::wstring D3D12DemoBase::getAssetPath (
+	const wchar_t * assetName
+) {
+    ASSERT(assetName);
 
     // Compiled shader code .cso files should be in the current working directory,
-    // where as all other assets (e.g. textures, meshes, etc.) should be located in
+    // where as other assets (e.g. textures, meshes, etc.) should be located in
     // the shared asset path.
     const wchar_t * stringMatch = wcsstr(assetName, L".cso");
     if (stringMatch) {
         return m_workingDirPath + assetName;
     }
 
-    // .obj files reside in Assets\Meshes\ folder.
-    stringMatch = wcsstr(assetName, L".obj");
-    if (stringMatch) {
-        return m_sharedAssetPath + L"Meshes\\" + assetName;
-    }
-
     return m_sharedAssetPath + assetName;
-
 }
 
 
@@ -710,6 +712,6 @@ std::string D3D12DemoBase::getAssetPath(const char * assetName)
 void D3D12DemoBase::setCustomWindowText (
 	_In_ LPCWSTR text
 ) {
-	std::wstring windowText = m_title + L": " + text;
+	std::wstring windowText = m_windowTitle + L": " + text;
 	SetWindowText(Win32Application::GetHwnd(), windowText.c_str());
 }

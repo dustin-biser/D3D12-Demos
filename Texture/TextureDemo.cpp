@@ -13,11 +13,11 @@ using namespace std;
 
 //---------------------------------------------------------------------------------------
 TextureDemo::TextureDemo (
-    uint width, 
-    uint height,
-    std::wstring name
+    uint windowWidth, 
+    uint windowHeight,
+    std::wstring windowTitle
 )   
-    :   D3D12DemoBase(width, height, name)
+    :   D3D12DemoBase(windowWidth, windowHeight, windowTitle)
 {
 
 }
@@ -38,6 +38,8 @@ void TextureDemo::initializeDemo()
 	createConstantBuffers();
 
 	uploadVertexDataToGpu();
+
+	createTexture();
 
 	//-- Load shader byte code:
 	ComPtr<ID3DBlob> vertexShaderBlob;
@@ -362,22 +364,14 @@ void TextureDemo::createPipelineState (
 }
 
 //---------------------------------------------------------------------------------------
-void TextureDemo::createTextureFromImageFile (
-	const char * path,
-	ID3D12GraphicsCommandList * uploadCmdList
+void TextureDemo::createTexture (
 ) {
-	int width(0);
-	int height(0);
 
-	//m_imageData = LoadImageFromMemory (RubyTexture, sizeof (RubyTexture),
-	//	1 /* tight row packing */, &width, &height);
-
-
+	ImageDecoder::decodeImage(getAssetPath(L"Textures\\uvgrid.jpg"), 1, &m_imageData);
 
 	//************************************
 	// TODO Dustin - Finish this method
 	//************************************
-
 }
 
 //---------------------------------------------------------------------------------------
@@ -408,7 +402,6 @@ void TextureDemo::updateConstantBuffers()
 			// Undefine Windows' dumb defines
 			#undef near
 			#undef far 
-
 
 			float near(0.1f);
 			float far(200.0f);

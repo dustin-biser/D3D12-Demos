@@ -5,6 +5,7 @@
 #include <DirectXMath.h>
 
 #include "Common/D3D12DemoBase.hpp"
+#include "Common/ImageDecoder.hpp"
 
 #include "ConstantBufferDefines.hpp"
 
@@ -12,9 +13,9 @@
 class TextureDemo : public D3D12DemoBase {
 public:
 	TextureDemo (
-        uint width,
-        uint height,
-        std::wstring name
+        uint windowWidth,
+        uint windowHeight,
+        std::wstring windowTitle 
     );
 
 	~TextureDemo();
@@ -36,7 +37,7 @@ private:
 	};
 	typedef ushort Index;
 
-	std::vector<byte> m_imageData;
+	ImageData m_imageData;
 
 	// Constant Buffer specific
 	SceneConstants m_sceneConstData[NUM_BUFFERED_FRAMES];
@@ -71,9 +72,6 @@ private:
 		ID3DBlob * pixelShaderBlob
 	);
 
-	void createTextureFromImageFile (
-		const char * path,
-		ID3D12GraphicsCommandList * uploadCmdList
-	);
+	void createTexture();
 };
 

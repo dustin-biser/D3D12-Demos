@@ -1,5 +1,5 @@
 /*
- * NumericTypes.h
+ * NumericTypes.hpp
  *
  * Type defines for commonly used numerical types.
  */

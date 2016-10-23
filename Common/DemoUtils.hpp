@@ -5,19 +5,38 @@
 #include <iostream>
 
 
+// Debug assert test.
 #if defined(_DEBUG)
-#define CHECK_D3D_RESULT(x)									 \
-	do {													 \
-		HRESULT result = (x);								 \
-		if ( FAILED(result) ) {								 \
-			std::cout << "Direct3D Error at " << __FILE__ << \
-				":" << __LINE__ << std::endl;				 \
-			assert(result == S_OK);							 \
-		}													 \
-	}														 \
+#define ASSERT(x) assert(x)
+#else
+#define ASSERT(x)
+#endif
+
+#if defined(_DEBUG)
+#define CHECK_RESULT(x, str)					\
+	do {										\
+		HRESULT result = (x);					\
+		if ( FAILED(result) ) {					\
+			std::cout << str << __FILE__ <<     \
+				":" << __LINE__ << std::endl;	\
+			assert(result == S_OK);				\
+		}										\
+	}											\
 	while(0)
 #else
 #define CHECK_D3D_RESULT(x) x;
+#endif
+
+#if defined(_DEBUG)
+#define CHECK_D3D_RESULT(x) CHECK_RESULT(x, "Direct3D error at ");
+#else
+#define CHECK_D3D_RESULT(x) x;
+#endif
+
+#if defined(_DEBUG)
+#define CHECK_WIN_RESULT(x) CHECK_RESULT(x, "Windows error at ");
+#else
+#define CHECK_WIN_RESULT(x) x;
 #endif
 
 

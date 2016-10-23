@@ -16,7 +16,7 @@ public:
 	D3D12DemoBase (
         uint windowWidth,
         uint windowHeight,
-        std::wstring name
+        std::wstring windowTitle
     );
 
 	virtual ~D3D12DemoBase();
@@ -117,15 +117,21 @@ protected:
 
 	// Issues a Signal from 'commanQueue', and causes current thread to block
 	// until GPU completes the Signal.
-	void waitForGpuCompletion(ID3D12CommandQueue * commandQueue);
+	void waitForGpuCompletion (
+		ID3D12CommandQueue * commandQueue
+	);
 
 
 	/// Helper function for resolving the full path of assets.
-	std::wstring getAssetPath(LPCWSTR assetName);
+	std::wstring getAssetPath (
+		const wchar_t * assetName
+	);
 
 	/// Helper function for resolving the full path of assets.
 	/// Works with basic multi-byte strings.
-	std::string getAssetPath(const char * assetName);
+	std::string getAssetPath (
+		const char * assetName
+	);
 
 	void setCustomWindowText(
 		_In_ LPCWSTR text
@@ -139,7 +145,7 @@ private:
 	std::wstring m_sharedAssetPath;
 
 	// Window title.
-	std::wstring m_title;
+	std::wstring m_windowTitle;
 
 	void createDirectCommandQueue ();
 
