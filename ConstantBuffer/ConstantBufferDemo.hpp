@@ -18,11 +18,11 @@ public:
         std::wstring name
     );
 
-	void initializeDemo() override;
+	void InitializeDemo() override;
 
-	void update() override;
+	void Update() override;
 
-	void render (
+	void Render (
 		ID3D12GraphicsCommandList * drawCmdList
 	) override;
 
@@ -35,7 +35,7 @@ private:
 	typedef ushort Index;
 
 	// Constant Buffer specific
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_cbvDescHeap;
+	ComPtr<ID3D12DescriptorHeap> m_cbvDescHeap;
 	SceneConstants m_sceneConstData[NUM_BUFFERED_FRAMES];
 	PointLight m_pointLightConstData[NUM_BUFFERED_FRAMES];
 
@@ -46,8 +46,8 @@ private:
 	void * m_cbv_SceneConstants_dataPtr[NUM_BUFFERED_FRAMES];
 
 	// Pipeline objects.
-	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature;
-	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineState;
+	ComPtr<ID3D12RootSignature> m_rootSignature;
+	ComPtr<ID3D12PipelineState> m_pipelineState;
 
 	// App resources.
 	std::vector<Vertex> m_vertexArray;
@@ -55,17 +55,21 @@ private:
 	D3D12_INPUT_LAYOUT_DESC m_inputLayoutDesc;
 	std::shared_ptr<ResourceUploadBuffer> m_uploadBuffer;
 
-	Microsoft::WRL::ComPtr<ID3D12Resource> m_vertexBuffer;
+	ComPtr<ID3D12Resource> m_vertexBuffer;
 	D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
-	Microsoft::WRL::ComPtr<ID3D12Resource> m_indexBuffer;
+	ComPtr<ID3D12Resource> m_indexBuffer;
 	D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
     uint m_indexCount;
 
-	void loadPipelineDependencies();
-	void loadAssets();
-	void populateCommandList();
-	void updateConstantBuffers();
-	void createPipelineState (
+	void LoadPipelineDependencies();
+
+	void LoadAssets();
+
+	void PopulateCommandList();
+
+	void UpdateConstantBuffers();
+
+	void CreatePipelineState (
 		ID3DBlob * vertexShaderBlob,
 		ID3DBlob * pixelShaderBlob
 	);

@@ -26,26 +26,27 @@ TextureDemo::TextureDemo (
 //---------------------------------------------------------------------------------------
 TextureDemo::~TextureDemo()
 {
-	m_rootSignature->Release();
-	m_pipelineState->Release();
+
 }
 
 //---------------------------------------------------------------------------------------
-void TextureDemo::initializeDemo()
+void TextureDemo::InitializeDemo()
 {
-	createRootSignature();
+	CreateRootSignature();
 
-	createConstantBuffers();
+	CreateConstantBuffers();
 
-	uploadVertexDataToGpu();
+	CreateDescriptorHeap();
 
-	createTexture();
+	UploadVertexDataToGpu();
+
+	CreateTexture();
 
 	//-- Load shader byte code:
 	ComPtr<ID3DBlob> vertexShaderBlob;
 	ComPtr<ID3DBlob> pixelShaderBlob;
-	D3DReadFileToBlob(getAssetPath(L"VertexShader.cso").c_str(), &vertexShaderBlob);
-	D3DReadFileToBlob(getAssetPath(L"PixelShader.cso").c_str(), &pixelShaderBlob);
+	D3DReadFileToBlob(GetAssetPath(L"VertexShader.cso").c_str(), &vertexShaderBlob);
+	D3DReadFileToBlob(GetAssetPath(L"PixelShader.cso").c_str(), &pixelShaderBlob);
 
 	// Create the pipeline state object.
 	createPipelineState(vertexShaderBlob.Get(), pixelShaderBlob.Get());
@@ -53,31 +54,32 @@ void TextureDemo::initializeDemo()
 
 
 //---------------------------------------------------------------------------------------
-void TextureDemo::createRootSignature()
+void TextureDemo::CreateRootSignature()
 {
-	// Two root parameters:
-	// First parameter is CBV for SceneConstants
-	// Second parameter is CBV for PointLight
-	CD3DX12_ROOT_PARAMETER rootParameters[2];
+	// Root parameters:
+	// Parameter 0 : CBV for SceneConstants
+	// Parameter 1 : CBV for PointLight
+	// Parameter 2 : Descriptor table containing SRV for texture
+	CD3DX12_ROOT_PARAMETER rootParameters[3];
 
-	uint b0(0);
-	uint space0(0);
-	uint space1(1);
-	rootParameters[0].InitAsConstantBufferView(b0, space0);
-	rootParameters[1].InitAsConstantBufferView(b0, space1);
+	const uint b0 = 0;
+	const uint space0 = 0;
+	const uint space1 = 1;
+	rootParameters[0].InitAsConstantBufferView(b0, space0, D3D12_SHADER_VISIBILITY_VERTEX);
+	rootParameters[1].InitAsConstantBufferView(b0, space1, D3D12_SHADER_VISIBILITY_PIXEL);
 
-	// Allow input layout and deny unnecessary access for certain pipeline stages
-	D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags =
-		/* Allow */
-		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
-		/* Deny */
-		D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
-		D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
-		D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
+	// Create a descriptor table with a single entry in the descriptor heap.
+	CD3DX12_DESCRIPTOR_RANGE range (D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
+	rootParameters[2].InitAsDescriptorTable(1, &range);
+
+	// We don't use another descriptor heap for the sampler, instead we use a
+	// static sampler
+	CD3DX12_STATIC_SAMPLER_DESC samplers[1];
+	samplers[0].Init (0, D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT);
 
 	CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
-	rootSignatureDesc.Init(_countof(rootParameters), rootParameters, 0, nullptr,
-		rootSignatureFlags);
+	rootSignatureDesc.Init (_countof(rootParameters), rootParameters, 1, samplers,
+		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
 	ComPtr<ID3DBlob> signature;
 	ComPtr<ID3DBlob> error;
@@ -94,9 +96,26 @@ void TextureDemo::createRootSignature()
 
 }
 
+//---------------------------------------------------------------------------------------
+void TextureDemo::CreateDescriptorHeap()
+{
+	// Create a descriptor heap to hold the texture SRV, which cannot go directly 
+	// into the root signature.
+	D3D12_DESCRIPTOR_HEAP_DESC descriptorHeapDesc = {};
+	descriptorHeapDesc.NumDescriptors = 1;
+	descriptorHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+	descriptorHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+
+	CHECK_D3D_RESULT (
+		m_device->CreateDescriptorHeap (
+			&descriptorHeapDesc,
+			IID_PPV_ARGS(&m_srvDescriptorHeap)
+		)
+	);
+}
 
 //---------------------------------------------------------------------------------------
-void TextureDemo::createConstantBuffers()
+void TextureDemo::CreateConstantBuffers()
 {
 	//-- Create SceneConstant constant buffers within upload heap:
 	for (int i(0); i < NUM_BUFFERED_FRAMES; ++i) {
@@ -149,7 +168,7 @@ void TextureDemo::createConstantBuffers()
 }
 
 //---------------------------------------------------------------------------------------
-void TextureDemo::uploadVertexDataToGpu()
+void TextureDemo::UploadVertexDataToGpu()
 {
 	// Create upload buffer for uploading vertex/index data to default heap.
     ComPtr<ID3D12Resource> uploadBuffer_vertexData;
@@ -183,7 +202,7 @@ void TextureDemo::uploadVertexDataToGpu()
 		nullptr,
 		IID_PPV_ARGS (&uploadBuffer_vertexData)
 	);
-	NAME_D3D12_OBJECT(uploadBuffer_vertexData);
+	SET_D3D12_DEBUG_NAME(uploadBuffer_vertexData);
 
 	// Allocate vertex and index buffers within the default heap
 	{
@@ -198,7 +217,7 @@ void TextureDemo::uploadVertexDataToGpu()
 			nullptr,
 			IID_PPV_ARGS (&m_vertexBuffer)
 		);
-		NAME_D3D12_OBJECT(m_vertexBuffer);
+		SET_D3D12_DEBUG_NAME(m_vertexBuffer);
 
 		const auto indexBufferDesc = CD3DX12_RESOURCE_DESC::Buffer (sizeof(indexArray));
 		m_device->CreateCommittedResource (
@@ -209,7 +228,7 @@ void TextureDemo::uploadVertexDataToGpu()
 			nullptr,
 			IID_PPV_ARGS (&m_indexBuffer)
 		);
-		NAME_D3D12_OBJECT(m_indexBuffer);
+		SET_D3D12_DEBUG_NAME(m_indexBuffer);
 	}
 
 	// Initialize vertex buffer view
@@ -243,8 +262,8 @@ void TextureDemo::uploadVertexDataToGpu()
 	{
 		uint64 dstOffset = 0;
 		uint64 srcOffset = 0;
-		m_copyCmdList->CopyBufferRegion (
-			m_vertexBuffer,
+		m_uploadCmdList->CopyBufferRegion (
+			m_vertexBuffer.Get(),
 			dstOffset,
 			uploadBuffer_vertexData.Get(),
 			srcOffset,
@@ -253,8 +272,8 @@ void TextureDemo::uploadVertexDataToGpu()
 
 		dstOffset = 0;
 		srcOffset = sizeof(vertexArray);
-		m_copyCmdList->CopyBufferRegion (
-			m_indexBuffer,
+		m_uploadCmdList->CopyBufferRegion (
+			m_indexBuffer.Get(),
 			dstOffset,
 			uploadBuffer_vertexData.Get(),
 			srcOffset,
@@ -268,29 +287,29 @@ void TextureDemo::uploadVertexDataToGpu()
 		const CD3DX12_RESOURCE_BARRIER barriers[2] = {
 
 			CD3DX12_RESOURCE_BARRIER::Transition (
-				m_vertexBuffer,
+				m_vertexBuffer.Get(),
 				D3D12_RESOURCE_STATE_COPY_DEST,
 				D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER
 			),
 
 			CD3DX12_RESOURCE_BARRIER::Transition (
-				m_indexBuffer,
+				m_indexBuffer.Get(),
 				D3D12_RESOURCE_STATE_COPY_DEST,
 				D3D12_RESOURCE_STATE_INDEX_BUFFER
 			)
 		};
 
-		m_copyCmdList->ResourceBarrier(2, barriers);
+		m_uploadCmdList->ResourceBarrier(2, barriers);
 	}
 
 	// Close command list and execute it on the direct command queue. 
 	CHECK_D3D_RESULT (
-		m_copyCmdList->Close()
+		m_uploadCmdList->Close()
 	);
-	ID3D12CommandList * commandLists[] = {m_copyCmdList};
+	ID3D12CommandList * commandLists[] = {m_uploadCmdList.Get()};
 	m_directCmdQueue->ExecuteCommandLists(_countof(commandLists), commandLists);
 
-	waitForGpuCompletion(m_directCmdQueue);
+	WaitForGpuCompletion(m_directCmdQueue.Get());
 }
 
 //---------------------------------------------------------------------------------------
@@ -340,7 +359,7 @@ void TextureDemo::createPipelineState (
     // Describe and create the graphics pipeline state object (PSO).
     D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
     psoDesc.InputLayout = inputLayoutDesc;
-    psoDesc.pRootSignature = m_rootSignature;
+    psoDesc.pRootSignature = m_rootSignature.Get();
     psoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShaderBlob);
     psoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShaderBlob);
     psoDesc.RasterizerState = rasterizerState;
@@ -360,22 +379,89 @@ void TextureDemo::createPipelineState (
     CHECK_D3D_RESULT (
         m_device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pipelineState))
      );
-	NAME_D3D12_OBJECT(m_pipelineState);
+	SET_D3D12_DEBUG_NAME(m_pipelineState);
 }
 
 //---------------------------------------------------------------------------------------
-void TextureDemo::createTexture (
-) {
+void TextureDemo::CreateTexture ()
+{
 
-	ImageDecoder::decodeImage(getAssetPath(L"Textures\\uvgrid.jpg"), 1, &m_imageData);
+	ImageDecoder::decodeImage(GetAssetPath(L"Textures\\uvgrid.jpg"), 1, &m_imageData);
 
-	//************************************
+	const auto defaultHeapProperties = CD3DX12_HEAP_PROPERTIES (D3D12_HEAP_TYPE_DEFAULT);
+	const auto resourceDesc = CD3DX12_RESOURCE_DESC::Tex2D (
+		DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, m_imageData.width, m_imageData.height, 1, 1
+	);
+
+	// Create resource within Default Heap that will hold image data.
+	CHECK_D3D_RESULT (
+		m_device->CreateCommittedResource (
+			&defaultHeapProperties,
+			D3D12_HEAP_FLAG_NONE,
+			&resourceDesc,
+			D3D12_RESOURCE_STATE_COPY_DEST,
+			nullptr,
+			IID_PPV_ARGS(&m_imageTexture2d)
+		)
+	);
+
+	const auto uploadHeapProperties = CD3DX12_HEAP_PROPERTIES (D3D12_HEAP_TYPE_UPLOAD);
+	const auto uploadBufferSize = 
+		::GetRequiredIntermediateSize(m_imageTexture2d.Get(), 0, 1);
+	const auto uploadBufferDesc = CD3DX12_RESOURCE_DESC::Buffer (uploadBufferSize);
+
+	// Create upload buffer for uploading image data to texture resource on GPU.
+	CHECK_D3D_RESULT (
+		m_device->CreateCommittedResource (
+			&uploadHeapProperties,
+			D3D12_HEAP_FLAG_NONE,
+			&uploadBufferDesc,
+			D3D12_RESOURCE_STATE_GENERIC_READ,
+			nullptr,
+			IID_PPV_ARGS(&m_uploadBuffer)
+		)
+	);
+
+	const int bytesPerPixel(4);
+
+	D3D12_SUBRESOURCE_DATA sourceData;
+	sourceData.pData = m_imageData.data;
+	sourceData.RowPitch = m_imageData.width * bytesPerPixel;
+	sourceData.SlicePitch = m_imageData.width * m_imageData.height * bytesPerPixel;
+
+	::UpdateSubresources (
+		m_uploadCmdList.Get(), m_imageTexture2d.Get(), 
+		m_uploadBuffer.Get(), 0, 0, 1, &sourceData
+	);
+
+	// Issue resource barrier to transition image texture from copy state to 
+	// pixel shader resource.
+	const auto resourceBarrier = CD3DX12_RESOURCE_BARRIER::Transition (
+		m_imageTexture2d.Get(),
+		D3D12_RESOURCE_STATE_COPY_DEST,
+		D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE
+	);
+	m_uploadCmdList->ResourceBarrier(1, &resourceBarrier);
+
+	D3D12_SHADER_RESOURCE_VIEW_DESC shaderResourceViewDesc = {};
+	shaderResourceViewDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+	shaderResourceViewDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	shaderResourceViewDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+	shaderResourceViewDesc.Texture2D.MipLevels = 1;
+	shaderResourceViewDesc.Texture2D.MostDetailedMip = 0;
+	shaderResourceViewDesc.Texture2D.ResourceMinLODClamp = 0.0f;
+
+	m_device->CreateShaderResourceView (
+		m_imageTexture2d.Get(),
+		&shaderResourceViewDesc,
+		m_srvDescriptorHeap->GetCPUDescriptorHandleForHeapStart()
+	);
+
 	// TODO Dustin - Finish this method
-	//************************************
 }
 
 //---------------------------------------------------------------------------------------
-void TextureDemo::updateConstantBuffers()
+void TextureDemo::UpdateConstantBuffers()
 {
 	//-- Create and Upload SceneContants Data:
 	{
@@ -442,18 +528,17 @@ void TextureDemo::updateConstantBuffers()
 }
 
 //---------------------------------------------------------------------------------------
-void TextureDemo::update()
+void TextureDemo::Update()
 {
-	this->updateConstantBuffers();
+	this->UpdateConstantBuffers();
 }
 
 //---------------------------------------------------------------------------------------
-void TextureDemo::render (
+void TextureDemo::Render (
 	ID3D12GraphicsCommandList * drawCmdList
 ) {
-	drawCmdList->SetPipelineState(m_pipelineState);
-
-	drawCmdList->SetGraphicsRootSignature(m_rootSignature);
+	drawCmdList->SetPipelineState(m_pipelineState.Get());
+	drawCmdList->SetGraphicsRootSignature(m_rootSignature.Get());
 
 	//-- Set CBVs within root signature:
 	drawCmdList->SetGraphicsRootConstantBufferView (

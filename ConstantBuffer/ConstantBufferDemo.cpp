@@ -22,17 +22,17 @@ ConstantBufferDemo::ConstantBufferDemo (
 
 
 //---------------------------------------------------------------------------------------
-void ConstantBufferDemo::initializeDemo()
+void ConstantBufferDemo::InitializeDemo()
 {
-	loadPipelineDependencies();
+	LoadPipelineDependencies();
 
-	loadAssets();
+	LoadAssets();
 }
 
 
 //---------------------------------------------------------------------------------------
 // Loads the rendering pipeline dependencies.
-void ConstantBufferDemo::loadPipelineDependencies()
+void ConstantBufferDemo::LoadPipelineDependencies()
 {
 	//-- Describe and create the CBV Descriptor Heap.
 	{
@@ -48,7 +48,7 @@ void ConstantBufferDemo::loadPipelineDependencies()
 
 
 //---------------------------------------------------------------------------------------
-void ConstantBufferDemo::loadAssets()
+void ConstantBufferDemo::LoadAssets()
 {
 	//-- Create root signature:
 	{
@@ -93,15 +93,15 @@ void ConstantBufferDemo::loadAssets()
 	//-- Load shader byte code:
 	ComPtr<ID3DBlob> vertexShaderBlob;
 	ComPtr<ID3DBlob> pixelShaderBlob;
-	D3DReadFileToBlob(getAssetPath(L"VertexShader.cso").c_str(), &vertexShaderBlob);
-	D3DReadFileToBlob(getAssetPath(L"PixelShader.cso").c_str(), &pixelShaderBlob);
+	D3DReadFileToBlob(GetAssetPath(L"VertexShader.cso").c_str(), &vertexShaderBlob);
+	D3DReadFileToBlob(GetAssetPath(L"PixelShader.cso").c_str(), &pixelShaderBlob);
 
 	// Create the pipeline state object.
-	createPipelineState(vertexShaderBlob.Get(), pixelShaderBlob.Get());
+	CreatePipelineState(vertexShaderBlob.Get(), pixelShaderBlob.Get());
 
 	// Create upload buffer to hold graphics resources
 	m_uploadBuffer = std::make_shared<ResourceUploadBuffer>(
-		m_device,
+		m_device.Get(),
 		128 * 1024 // 128 KB
 	);
 
@@ -233,7 +233,7 @@ void ConstantBufferDemo::loadAssets()
 
 
 //---------------------------------------------------------------------------------------
-void ConstantBufferDemo::createPipelineState (
+void ConstantBufferDemo::CreatePipelineState (
     ID3DBlob * vertexShaderBlob,
     ID3DBlob * pixelShaderBlob
 ) {
@@ -290,11 +290,11 @@ void ConstantBufferDemo::createPipelineState (
     CHECK_D3D_RESULT (
         m_device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pipelineState))
      );
-	NAME_D3D12_OBJECT(m_pipelineState);
+	SET_D3D12_DEBUG_NAME(m_pipelineState);
 }
 
 //---------------------------------------------------------------------------------------
-void ConstantBufferDemo::updateConstantBuffers()
+void ConstantBufferDemo::UpdateConstantBuffers()
 {
 	//-- Create and Upload SceneContants Data:
 	{
@@ -376,13 +376,13 @@ void ConstantBufferDemo::updateConstantBuffers()
 }
 
 //---------------------------------------------------------------------------------------
-void ConstantBufferDemo::update()
+void ConstantBufferDemo::Update()
 {
-	this->updateConstantBuffers();
+	this->UpdateConstantBuffers();
 }
 
 //---------------------------------------------------------------------------------------
-void ConstantBufferDemo::render (
+void ConstantBufferDemo::Render (
 	ID3D12GraphicsCommandList * drawCmdList
 ) {
 	drawCmdList->SetPipelineState(m_pipelineState.Get());
@@ -408,6 +408,6 @@ void ConstantBufferDemo::render (
 }
 
 //---------------------------------------------------------------------------------------
-void ConstantBufferDemo::populateCommandList()
+void ConstantBufferDemo::PopulateCommandList()
 {
 }

@@ -22,31 +22,31 @@ IndexRendering::IndexRendering (
 
 
 //---------------------------------------------------------------------------------------
-void IndexRendering::initializeDemo()
+void IndexRendering::InitializeDemo()
 {
-	loadAssets();
+	LoadAssets();
 }
 
 //---------------------------------------------------------------------------------------
 // Load the sample assets.
-void IndexRendering::loadAssets()
+void IndexRendering::LoadAssets()
 {
 	// Create an empty root signature.
-	createRootSignature();
+	CreateRootSignature();
 
     // Load shader bytecode.
     ComPtr<ID3DBlob> vertexShaderBlob;
     ComPtr<ID3DBlob> pixelShaderBlob;
-    loadShaders(vertexShaderBlob, pixelShaderBlob);
+    LoadShaders(vertexShaderBlob, pixelShaderBlob);
 
 	// Create the pipeline state object.
-    createPipelineState(vertexShaderBlob.Get(), pixelShaderBlob.Get());
+    CreatePipelineState(vertexShaderBlob.Get(), pixelShaderBlob.Get());
 
-    createVertexDataBuffers();
+    CreateVertexDataBuffers();
 }
 
 //---------------------------------------------------------------------------------------
-void IndexRendering::createRootSignature()
+void IndexRendering::CreateRootSignature()
 {
     CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
     rootSignatureDesc.Init (
@@ -78,18 +78,18 @@ void IndexRendering::createRootSignature()
 
 
 //---------------------------------------------------------------------------------------
-void IndexRendering::loadShaders (
-    _Out_ ComPtr<ID3DBlob> & vertexShaderBlob,
-    _Out_ ComPtr<ID3DBlob> & pixelShaderBlob
+void IndexRendering::LoadShaders (
+    ComPtr<ID3DBlob> & vertexShaderBlob,
+    ComPtr<ID3DBlob> & pixelShaderBlob
 ) {
-    D3DReadFileToBlob(getAssetPath(L"VertexShader.cso").c_str(), &vertexShaderBlob);
-    D3DReadFileToBlob(getAssetPath(L"PixelShader.cso").c_str(), &pixelShaderBlob);
+    D3DReadFileToBlob(GetAssetPath(L"VertexShader.cso").c_str(), &vertexShaderBlob);
+    D3DReadFileToBlob(GetAssetPath(L"PixelShader.cso").c_str(), &pixelShaderBlob);
 }
 
 //---------------------------------------------------------------------------------------
-void IndexRendering::createPipelineState(
-    _In_ ID3DBlob * vertexShaderBlob,
-    _In_ ID3DBlob * pixelShaderBlob
+void IndexRendering::CreatePipelineState(
+    ID3DBlob * vertexShaderBlob,
+    ID3DBlob * pixelShaderBlob
 ) {
     // Define the vertex input layout.
     D3D12_INPUT_ELEMENT_DESC inputElementDescriptor[2];
@@ -139,11 +139,11 @@ void IndexRendering::createPipelineState(
             IID_PPV_ARGS(&m_pipelineState)
         )
      );
-	NAME_D3D12_OBJECT(m_pipelineState);
+	SET_D3D12_DEBUG_NAME(m_pipelineState);
 }
 
 //---------------------------------------------------------------------------------------
-void IndexRendering::createVertexDataBuffers ()
+void IndexRendering::CreateVertexDataBuffers ()
 {
     // Upload buffers (which reside in the upload Heap) are only needed when loading data
     // into GPU memory.
@@ -195,7 +195,7 @@ void IndexRendering::createVertexDataBuffers ()
 			nullptr,
 			IID_PPV_ARGS (&m_vertexBuffer)
 		);
-		NAME_D3D12_OBJECT(m_vertexBuffer);
+		SET_D3D12_DEBUG_NAME(m_vertexBuffer);
 
 		const auto indexBufferDesc = CD3DX12_RESOURCE_DESC::Buffer (sizeof(indices));
 		m_device->CreateCommittedResource (
@@ -206,7 +206,7 @@ void IndexRendering::createVertexDataBuffers ()
 			nullptr,
 			IID_PPV_ARGS (&m_indexBuffer)
 		);
-		NAME_D3D12_OBJECT(m_indexBuffer);
+		SET_D3D12_DEBUG_NAME(m_indexBuffer);
 	}
 
 	// Create buffer views
@@ -238,13 +238,13 @@ void IndexRendering::createVertexDataBuffers ()
 	{
 		uint64 dstOffset = 0;
 		uint64 srcOffset = 0;
-		m_copyCmdList->CopyBufferRegion (
+		m_uploadCmdList->CopyBufferRegion (
 			m_vertexBuffer.Get(), dstOffset, uploadBuffer.Get(), srcOffset, sizeof(vertices)
 		);
 
 		dstOffset = 0;
 		srcOffset = sizeof(vertices);
-		m_copyCmdList->CopyBufferRegion (
+		m_uploadCmdList->CopyBufferRegion (
 			m_indexBuffer.Get(), dstOffset, uploadBuffer.Get(), srcOffset, sizeof(indices)
 		);
 	}
@@ -266,27 +266,27 @@ void IndexRendering::createVertexDataBuffers ()
 			)
 		};
 
-		m_copyCmdList->ResourceBarrier(2, barriers);
+		m_uploadCmdList->ResourceBarrier(2, barriers);
 	}
 
     // Close command list and execute it on the direct command queue. 
     CHECK_D3D_RESULT (
-        m_copyCmdList->Close()
+        m_uploadCmdList->Close()
     );
-    ID3D12CommandList * commandLists[] = { m_copyCmdList };
+    ID3D12CommandList * commandLists[] = { m_uploadCmdList.Get() };
     m_directCmdQueue->ExecuteCommandLists(_countof(commandLists), commandLists);
 
-	waitForGpuCompletion(m_directCmdQueue);
+	WaitForGpuCompletion(m_directCmdQueue.Get());
 }
 
 //---------------------------------------------------------------------------------------
-void IndexRendering::update()
+void IndexRendering::Update()
 {
 
 }
 
 //---------------------------------------------------------------------------------------
-void IndexRendering::render (
+void IndexRendering::Render (
 	ID3D12GraphicsCommandList * drawCmdList
 ) {
 	// Set necessary state.

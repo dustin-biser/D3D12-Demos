@@ -44,10 +44,10 @@
 	// Assigns a default name to a single D3D12 object to aid in identification
 	// of the object during graphics debugging.
 	// @param x - pointer to a D3D12 object type.
-#define NAME_D3D12_OBJECT(x) \
+#define SET_D3D12_DEBUG_NAME(x) \
 	x->SetName(L#x);
 #else
-#define NAME_D3D12_OBJECT(x)
+#define SET_D3D12_DEBUG_NAME(x)
 #endif
 
 
@@ -99,18 +99,11 @@ void QueryVideoMemoryInfo (
 	_Out_ DXGI_QUERY_VIDEO_MEMORY_INFO & videoMemoryInfo
 );
 
-template <typename T>
-constexpr T RoundToNextMultiple (const T a, const T multiple)
-{
-	return ((a + multiple - 1) / multiple) * multiple;
-}
-
-
 // Force runtime to break with optional message.
 #define ForceBreak(message) \
 	do { \
-		if (message) { \
-			std::wcout << (message) << std::endl; \
-		} \
+		OutputDebugStringA("Error: " message "\n"); \
 		__debugbreak(); \
 	} while(0)
+
+

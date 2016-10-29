@@ -20,11 +20,11 @@ public:
 
 	~TextureDemo();
 
-	void initializeDemo() override;
+	void InitializeDemo() override;
 
-	void update() override;
+	void Update() override;
 
-	void render (
+	void Render (
 		ID3D12GraphicsCommandList * drawCmdList
 	) override;
 
@@ -38,40 +38,47 @@ private:
 	typedef ushort Index;
 
 	ImageData m_imageData;
+	ComPtr<ID3D12Resource> m_imageTexture2d;
+	ComPtr<ID3D12Resource> m_uploadBuffer;
+
+	ComPtr<ID3D12DescriptorHeap> m_srvDescriptorHeap;
+
 
 	// Constant Buffer specific
 	SceneConstants m_sceneConstData[NUM_BUFFERED_FRAMES];
-	ID3D12Resource * m_constantBuffer_sceneConstant[NUM_BUFFERED_FRAMES];
+	ComPtr<ID3D12Resource> m_constantBuffer_sceneConstant[NUM_BUFFERED_FRAMES];
 	DirectionalLight m_pointLightConstData[NUM_BUFFERED_FRAMES];
-	ID3D12Resource * m_constantBuffer_pointLight[NUM_BUFFERED_FRAMES];
+	ComPtr<ID3D12Resource> m_constantBuffer_pointLight[NUM_BUFFERED_FRAMES];
 
 	// Pipeline objects.
-	ID3D12RootSignature * m_rootSignature;
-	ID3D12PipelineState * m_pipelineState;
+	ComPtr<ID3D12RootSignature> m_rootSignature;
+	ComPtr<ID3D12PipelineState> m_pipelineState;
 
 	// App resources.
 	uint m_numIndices;
 	D3D12_INPUT_LAYOUT_DESC m_inputLayoutDesc;
-	ID3D12Resource * m_vertexBuffer;
-	ID3D12Resource * m_indexBuffer;
+	ComPtr<ID3D12Resource> m_vertexBuffer;
+	ComPtr<ID3D12Resource> m_indexBuffer;
 
 	D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
 	D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
     uint m_indexCount;
 
-	void uploadVertexDataToGpu();
+	void UploadVertexDataToGpu();
 
-	void createRootSignature();
+	void CreateRootSignature();
 
-	void createConstantBuffers();
+	void CreateConstantBuffers();
 
-	void updateConstantBuffers();
+	void UpdateConstantBuffers();
 
 	void createPipelineState (
 		ID3DBlob * vertexShaderBlob,
 		ID3DBlob * pixelShaderBlob
 	);
 
-	void createTexture();
+	void CreateTexture();
+
+	void CreateDescriptorHeap();
 };
 

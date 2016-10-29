@@ -14,11 +14,11 @@ public:
         std::wstring name
     );
 
-	void initializeDemo() override;
+	void InitializeDemo() override;
 
-	void update() override;
+	void Update() override;
 
-	void render (
+	void Render (
 		ID3D12GraphicsCommandList * drawCmdList
 	) override;
 

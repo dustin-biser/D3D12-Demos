@@ -21,7 +21,7 @@ QueryVideoMemoryDemo::QueryVideoMemoryDemo (
 }
 
 //---------------------------------------------------------------------------------------
-void QueryVideoMemoryDemo::initializeDemo()
+void QueryVideoMemoryDemo::InitializeDemo()
 {
 	OutputMemoryBudgets();
 }
@@ -33,7 +33,7 @@ void QueryVideoMemoryDemo::OutputMemoryBudgets()
     DXGI_QUERY_VIDEO_MEMORY_INFO videoMemoryInfo;
 
     // Query video memory
-	QueryVideoMemoryInfo(m_device, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, videoMemoryInfo);
+	QueryVideoMemoryInfo(m_device.Get(), DXGI_MEMORY_SEGMENT_GROUP_LOCAL, videoMemoryInfo);
 	cout << endl;
     cout << "Video Memory:\n"
          << "Budget: " << videoMemoryInfo.Budget << " bytes" << endl
@@ -42,7 +42,7 @@ void QueryVideoMemoryDemo::OutputMemoryBudgets()
     cout << endl;
 
     // Query system memory
-	QueryVideoMemoryInfo(m_device, DXGI_MEMORY_SEGMENT_GROUP_NON_LOCAL, videoMemoryInfo);
+	QueryVideoMemoryInfo(m_device.Get(), DXGI_MEMORY_SEGMENT_GROUP_NON_LOCAL, videoMemoryInfo);
     cout << "System Memory:\n"
          << "Budget: " << videoMemoryInfo.Budget << " bytes" << endl
          << "AvailableForReservation: " << videoMemoryInfo.AvailableForReservation << " bytes" << endl
@@ -53,13 +53,13 @@ void QueryVideoMemoryDemo::OutputMemoryBudgets()
 
 
 //---------------------------------------------------------------------------------------
-void QueryVideoMemoryDemo::update()
+void QueryVideoMemoryDemo::Update()
 {
 
 }
 
 //---------------------------------------------------------------------------------------
-void QueryVideoMemoryDemo::render (
+void QueryVideoMemoryDemo::Render (
 	ID3D12GraphicsCommandList * drawCmdList
 ) {
 

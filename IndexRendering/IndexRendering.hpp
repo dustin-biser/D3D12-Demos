@@ -12,11 +12,11 @@ public:
         std::wstring name
     );
 
-	void initializeDemo() override;
+	void InitializeDemo() override;
 
-	void update() override;
+	void Update() override;
 
-	void render (
+	void Render (
 		ID3D12GraphicsCommandList * drawCmdList
 	) override;
 
@@ -27,26 +27,29 @@ private:
 		DirectX::XMFLOAT4 color;
 	};
 
-	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature;
-	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineState;
+	ComPtr<ID3D12RootSignature> m_rootSignature;
+	ComPtr<ID3D12PipelineState> m_pipelineState;
 
 	// App resources.
-	Microsoft::WRL::ComPtr<ID3D12Resource> m_vertexBuffer;
+	ComPtr<ID3D12Resource> m_vertexBuffer;
 	D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
-	Microsoft::WRL::ComPtr<ID3D12Resource> m_indexBuffer;
+	ComPtr<ID3D12Resource> m_indexBuffer;
 	D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
     uint m_indexCount;
 
-	void loadAssets();
-    void createRootSignature();
-    void createVertexDataBuffers();
-    void loadShaders (
-        _Out_ Microsoft::WRL::ComPtr<ID3DBlob> & vertexShaderBlob,
-        _Out_ Microsoft::WRL::ComPtr<ID3DBlob> & pixelShaderBlob
+	void LoadAssets();
+
+    void CreateRootSignature();
+
+    void CreateVertexDataBuffers();
+
+    void LoadShaders (
+        ComPtr<ID3DBlob> & vertexShaderBlob,
+        ComPtr<ID3DBlob> & pixelShaderBlob
     );
-    void createPipelineState (
-        _In_ ID3DBlob * vertexShaderBlob,
-        _In_ ID3DBlob * pixelShaderBlob
+    void CreatePipelineState (
+        ID3DBlob * vertexShaderBlob,
+        ID3DBlob * pixelShaderBlob
     );
 
 

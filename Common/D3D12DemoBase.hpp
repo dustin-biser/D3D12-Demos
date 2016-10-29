@@ -1,13 +1,12 @@
 #pragma once
 
-#include <sal.h>
 #include <wrl.h>
-
 #include <d3d12.h>
 #include <dxgi1_4.h>
-#include "NumericTypes.hpp"
-#include "DemoUtils.hpp"
-#include "Win32Application.hpp"
+
+#include "Common/NumericTypes.hpp"
+#include "Common/DemoUtils.hpp"
+#include "Common/Win32Application.hpp"
 
 /// Base class for all D3D12 demos.
 class D3D12DemoBase
@@ -21,45 +20,33 @@ public:
 
 	virtual ~D3D12DemoBase();
 
-	virtual void initializeDemo();
 
-	virtual void update() = 0;
-
-	virtual void render (
-		ID3D12GraphicsCommandList * drawCmdList
-	) = 0;
-
-	virtual void onKeyDown (
+	virtual void OnKeyDown (
 		uint8 key
 	);
-	virtual void onKeyUp (
+	virtual void OnKeyUp (
 		uint8 key
 	);
 
-	void prepareRender (
-		ID3D12CommandAllocator * commandAllocator,
-		ID3D12GraphicsCommandList * drawCmdList
-	);
+	void Initialize();
 
-	void finalizeRender (
-		ID3D12GraphicsCommandList * drawCmdList,
-		ID3D12CommandQueue * commandQueue
-	);
+	void BuildNextFrame();
 
-	void buildNextFrame();
+	void PresentNextFrame();
 
-	void presentNextFrame();
+	void PrepareCleanup();
 
-	void prepareCleanup();
+	uint GetWindowWidth() const;
 
-	uint getWindowWidth() const;
+	uint GetWindowHeight() const;
 
-	uint getWindowHeight() const;
-
-	const WCHAR * getWindowTitle() const;
+	const WCHAR * GetWindowTitle() const;
 
 
 protected:
+	template <typename T>
+	using ComPtr = Microsoft::WRL::ComPtr<T>;
+
 	bool m_vsyncEnabled = true;
 
 	// Number of rendered frames to pre-flight for execution on the GPU.
@@ -75,33 +62,36 @@ protected:
 	// Set to true to use software rasterizer.
 	bool m_useWarpDevice;
 
-	ID3D12Device * m_device;
+	ComPtr<ID3D12Device> m_device;
 
 	// Direct Command Queue Related
-	ID3D12CommandQueue * m_directCmdQueue;
-	ID3D12CommandAllocator * m_directCmdAllocator[NUM_BUFFERED_FRAMES];
-	ID3D12GraphicsCommandList * m_drawCmdList[NUM_BUFFERED_FRAMES];
+	ComPtr<ID3D12CommandQueue> m_directCmdQueue;
+	ComPtr<ID3D12CommandAllocator> m_directCmdAllocator[NUM_BUFFERED_FRAMES];
+	ComPtr<ID3D12GraphicsCommandList> m_drawCmdList[NUM_BUFFERED_FRAMES];
 
-	// Copy Command Related.  Useful for uploading data to GPU.
-	ID3D12CommandAllocator * m_copyCmdAllocator;
-	ID3D12GraphicsCommandList * m_copyCmdList;
+	// Upload Command List.
+	// Used for uploading data to GPU during demo initialization.
+	ComPtr<ID3D12CommandAllocator> m_uploadCmdAllocator;
+	ComPtr<ID3D12GraphicsCommandList> m_uploadCmdList;
 
-	IDXGISwapChain3 * m_swapChain;
+	ComPtr<IDXGISwapChain3> m_swapChain;
 	HANDLE m_frameLatencyWaitableObject;
 
 	// Depth/Stencil specific
-	ID3D12DescriptorHeap * m_dsvDescHeap;
-	ID3D12Resource * m_depthStencilBuffer;
+	ComPtr<ID3D12DescriptorHeap> m_dsvDescHeap;
+	ComPtr<ID3D12Resource> m_depthStencilBuffer;
 
 	struct RenderTarget {
 		// Handle to render target view within descriptor heap.
 		D3D12_CPU_DESCRIPTOR_HANDLE descriptorHandle;
 		ID3D12Resource * resource;
+
+		~RenderTarget() { resource->Release(); }
 	};
 	RenderTarget m_renderTarget[NUM_BUFFERED_FRAMES];
 
 	// Render Target View descriptor heap
-	ID3D12DescriptorHeap * m_rtvDescHeap;
+	ComPtr<ID3D12DescriptorHeap> m_rtvDescHeap;
 
 
 	// Synchronization objects.
@@ -111,30 +101,48 @@ protected:
 	uint64 m_fenceValue[NUM_BUFFERED_FRAMES];
 
 
-	void present();
+	virtual void InitializeDemo() = 0;
 
-	__forceinline bool swapChainWaitableObjectIsSignaled();
+	virtual void Update() = 0;
+
+	virtual void Render (
+		ID3D12GraphicsCommandList * drawCmdList
+	) = 0;
+
+	void PrepareRender (
+		ID3D12CommandAllocator * commandAllocator,
+		ID3D12GraphicsCommandList * drawCmdList
+	);
+
+	void FinalizeRender (
+		ID3D12GraphicsCommandList * drawCmdList,
+		ID3D12CommandQueue * commandQueue
+	);
+
+	void Present();
+
+	__forceinline bool SwapChainWaitableObjectIsSignaled();
 
 	// Issues a Signal from 'commanQueue', and causes current thread to block
 	// until GPU completes the Signal.
-	void waitForGpuCompletion (
+	void WaitForGpuCompletion (
 		ID3D12CommandQueue * commandQueue
 	);
 
 
 	/// Helper function for resolving the full path of assets.
-	std::wstring getAssetPath (
+	std::wstring GetAssetPath (
 		const wchar_t * assetName
 	);
 
 	/// Helper function for resolving the full path of assets.
 	/// Works with basic multi-byte strings.
-	std::string getAssetPath (
+	std::string GetAssetPath (
 		const char * assetName
 	);
 
-	void setCustomWindowText(
-		_In_ LPCWSTR text
+	void SetCustomWindowText(
+		LPCWSTR text
 	);
 
 private:
@@ -147,29 +155,17 @@ private:
 	// Window title.
 	std::wstring m_windowTitle;
 
-	void createDirectCommandQueue ();
+	void CreateDirectCommandQueue ();
 
-	void createDrawCommandLists ();
+	void CreateDrawCommandLists ();
 
-	void createCopyCommandList ();
+	void CreateCopyCommandList ();
 
-	void createSwapChain (
-		IDXGIFactory4 * dxgiFactory
-	);
+	void CreateDepthStencilBuffer ();
 
-	void createDepthStencilBuffer();
+	void CreateDeviceAndSwapChain ();
 
-	void createDevice (
-		IDXGIFactory4 * dxgiFactory,
-		bool useWarpDevice
-	);
-
-	void createHardwareDevice (
-		IDXGIFactory4 * dxgiFactory,
-		D3D_FEATURE_LEVEL featureLevel
-	);
-
-	void createWarpDevice (
+	void CreateHardwareDevice (
 		IDXGIFactory4 * dxgiFactory,
 		D3D_FEATURE_LEVEL featureLevel
 	);
@@ -178,8 +174,8 @@ private:
 
 // Causes current thread to wait on 'fenceEvent' until GPU fence value
 // is equal to 'completionValue'.
-void waitForGpuFence (
-	_In_ ID3D12Fence * fence,
-	_In_ uint64 completionValue,
-	_In_ HANDLE fenceEvent
+void WaitForGpuFence (
+	ID3D12Fence * fence,
+	uint64 completionValue,
+	HANDLE fenceEvent
 );

@@ -44,29 +44,9 @@ static void GetHardwareAdapter (
 
 }
 
-//---------------------------------------------------------------------------------------
-void D3D12DemoBase::createWarpDevice (
-	IDXGIFactory4 * dxgiFactory,
-	D3D_FEATURE_LEVEL featureLevel
-) {
-	ComPtr<IDXGIAdapter> warpAdapter;
-	CHECK_D3D_RESULT (
-		dxgiFactory->EnumWarpAdapter(IID_PPV_ARGS(&warpAdapter))
-	);
-
-	// Display warp adapter name.
-	DXGI_ADAPTER_DESC adapterDesc = {};
-	warpAdapter->GetDesc(&adapterDesc);
-	std::wcout << "Adapter: " << adapterDesc.Description << std::endl;
-
-	CHECK_D3D_RESULT (
-		D3D12CreateDevice(warpAdapter.Get(), featureLevel, IID_PPV_ARGS(&m_device))
-	);
-
-}
 
 //---------------------------------------------------------------------------------------
-void D3D12DemoBase::createHardwareDevice (
+void D3D12DemoBase::CreateHardwareDevice (
 	IDXGIFactory4 * dxgiFactory,
 	D3D_FEATURE_LEVEL featureLevel
 ) {
@@ -85,80 +65,89 @@ void D3D12DemoBase::createHardwareDevice (
 	CHECK_D3D_RESULT (
 		D3D12CreateDevice(hardwareAdapter.Get(), featureLevel, IID_PPV_ARGS(&m_device))
 	);
+	SET_D3D12_DEBUG_NAME(m_device);
 }
 
 
 //---------------------------------------------------------------------------------------
-void D3D12DemoBase::createDevice (
-	IDXGIFactory4 * dxgiFactory,
-	bool useWarpDevice
-) {
-	const D3D_FEATURE_LEVEL featureLevel(D3D_FEATURE_LEVEL_11_0);
+void D3D12DemoBase::CreateDeviceAndSwapChain()
+{
+	IDXGIFactory4 * dxgiFactory;
 
-	if (useWarpDevice) {
-		createWarpDevice(dxgiFactory, featureLevel);
-	}
-	else {
-		createHardwareDevice(dxgiFactory, featureLevel);
-	}
-	NAME_D3D12_OBJECT(m_device);
-}
-
-//---------------------------------------------------------------------------------------
-void D3D12DemoBase::createSwapChain (
-	IDXGIFactory4 * dxgiFactory
-) {
-	// Describe and create the swap chain.
-	DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
-	swapChainDesc.BufferCount = NUM_BUFFERED_FRAMES;
-	swapChainDesc.Width = m_windowWidth;
-	swapChainDesc.Height = m_windowHeight;
-	swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
-	swapChainDesc.SampleDesc.Count = 1;
-	swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
-
-	ComPtr<IDXGISwapChain1> swapChain1;
 	CHECK_D3D_RESULT (
-		dxgiFactory->CreateSwapChainForHwnd (
-			m_directCmdQueue, // Swap chain needs the command queue so that it can force a flush on it.
-			Win32Application::GetHwnd(),
-			&swapChainDesc,
-			nullptr,
-			nullptr,
-			&swapChain1
-		)
+		::CreateDXGIFactory1(IID_PPV_ARGS(&dxgiFactory))
 	);
 
 	// Prevent full screen transitions for now.
 	CHECK_D3D_RESULT (
-		dxgiFactory->MakeWindowAssociation(
+		dxgiFactory->MakeWindowAssociation (
 			Win32Application::GetHwnd(),
 			DXGI_MWA_NO_ALT_ENTER
 		)
 	);
 
-	ComPtr<IDXGISwapChain2> swapChain2;
-	CHECK_D3D_RESULT (
-		swapChain1.As(&swapChain2)
-	);
-	swapChain2->SetMaximumFrameLatency(NUM_BUFFERED_FRAMES);
 
-	// Acquire handle to frame latency waitable object.
-	m_frameLatencyWaitableObject = swapChain2->GetFrameLatencyWaitableObject();
+	CreateHardwareDevice(dxgiFactory, D3D_FEATURE_LEVEL_11_0);
 
-	// Assign interface object to m_swapChain so it persists past current scope.
-	CHECK_D3D_RESULT (
-		swapChain1.CopyTo(&m_swapChain)
-	);
+
+	// Describe and create the direct command queue.
+	{
+		D3D12_COMMAND_QUEUE_DESC queueDesc = {};
+		queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
+		queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
+		CHECK_D3D_RESULT (
+			m_device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&m_directCmdQueue))
+		);
+		SET_D3D12_DEBUG_NAME(m_directCmdQueue);
+	}
+
+
+	// Describe and create the swap chain.
+	{
+		DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
+		swapChainDesc.BufferCount = NUM_BUFFERED_FRAMES;
+		swapChainDesc.Width = m_windowWidth;
+		swapChainDesc.Height = m_windowHeight;
+		swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+		swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+		swapChainDesc.SampleDesc.Count = 1;
+		swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
+
+		ComPtr<IDXGISwapChain1> swapChain1;
+		CHECK_D3D_RESULT (
+			dxgiFactory->CreateSwapChainForHwnd (
+				m_directCmdQueue.Get(), // Swap chain needs the command queue so that 
+				                        // it can force a flush on it.
+				Win32Application::GetHwnd(),
+				&swapChainDesc,
+				nullptr,
+				nullptr,
+				&swapChain1
+			)
+		);
+
+		ComPtr<IDXGISwapChain2> swapChain2;
+		CHECK_D3D_RESULT (
+			swapChain1.As(&swapChain2)
+		);
+		swapChain2->SetMaximumFrameLatency(NUM_BUFFERED_FRAMES);
+
+		// Acquire handle to frame latency waitable object.
+		m_frameLatencyWaitableObject = swapChain2->GetFrameLatencyWaitableObject();
+
+		// Assign interface object to m_swapChain so it persists past current scope.
+		CHECK_D3D_RESULT (
+			swapChain1.As(&m_swapChain)
+		);
+	}
 }
 
 //---------------------------------------------------------------------------------------
-void waitForGpuFence (
-	_In_ ID3D12Fence * fence,
-	_In_ uint64 completionValue,
-	_In_ HANDLE fenceEvent
+void WaitForGpuFence (
+	ID3D12Fence * fence,
+	uint64 completionValue,
+	HANDLE fenceEvent
 ) {
 	if (fence->GetCompletedValue() < completionValue) {
 		CHECK_D3D_RESULT (
@@ -218,18 +207,8 @@ D3D12DemoBase::D3D12DemoBase (
 }
 
 //---------------------------------------------------------------------------------------
-void D3D12DemoBase::createDirectCommandQueue ()
+void D3D12DemoBase::CreateDirectCommandQueue ()
 {
-	// Describe and create the direct command queue.
-	D3D12_COMMAND_QUEUE_DESC queueDesc = {};
-	queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
-	queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
-
-	CHECK_D3D_RESULT (
-		m_device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&m_directCmdQueue))
-	);
-
-	NAME_D3D12_OBJECT(m_directCmdQueue);
 }
 
 //---------------------------------------------------------------------------------------
@@ -240,29 +219,12 @@ D3D12DemoBase::~D3D12DemoBase()
 		CloseHandle(event);
 	}
 
-	for (int i(0); i < NUM_BUFFERED_FRAMES; ++i) {
-		m_frameFence[i]->Release();
-		m_renderTarget[i].resource->Release();
-		m_drawCmdList[i]->Release();
-		m_directCmdAllocator[i]->Release();
-	}
-
-	m_directCmdQueue->Release();
-	m_rtvDescHeap->Release();
-	m_swapChain->Release();
-	m_copyCmdAllocator->Release();
-	m_copyCmdList->Release();
-	m_depthStencilBuffer->Release();
-	m_dsvDescHeap->Release();
-
-	m_device->Release();
-
 	// Uninitialize COM library.
 	CoUninitialize();
 }
 
 //---------------------------------------------------------------------------------------
-void D3D12DemoBase::initializeDemo()
+void D3D12DemoBase::Initialize()
 {
 #if defined(_DEBUG)
 	//-- Enable the D3D12 debug layer:
@@ -272,29 +234,22 @@ void D3D12DemoBase::initializeDemo()
 	}
 #endif
 
-	IDXGIFactory4 * dxgiFactory;
+	CreateDeviceAndSwapChain();
 
-	CHECK_D3D_RESULT (
-		::CreateDXGIFactory1(IID_PPV_ARGS(&dxgiFactory))
-	);
+	CreateDrawCommandLists();
 
-	// Create the device.
-	createDevice(dxgiFactory, m_useWarpDevice);
 
-	createDirectCommandQueue();
+	// TODO Dustin - Create uploadCmdList here and pass to derived classes for setting up demo.
+	CreateCopyCommandList();
 
-	createDrawCommandLists();
 
-	createCopyCommandList();
-
-	createSwapChain(dxgiFactory);
 
 	// Set the current frame index to correspond with the current back buffer index.
 	m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
 
-	createDepthStencilBuffer();
+	CreateDepthStencilBuffer();
 
-	// Create synchronization primitive.
+	// Create synchronization primitives.
 	for (int i(0); i < NUM_BUFFERED_FRAMES; ++i) {
 		CHECK_D3D_RESULT(
 			m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_frameFence[i]))
@@ -351,13 +306,15 @@ void D3D12DemoBase::initializeDemo()
 			m_device->CreateRenderTargetView (
 				m_renderTarget[n].resource, &rtvDesc, m_renderTarget[n].descriptorHandle
 			); 
-			NAME_D3D12_OBJECT(m_renderTarget[n].resource);
+			SET_D3D12_DEBUG_NAME(m_renderTarget[n].resource);
 		}
 	}
 
+	// Run code specific to setting up derived demo.
+	InitializeDemo();
 }
 //---------------------------------------------------------------------------------------
-void D3D12DemoBase::createDepthStencilBuffer()
+void D3D12DemoBase::CreateDepthStencilBuffer()
 {
 	// create a depth stencil descriptor heap so we can get a pointer to the depth stencil buffer
 	D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDescriptor = {};
@@ -367,7 +324,7 @@ void D3D12DemoBase::createDepthStencilBuffer()
 	CHECK_D3D_RESULT (
 		m_device->CreateDescriptorHeap(&dsvHeapDescriptor, IID_PPV_ARGS(&m_dsvDescHeap))
 	);
-	NAME_D3D12_OBJECT(m_dsvDescHeap);
+	SET_D3D12_DEBUG_NAME(m_dsvDescHeap);
 
 	D3D12_DEPTH_STENCIL_VIEW_DESC depthStencilDesc = {};
 	depthStencilDesc.Format = DXGI_FORMAT_D32_FLOAT;
@@ -391,10 +348,10 @@ void D3D12DemoBase::createDepthStencilBuffer()
 			IID_PPV_ARGS(&m_depthStencilBuffer)
 		)
 	);
-	NAME_D3D12_OBJECT(m_depthStencilBuffer);
+	SET_D3D12_DEBUG_NAME(m_depthStencilBuffer);
 
 	m_device->CreateDepthStencilView (
-		m_depthStencilBuffer,
+		m_depthStencilBuffer.Get(),
 		&depthStencilDesc,
 		m_dsvDescHeap->GetCPUDescriptorHandleForHeapStart()
 	);
@@ -402,7 +359,7 @@ void D3D12DemoBase::createDepthStencilBuffer()
 
 
 //---------------------------------------------------------------------------------------
-void D3D12DemoBase::createDrawCommandLists()
+void D3D12DemoBase::CreateDrawCommandLists()
 {
 	//-- Create command allocator for managing command list memory.
 	for (int i(0); i < NUM_BUFFERED_FRAMES; ++i) {
@@ -424,7 +381,7 @@ void D3D12DemoBase::createDrawCommandLists()
 				m_device->CreateCommandList (
 					0,
 					D3D12_COMMAND_LIST_TYPE_DIRECT,
-					m_directCmdAllocator[i],
+					m_directCmdAllocator[i].Get(),
 					nullptr, // Will set pipeline state later before drawing
 					IID_PPV_ARGS(&m_drawCmdList[i])
 				)
@@ -438,16 +395,16 @@ void D3D12DemoBase::createDrawCommandLists()
 }
 
 //---------------------------------------------------------------------------------------
-void D3D12DemoBase::createCopyCommandList()
+void D3D12DemoBase::CreateCopyCommandList()
 {
 	//-- Create command allocator for managing command list memory.
 	CHECK_D3D_RESULT(
 		m_device->CreateCommandAllocator (
 			D3D12_COMMAND_LIST_TYPE_DIRECT,
-			IID_PPV_ARGS(&m_copyCmdAllocator)
+			IID_PPV_ARGS(&m_uploadCmdAllocator)
 		)
 	);
-	NAME_D3D12_OBJECT(m_copyCmdAllocator);
+	SET_D3D12_DEBUG_NAME(m_uploadCmdAllocator);
 
 
 	//-- Create the copy command list that will hold our resource copy commands:
@@ -456,27 +413,27 @@ void D3D12DemoBase::createCopyCommandList()
 			m_device->CreateCommandList (
 				0,
 				D3D12_COMMAND_LIST_TYPE_DIRECT,
-				m_copyCmdAllocator,
+				m_uploadCmdAllocator.Get(),
 				nullptr,
-				IID_PPV_ARGS(&m_copyCmdList)
+				IID_PPV_ARGS(&m_uploadCmdList)
 			)
 		);
-		NAME_D3D12_OBJECT(m_copyCmdList);
+		SET_D3D12_DEBUG_NAME(m_uploadCmdList);
 	}
 }
 
 
 //---------------------------------------------------------------------------------------
-void D3D12DemoBase::buildNextFrame()
+void D3D12DemoBase::BuildNextFrame()
 {
 	// Wait until GPU has processed the previous indexed frame before building new one.
-	::waitForGpuFence (
+	::WaitForGpuFence (
 		m_frameFence[m_frameIndex],
 		m_fenceValue[m_frameIndex],
 		m_frameFenceEvent[m_frameIndex]
 	);
 
-	update();
+	Update();
 
 	if (m_vsyncEnabled) {
 		// Wait until swap chain has finished presenting all queued frames before building
@@ -486,24 +443,24 @@ void D3D12DemoBase::buildNextFrame()
 	}
 
 	// Acquire commandList corresponding to current frame index.
-	auto drawCmdList = m_drawCmdList[m_frameIndex];
+	auto drawCmdList = m_drawCmdList[m_frameIndex].Get();
 
-	prepareRender(m_directCmdAllocator[m_frameIndex], drawCmdList);
+	PrepareRender(m_directCmdAllocator[m_frameIndex].Get(), drawCmdList);
 
-	render(drawCmdList);
+	Render(drawCmdList);
 
-	finalizeRender(drawCmdList, m_directCmdQueue);
+	FinalizeRender(drawCmdList, m_directCmdQueue.Get());
 }
 
 //---------------------------------------------------------------------------------------
-void D3D12DemoBase::presentNextFrame()
+void D3D12DemoBase::PresentNextFrame()
 {
 	if (m_vsyncEnabled) {
-		present();
+		Present();
 
-	} else if (swapChainWaitableObjectIsSignaled()) {
+	} else if (SwapChainWaitableObjectIsSignaled()) {
 		// Swap-chain is available to queue up another Present, so do that now.
-		present();
+		Present();
 	}
 	else { 
 		// Start over and rebuild the frame again, rendering to the same indexed back buffer.
@@ -516,7 +473,7 @@ void D3D12DemoBase::presentNextFrame()
 //---------------------------------------------------------------------------------------
 // Present contents of back-buffer, signal the frame-fence, then increment
 // frame index so the next frame can be processed.
-void D3D12DemoBase::present()
+void D3D12DemoBase::Present()
 {
 	const uint syncInterval = m_vsyncEnabled;
 	CHECK_D3D_RESULT (
@@ -531,13 +488,13 @@ void D3D12DemoBase::present()
 }
 
 //---------------------------------------------------------------------------------------
-__forceinline bool D3D12DemoBase::swapChainWaitableObjectIsSignaled()
+__forceinline bool D3D12DemoBase::SwapChainWaitableObjectIsSignaled()
 {
 	return WAIT_OBJECT_0 == WaitForSingleObjectEx(m_frameLatencyWaitableObject, 0, true);
 }
 
 //---------------------------------------------------------------------------------------
-void D3D12DemoBase::waitForGpuCompletion (
+void D3D12DemoBase::WaitForGpuCompletion (
 	ID3D12CommandQueue * commandQueue
 ) {
 	CHECK_D3D_RESULT (
@@ -546,24 +503,24 @@ void D3D12DemoBase::waitForGpuCompletion (
 	m_fenceValue[m_frameIndex] = m_currentFenceValue;
 	++m_currentFenceValue;
 
-	::waitForGpuFence(m_frameFence[m_frameIndex],
+	::WaitForGpuFence(m_frameFence[m_frameIndex],
 		m_fenceValue[m_frameIndex], m_frameFenceEvent[m_frameIndex]);
 }
 
 //---------------------------------------------------------------------------------------
-void D3D12DemoBase::onKeyDown(uint8 key)
+void D3D12DemoBase::OnKeyDown(uint8 key)
 {
 	// Empty, to be overridden by derived class
 }
 
 //---------------------------------------------------------------------------------------
-void D3D12DemoBase::onKeyUp(uint8 key)
+void D3D12DemoBase::OnKeyUp(uint8 key)
 {
 	// Empty, to be overridden by derived class
 }
 
 //---------------------------------------------------------------------------------------
-void D3D12DemoBase::prepareRender (
+void D3D12DemoBase::PrepareRender (
 	ID3D12CommandAllocator * commandAllocator,
 	ID3D12GraphicsCommandList * drawCmdList
 ) {
@@ -608,7 +565,7 @@ void D3D12DemoBase::prepareRender (
 }
 
 //---------------------------------------------------------------------------------------
-void D3D12DemoBase::finalizeRender (
+void D3D12DemoBase::FinalizeRender (
 	ID3D12GraphicsCommandList * drawCmdList,
 	ID3D12CommandQueue * commandQueue
 ) {
@@ -631,7 +588,7 @@ void D3D12DemoBase::finalizeRender (
 }
 
 //---------------------------------------------------------------------------------------
-void D3D12DemoBase::prepareCleanup()
+void D3D12DemoBase::PrepareCleanup()
 {
 	// Signal command-queue 
 	m_directCmdQueue->Signal(m_frameFence[m_frameIndex], m_currentFenceValue);
@@ -640,7 +597,7 @@ void D3D12DemoBase::prepareCleanup()
 
 	// Wait for command queue to finish processing all buffered frames.
 	for (int i(0); i < NUM_BUFFERED_FRAMES; ++i) {
-		waitForGpuFence(m_frameFence[i], m_fenceValue[i], m_frameFenceEvent[i]);
+		WaitForGpuFence(m_frameFence[i], m_fenceValue[i], m_frameFenceEvent[i]);
 	}
 
 	// Now it is safe to Release() D3D resources.
@@ -649,25 +606,25 @@ void D3D12DemoBase::prepareCleanup()
 
 
 //---------------------------------------------------------------------------------------
-uint D3D12DemoBase::getWindowWidth() const {
+uint D3D12DemoBase::GetWindowWidth() const {
 	return m_windowWidth;
 }
 
 
 //---------------------------------------------------------------------------------------
-uint D3D12DemoBase::getWindowHeight() const {
+uint D3D12DemoBase::GetWindowHeight() const {
 	return m_windowHeight;
 }
 
 
 //---------------------------------------------------------------------------------------
-const WCHAR * D3D12DemoBase::getWindowTitle() const {
+const WCHAR * D3D12DemoBase::GetWindowTitle() const {
 	return m_windowTitle.c_str();
 }
 
 
 //---------------------------------------------------------------------------------------
-std::wstring D3D12DemoBase::getAssetPath (
+std::wstring D3D12DemoBase::GetAssetPath (
 	const wchar_t * assetName
 ) {
     ASSERT(assetName);
@@ -685,7 +642,7 @@ std::wstring D3D12DemoBase::getAssetPath (
 
 
 //---------------------------------------------------------------------------------------
-std::string D3D12DemoBase::getAssetPath(const char * assetName)
+std::string D3D12DemoBase::GetAssetPath(const char * assetName)
 {
     const int BUFFER_LENGTH = 512;
 
@@ -695,7 +652,7 @@ std::string D3D12DemoBase::getAssetPath(const char * assetName)
         // assetName path is too long to fit in buffer.
         throw;
     }
-    std::wstring assetPath = this->getAssetPath(wcsBuffer);
+    std::wstring assetPath = this->GetAssetPath(wcsBuffer);
 
     char mbsBuffer[BUFFER_LENGTH]; // multi-byte string buffer.
     result = wcstombs(mbsBuffer, assetPath.c_str(), BUFFER_LENGTH);
@@ -709,8 +666,8 @@ std::string D3D12DemoBase::getAssetPath(const char * assetName)
 
 //---------------------------------------------------------------------------------------
 // Helper function for setting the window's title text.
-void D3D12DemoBase::setCustomWindowText (
-	_In_ LPCWSTR text
+void D3D12DemoBase::SetCustomWindowText (
+	LPCWSTR text
 ) {
 	std::wstring windowText = m_windowTitle + L": " + text;
 	SetWindowText(Win32Application::GetHwnd(), windowText.c_str());

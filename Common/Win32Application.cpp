@@ -42,8 +42,8 @@ int Win32Application::Run (
     //-- Center window:
     RECT windowRect;
 	GetClientRect(GetDesktopWindow(), &windowRect);
-	long width = static_cast<LONG>(demo->getWindowWidth());
-	long height = static_cast<LONG>(demo->getWindowHeight());
+	long width = static_cast<LONG>(demo->GetWindowWidth());
+	long height = static_cast<LONG>(demo->GetWindowHeight());
 	windowRect.left = (windowRect.right / 2) - (width / 2);
 	windowRect.top = (windowRect.bottom / 2) - (height / 2);
 
@@ -52,7 +52,7 @@ int Win32Application::Run (
 	// Create the window and store a handle to it.
 	m_hwnd = CreateWindow (
 		windowClass.lpszClassName,
-		demo->getWindowTitle(),
+		demo->GetWindowTitle(),
 		WS_OVERLAPPEDWINDOW,
 		windowRect.left,
 		windowRect.top,
@@ -67,10 +67,7 @@ int Win32Application::Run (
     );
 
 	// Run setup code common to all demos
-	demo->D3D12DemoBase::initializeDemo();
-
-	// Run code specific to setting up derived demo.
-	demo->initializeDemo();
+	demo->Initialize();
 
 	ShowWindow(m_hwnd, nCmdShow);
 
@@ -93,8 +90,8 @@ int Win32Application::Run (
             // Dispatches a message to a the registered window procedure.
             DispatchMessage(&msg);
         }
-        demo->buildNextFrame();
-		demo->presentNextFrame();
+        demo->BuildNextFrame();
+		demo->PresentNextFrame();
 
         // End frame timer.
         auto timerEnd = std::chrono::high_resolution_clock::now();
@@ -110,7 +107,7 @@ int Win32Application::Run (
             float fps = float(frameCount) / fpsTimer * 1000.0f;
             wchar_t buffer[256];
 			swprintf(buffer, _countof(buffer), L"%s - %.1f fps (%.2f ms)",
-				demo->getWindowTitle(), fps, msPerFrame);
+				demo->GetWindowTitle(), fps, msPerFrame);
             SetWindowText(m_hwnd, buffer);
 
             // Reset timing info.
@@ -120,7 +117,7 @@ int Win32Application::Run (
 	}
 
 	// Flush command-queue before releasing resources.
-	demo->prepareCleanup();
+	demo->PrepareCleanup();
 
 	// Return this part of the WM_QUIT message to Windows.
 	return static_cast<char>(msg.wParam);
@@ -156,14 +153,14 @@ LRESULT CALLBACK Win32Application::WindowProc (
         }
 		else if (demo)
 		{
-			demo->onKeyDown(static_cast<UINT8>(wParam));
+			demo->OnKeyDown(static_cast<UINT8>(wParam));
 		}
 		return 0;
 
 	case WM_KEYUP:
 		if (demo)
 		{
-			demo->onKeyUp(static_cast<UINT8>(wParam));
+			demo->OnKeyUp(static_cast<UINT8>(wParam));
 		}
 		return 0;
 
