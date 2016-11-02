@@ -59,9 +59,6 @@ protected:
 	D3D12_VIEWPORT m_viewport;
 	D3D12_RECT m_scissorRect;
 
-	// Set to true to use software rasterizer.
-	bool m_useWarpDevice;
-
 	ComPtr<ID3D12Device> m_device;
 
 	// Direct Command Queue Related
@@ -69,41 +66,44 @@ protected:
 	ComPtr<ID3D12CommandAllocator> m_directCmdAllocator[NUM_BUFFERED_FRAMES];
 	ComPtr<ID3D12GraphicsCommandList> m_drawCmdList[NUM_BUFFERED_FRAMES];
 
-	// Upload Command List.
-	// Used for uploading data to GPU during demo initialization.
-	ComPtr<ID3D12CommandAllocator> m_uploadCmdAllocator;
-	ComPtr<ID3D12GraphicsCommandList> m_uploadCmdList;
 
 	ComPtr<IDXGISwapChain3> m_swapChain;
 	HANDLE m_frameLatencyWaitableObject;
 
-	// Depth/Stencil specific
-	ComPtr<ID3D12DescriptorHeap> m_dsvDescHeap;
-	ComPtr<ID3D12Resource> m_depthStencilBuffer;
+	// Resources that are referenced by descriptor handles (a.k.a. resource views).
+	struct HandledResource {
+		union {
+			D3D12_CPU_DESCRIPTOR_HANDLE descHandle;
+			D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle;
+			D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle;
+		};
 
-	struct RenderTarget {
-		// Handle to render target view within descriptor heap.
-		D3D12_CPU_DESCRIPTOR_HANDLE descriptorHandle;
 		ID3D12Resource * resource;
 
-		~RenderTarget() { resource->Release(); }
+		~HandledResource() { resource->Release(); }
 	};
-	RenderTarget m_renderTarget[NUM_BUFFERED_FRAMES];
 
-	// Render Target View descriptor heap
+	// Depth-Stencil Resource 
+	ComPtr<ID3D12DescriptorHeap> m_dsvDescHeap;
+	HandledResource m_depthStencilBuffer;
+
+	// Render Target Resources
 	ComPtr<ID3D12DescriptorHeap> m_rtvDescHeap;
+	HandledResource m_renderTarget[NUM_BUFFERED_FRAMES];
 
 
 	// Synchronization objects.
 	HANDLE m_frameFenceEvent[NUM_BUFFERED_FRAMES];
-	ID3D12Fence * m_frameFence[NUM_BUFFERED_FRAMES];
+	ComPtr<ID3D12Fence> m_frameFence[NUM_BUFFERED_FRAMES];
 	uint64 m_currentFenceValue;
 	uint64 m_fenceValue[NUM_BUFFERED_FRAMES];
 
 
-	virtual void InitializeDemo() = 0;
+	virtual void InitializeDemo (
+		ID3D12GraphicsCommandList * uploadCmdList
+	) = 0;
 
-	virtual void Update() = 0;
+	virtual void Update () = 0;
 
 	virtual void Render (
 		ID3D12GraphicsCommandList * drawCmdList
@@ -159,7 +159,10 @@ private:
 
 	void CreateDrawCommandLists ();
 
-	void CreateCopyCommandList ();
+	void GenerateCommandList (
+		ComPtr<ID3D12GraphicsCommandList> & commandList,
+		ComPtr<ID3D12CommandAllocator> & cmdAllocator
+	);
 
 	void CreateDepthStencilBuffer ();
 
@@ -169,6 +172,10 @@ private:
 		IDXGIFactory4 * dxgiFactory,
 		D3D_FEATURE_LEVEL featureLevel
 	);
+
+	void CreateFenceObjects();
+
+	void CreateRenderTargetViews();
 
 };
 

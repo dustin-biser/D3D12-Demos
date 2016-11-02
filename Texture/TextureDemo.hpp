@@ -20,7 +20,9 @@ public:
 
 	~TextureDemo();
 
-	void InitializeDemo() override;
+	void InitializeDemo (
+		ID3D12GraphicsCommandList * uploadCmdList
+	) override;
 
 	void Update() override;
 
@@ -64,7 +66,9 @@ private:
 	D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
     uint m_indexCount;
 
-	void UploadVertexDataToGpu();
+	void UploadVertexDataToGpu (
+		ID3D12GraphicsCommandList * uploadCmdList
+	);
 
 	void CreateRootSignature();
 
@@ -72,12 +76,14 @@ private:
 
 	void UpdateConstantBuffers();
 
-	void createPipelineState (
+	void CreatePipelineState (
 		ID3DBlob * vertexShaderBlob,
 		ID3DBlob * pixelShaderBlob
 	);
 
-	void CreateTexture();
+	void CreateTexture (
+		ID3D12GraphicsCommandList * uploadCmdList
+	);
 
 	void CreateDescriptorHeap();
 };

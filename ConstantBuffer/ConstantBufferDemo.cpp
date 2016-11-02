@@ -20,15 +20,14 @@ ConstantBufferDemo::ConstantBufferDemo (
 
 }
 
-
 //---------------------------------------------------------------------------------------
-void ConstantBufferDemo::InitializeDemo()
-{
+void ConstantBufferDemo::InitializeDemo (
+	ID3D12GraphicsCommandList * uploadCmdList
+) {
 	LoadPipelineDependencies();
 
 	LoadAssets();
 }
-
 
 //---------------------------------------------------------------------------------------
 // Loads the rendering pipeline dependencies.
@@ -46,9 +45,8 @@ void ConstantBufferDemo::LoadPipelineDependencies()
 	}
 }
 
-
 //---------------------------------------------------------------------------------------
-void ConstantBufferDemo::LoadAssets()
+void ConstantBufferDemo::LoadAssets ()
 {
 	//-- Create root signature:
 	{

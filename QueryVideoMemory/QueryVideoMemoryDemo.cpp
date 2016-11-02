@@ -21,8 +21,9 @@ QueryVideoMemoryDemo::QueryVideoMemoryDemo (
 }
 
 //---------------------------------------------------------------------------------------
-void QueryVideoMemoryDemo::InitializeDemo()
-{
+void QueryVideoMemoryDemo::InitializeDemo (
+	ID3D12GraphicsCommandList * uploadCmdList
+) {
 	OutputMemoryBudgets();
 }
 

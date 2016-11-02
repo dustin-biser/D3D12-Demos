@@ -14,7 +14,9 @@ public:
         std::wstring name
     );
 
-	void InitializeDemo() override;
+	void InitializeDemo (
+		ID3D12GraphicsCommandList * uploadCmdList
+	) override;
 
 	void Update() override;
 

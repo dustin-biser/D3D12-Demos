@@ -68,7 +68,6 @@ void D3D12DemoBase::CreateHardwareDevice (
 	SET_D3D12_DEBUG_NAME(m_device);
 }
 
-
 //---------------------------------------------------------------------------------------
 void D3D12DemoBase::CreateDeviceAndSwapChain()
 {
@@ -141,6 +140,9 @@ void D3D12DemoBase::CreateDeviceAndSwapChain()
 			swapChain1.As(&m_swapChain)
 		);
 	}
+
+	// Set the current frame index to correspond with the current back buffer index.
+	m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
 }
 
 //---------------------------------------------------------------------------------------
@@ -169,7 +171,6 @@ D3D12DemoBase::D3D12DemoBase (
 	m_windowWidth(windowWidth),
 	m_windowHeight(windowHeight),
 	m_windowTitle(windowTitle),
-	m_useWarpDevice(false),
 	m_fenceValue{0}
 {
 	// Default viewport to size of full window.
@@ -227,7 +228,7 @@ D3D12DemoBase::~D3D12DemoBase()
 void D3D12DemoBase::Initialize()
 {
 #if defined(_DEBUG)
-	//-- Enable the D3D12 debug layer:
+	// Enable the D3D12 debug layer.
 	ComPtr<ID3D12Debug> debugController;
 	if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)))) {
 		debugController->EnableDebugLayer();
@@ -238,17 +239,33 @@ void D3D12DemoBase::Initialize()
 
 	CreateDrawCommandLists();
 
-
-	// TODO Dustin - Create uploadCmdList here and pass to derived classes for setting up demo.
-	CreateCopyCommandList();
-
-
-
-	// Set the current frame index to correspond with the current back buffer index.
-	m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
-
 	CreateDepthStencilBuffer();
 
+	CreateRenderTargetViews();
+
+	CreateFenceObjects();
+
+	ComPtr<ID3D12CommandAllocator> cmdAllocator;
+	ComPtr<ID3D12GraphicsCommandList> uploadCmdList;
+	GenerateCommandList(uploadCmdList, cmdAllocator);
+
+	// Setup derived demo.
+	InitializeDemo(uploadCmdList.Get());
+
+	// Close command list and execute it on the direct command queue. 
+	CHECK_D3D_RESULT (
+		uploadCmdList->Close()
+	);
+	ID3D12CommandList * commandLists[] = { uploadCmdList.Get() };
+	m_directCmdQueue->ExecuteCommandLists(_countof(commandLists), commandLists);
+
+	WaitForGpuCompletion(m_directCmdQueue.Get());
+}
+
+
+//---------------------------------------------------------------------------------------
+void D3D12DemoBase::CreateFenceObjects()
+{
 	// Create synchronization primitives.
 	for (int i(0); i < NUM_BUFFERED_FRAMES; ++i) {
 		CHECK_D3D_RESULT(
@@ -264,9 +281,15 @@ void D3D12DemoBase::Initialize()
 			);
 		}
 	}
+
+	// Initialize incremental fence value.
 	m_currentFenceValue = 1;
+}
 
 
+//---------------------------------------------------------------------------------------
+void D3D12DemoBase::CreateRenderTargetViews()
+{
 	//-- Describe and create the RTV Descriptor Heap.
 	{
 		D3D12_DESCRIPTOR_HEAP_DESC rtvDescHeapDescriptor = {};
@@ -280,7 +303,7 @@ void D3D12DemoBase::Initialize()
 		);
 	}
 
-	//-- Create a RTV for each swapChain buffer.
+	//-- Create a RTV for each swap-chain buffer.
 	{
 		// Specify a RTV with sRGB format to support gamma correction.
 		D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
@@ -296,23 +319,21 @@ void D3D12DemoBase::Initialize()
 				m_swapChain->GetBuffer(n, IID_PPV_ARGS(&m_renderTarget[n].resource))
 			);
 
-			m_renderTarget[n].descriptorHandle = m_rtvDescHeap->GetCPUDescriptorHandleForHeapStart();
+			m_renderTarget[n].rtvHandle = m_rtvDescHeap->GetCPUDescriptorHandleForHeapStart();
 
 			// Offset handle to next descriptor location within descriptor heap.
-			m_renderTarget[n].descriptorHandle.ptr += n * handleIncrementSize;
+			m_renderTarget[n].rtvHandle.ptr += n * handleIncrementSize;
 
 			// Create RTV and store its descriptor at the heap location reference by
 			// the descriptor handle.
 			m_device->CreateRenderTargetView (
-				m_renderTarget[n].resource, &rtvDesc, m_renderTarget[n].descriptorHandle
-			); 
+				m_renderTarget[n].resource, &rtvDesc, m_renderTarget[n].rtvHandle
+			);
 			SET_D3D12_DEBUG_NAME(m_renderTarget[n].resource);
 		}
 	}
-
-	// Run code specific to setting up derived demo.
-	InitializeDemo();
 }
+
 //---------------------------------------------------------------------------------------
 void D3D12DemoBase::CreateDepthStencilBuffer()
 {
@@ -345,18 +366,17 @@ void D3D12DemoBase::CreateDepthStencilBuffer()
 				1, 0, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL),
 			D3D12_RESOURCE_STATE_DEPTH_WRITE,
 			&depthOptimizedClearValue,
-			IID_PPV_ARGS(&m_depthStencilBuffer)
+			IID_PPV_ARGS(&m_depthStencilBuffer.resource)
 		)
 	);
-	SET_D3D12_DEBUG_NAME(m_depthStencilBuffer);
+	SET_D3D12_DEBUG_NAME(m_depthStencilBuffer.resource);
 
 	m_device->CreateDepthStencilView (
-		m_depthStencilBuffer.Get(),
+		m_depthStencilBuffer.resource,
 		&depthStencilDesc,
 		m_dsvDescHeap->GetCPUDescriptorHandleForHeapStart()
 	);
 }
-
 
 //---------------------------------------------------------------------------------------
 void D3D12DemoBase::CreateDrawCommandLists()
@@ -395,31 +415,31 @@ void D3D12DemoBase::CreateDrawCommandLists()
 }
 
 //---------------------------------------------------------------------------------------
-void D3D12DemoBase::CreateCopyCommandList()
-{
-	//-- Create command allocator for managing command list memory.
+void D3D12DemoBase::GenerateCommandList(
+	ComPtr<ID3D12GraphicsCommandList> & commandList,
+	ComPtr<ID3D12CommandAllocator> & cmdAllocator
+) {
+	// Create command allocator.
 	CHECK_D3D_RESULT(
 		m_device->CreateCommandAllocator (
 			D3D12_COMMAND_LIST_TYPE_DIRECT,
-			IID_PPV_ARGS(&m_uploadCmdAllocator)
+			IID_PPV_ARGS(&cmdAllocator)
 		)
 	);
-	SET_D3D12_DEBUG_NAME(m_uploadCmdAllocator);
+	SET_D3D12_DEBUG_NAME(cmdAllocator);
 
 
-	//-- Create the copy command list that will hold our resource copy commands:
-	{
-		CHECK_D3D_RESULT(
-			m_device->CreateCommandList (
-				0,
-				D3D12_COMMAND_LIST_TYPE_DIRECT,
-				m_uploadCmdAllocator.Get(),
-				nullptr,
-				IID_PPV_ARGS(&m_uploadCmdList)
-			)
-		);
-		SET_D3D12_DEBUG_NAME(m_uploadCmdList);
-	}
+	// Create command list.
+	CHECK_D3D_RESULT(
+		m_device->CreateCommandList (
+			0,
+			D3D12_COMMAND_LIST_TYPE_DIRECT,
+			cmdAllocator.Get(),
+			nullptr,
+			IID_PPV_ARGS(&commandList)
+		)
+	);
+	SET_D3D12_DEBUG_NAME(commandList);
 }
 
 
@@ -428,7 +448,7 @@ void D3D12DemoBase::BuildNextFrame()
 {
 	// Wait until GPU has processed the previous indexed frame before building new one.
 	::WaitForGpuFence (
-		m_frameFence[m_frameIndex],
+		m_frameFence[m_frameIndex].Get(),
 		m_fenceValue[m_frameIndex],
 		m_frameFenceEvent[m_frameIndex]
 	);
@@ -464,7 +484,7 @@ void D3D12DemoBase::PresentNextFrame()
 	}
 	else { 
 		// Start over and rebuild the frame again, rendering to the same indexed back buffer.
-		m_directCmdQueue->Signal(m_frameFence[m_frameIndex], m_currentFenceValue);
+		m_directCmdQueue->Signal(m_frameFence[m_frameIndex].Get(), m_currentFenceValue);
 		m_fenceValue[m_frameIndex] = m_currentFenceValue;
 		++m_currentFenceValue;
 	}
@@ -480,7 +500,7 @@ void D3D12DemoBase::Present()
 		m_swapChain->Present(syncInterval, 0)
 	);
 
-	m_directCmdQueue->Signal(m_frameFence[m_frameIndex], m_currentFenceValue);
+	m_directCmdQueue->Signal(m_frameFence[m_frameIndex].Get(), m_currentFenceValue);
 	m_fenceValue[m_frameIndex] = m_currentFenceValue;
 	++m_currentFenceValue;
 
@@ -498,12 +518,12 @@ void D3D12DemoBase::WaitForGpuCompletion (
 	ID3D12CommandQueue * commandQueue
 ) {
 	CHECK_D3D_RESULT (
-		commandQueue->Signal(m_frameFence[m_frameIndex], m_currentFenceValue)
+		commandQueue->Signal(m_frameFence[m_frameIndex].Get(), m_currentFenceValue)
 	);
 	m_fenceValue[m_frameIndex] = m_currentFenceValue;
 	++m_currentFenceValue;
 
-	::WaitForGpuFence(m_frameFence[m_frameIndex],
+	::WaitForGpuFence(m_frameFence[m_frameIndex].Get(),
 		m_fenceValue[m_frameIndex], m_frameFenceEvent[m_frameIndex]);
 }
 
@@ -550,7 +570,7 @@ void D3D12DemoBase::PrepareRender (
 	D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle (m_dsvDescHeap->GetCPUDescriptorHandleForHeapStart());
 
 	// Acquire handle to Render Target View.
-	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle (m_renderTarget[m_frameIndex].descriptorHandle);
+	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle (m_renderTarget[m_frameIndex].rtvHandle);
 
 	drawCmdList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
 
@@ -591,13 +611,13 @@ void D3D12DemoBase::FinalizeRender (
 void D3D12DemoBase::PrepareCleanup()
 {
 	// Signal command-queue 
-	m_directCmdQueue->Signal(m_frameFence[m_frameIndex], m_currentFenceValue);
+	m_directCmdQueue->Signal(m_frameFence[m_frameIndex].Get(), m_currentFenceValue);
 	m_fenceValue[m_frameIndex] = m_currentFenceValue;
 	++m_currentFenceValue;
 
 	// Wait for command queue to finish processing all buffered frames.
 	for (int i(0); i < NUM_BUFFERED_FRAMES; ++i) {
-		WaitForGpuFence(m_frameFence[i], m_fenceValue[i], m_frameFenceEvent[i]);
+		WaitForGpuFence(m_frameFence[i].Get(), m_fenceValue[i], m_frameFenceEvent[i]);
 	}
 
 	// Now it is safe to Release() D3D resources.

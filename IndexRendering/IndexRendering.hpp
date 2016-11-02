@@ -12,7 +12,9 @@ public:
         std::wstring name
     );
 
-	void InitializeDemo() override;
+	void InitializeDemo (
+		ID3D12GraphicsCommandList * uploadCmdList
+	) override;
 
 	void Update() override;
 
@@ -37,11 +39,13 @@ private:
 	D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
     uint m_indexCount;
 
-	void LoadAssets();
+	void LoadAssets (
+		ID3D12GraphicsCommandList * uploadCmdList
+	);
 
     void CreateRootSignature();
 
-    void CreateVertexDataBuffers();
+    void CreateVertexDataBuffers (ID3D12GraphicsCommandList * uploadCmdList);
 
     void LoadShaders (
         ComPtr<ID3DBlob> & vertexShaderBlob,

@@ -30,17 +30,18 @@ TextureDemo::~TextureDemo()
 }
 
 //---------------------------------------------------------------------------------------
-void TextureDemo::InitializeDemo()
-{
+void TextureDemo::InitializeDemo (
+	ID3D12GraphicsCommandList * uploadCmdList
+) {
 	CreateRootSignature();
 
 	CreateConstantBuffers();
 
 	CreateDescriptorHeap();
 
-	UploadVertexDataToGpu();
+	UploadVertexDataToGpu(uploadCmdList);
 
-	CreateTexture();
+	CreateTexture(uploadCmdList);
 
 	//-- Load shader byte code:
 	ComPtr<ID3DBlob> vertexShaderBlob;
@@ -48,8 +49,7 @@ void TextureDemo::InitializeDemo()
 	D3DReadFileToBlob(GetAssetPath(L"VertexShader.cso").c_str(), &vertexShaderBlob);
 	D3DReadFileToBlob(GetAssetPath(L"PixelShader.cso").c_str(), &pixelShaderBlob);
 
-	// Create the pipeline state object.
-	createPipelineState(vertexShaderBlob.Get(), pixelShaderBlob.Get());
+	CreatePipelineState(vertexShaderBlob.Get(), pixelShaderBlob.Get());
 }
 
 
@@ -168,10 +168,13 @@ void TextureDemo::CreateConstantBuffers()
 }
 
 //---------------------------------------------------------------------------------------
-void TextureDemo::UploadVertexDataToGpu()
-{
+void TextureDemo::UploadVertexDataToGpu (
+	ID3D12GraphicsCommandList * uploadCmdList
+) {
+	// TODO Dustin - Want to keep uploadBuffer resource alive until uploadCmdList completes execution.
+
 	// Create upload buffer for uploading vertex/index data to default heap.
-    ComPtr<ID3D12Resource> uploadBuffer_vertexData;
+    static ComPtr<ID3D12Resource> uploadBuffer_vertexData;
 
 	// Quad vertex data.
 	Vertex vertexArray[] = {
@@ -262,7 +265,7 @@ void TextureDemo::UploadVertexDataToGpu()
 	{
 		uint64 dstOffset = 0;
 		uint64 srcOffset = 0;
-		m_uploadCmdList->CopyBufferRegion (
+		uploadCmdList->CopyBufferRegion (
 			m_vertexBuffer.Get(),
 			dstOffset,
 			uploadBuffer_vertexData.Get(),
@@ -272,7 +275,7 @@ void TextureDemo::UploadVertexDataToGpu()
 
 		dstOffset = 0;
 		srcOffset = sizeof(vertexArray);
-		m_uploadCmdList->CopyBufferRegion (
+		uploadCmdList->CopyBufferRegion (
 			m_indexBuffer.Get(),
 			dstOffset,
 			uploadBuffer_vertexData.Get(),
@@ -299,21 +302,12 @@ void TextureDemo::UploadVertexDataToGpu()
 			)
 		};
 
-		m_uploadCmdList->ResourceBarrier(2, barriers);
+		uploadCmdList->ResourceBarrier(2, barriers);
 	}
-
-	// Close command list and execute it on the direct command queue. 
-	CHECK_D3D_RESULT (
-		m_uploadCmdList->Close()
-	);
-	ID3D12CommandList * commandLists[] = {m_uploadCmdList.Get()};
-	m_directCmdQueue->ExecuteCommandLists(_countof(commandLists), commandLists);
-
-	WaitForGpuCompletion(m_directCmdQueue.Get());
 }
 
 //---------------------------------------------------------------------------------------
-void TextureDemo::createPipelineState (
+void TextureDemo::CreatePipelineState (
     ID3DBlob * vertexShaderBlob,
     ID3DBlob * pixelShaderBlob
 ) {
@@ -383,9 +377,9 @@ void TextureDemo::createPipelineState (
 }
 
 //---------------------------------------------------------------------------------------
-void TextureDemo::CreateTexture ()
-{
-
+void TextureDemo::CreateTexture (
+	ID3D12GraphicsCommandList * uploadCmdList
+) {
 	ImageDecoder::decodeImage(GetAssetPath(L"Textures\\uvgrid.jpg"), 1, &m_imageData);
 
 	const auto defaultHeapProperties = CD3DX12_HEAP_PROPERTIES (D3D12_HEAP_TYPE_DEFAULT);
@@ -430,7 +424,7 @@ void TextureDemo::CreateTexture ()
 	sourceData.SlicePitch = m_imageData.width * m_imageData.height * bytesPerPixel;
 
 	::UpdateSubresources (
-		m_uploadCmdList.Get(), m_imageTexture2d.Get(), 
+		uploadCmdList, m_imageTexture2d.Get(), 
 		m_uploadBuffer.Get(), 0, 0, 1, &sourceData
 	);
 
@@ -441,7 +435,7 @@ void TextureDemo::CreateTexture ()
 		D3D12_RESOURCE_STATE_COPY_DEST,
 		D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE
 	);
-	m_uploadCmdList->ResourceBarrier(1, &resourceBarrier);
+	uploadCmdList->ResourceBarrier(1, &resourceBarrier);
 
 	D3D12_SHADER_RESOURCE_VIEW_DESC shaderResourceViewDesc = {};
 	shaderResourceViewDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;

@@ -22,15 +22,16 @@ IndexRendering::IndexRendering (
 
 
 //---------------------------------------------------------------------------------------
-void IndexRendering::InitializeDemo()
-{
-	LoadAssets();
+void IndexRendering::InitializeDemo (
+	ID3D12GraphicsCommandList * uploadCmdList
+) {
+	LoadAssets(uploadCmdList);
 }
 
 //---------------------------------------------------------------------------------------
-// Load the sample assets.
-void IndexRendering::LoadAssets()
-{
+void IndexRendering::LoadAssets (
+	ID3D12GraphicsCommandList * uploadCmdList
+) {
 	// Create an empty root signature.
 	CreateRootSignature();
 
@@ -42,7 +43,7 @@ void IndexRendering::LoadAssets()
 	// Create the pipeline state object.
     CreatePipelineState(vertexShaderBlob.Get(), pixelShaderBlob.Get());
 
-    CreateVertexDataBuffers();
+    CreateVertexDataBuffers(uploadCmdList);
 }
 
 //---------------------------------------------------------------------------------------
@@ -143,15 +144,16 @@ void IndexRendering::CreatePipelineState(
 }
 
 //---------------------------------------------------------------------------------------
-void IndexRendering::CreateVertexDataBuffers ()
-{
+void IndexRendering::CreateVertexDataBuffers (
+	ID3D12GraphicsCommandList * uploadCmdList
+) {
     // Upload buffers (which reside in the upload Heap) are only needed when loading data
     // into GPU memory.
     // Note: ComPtr's are CPU objects but this resource needs to stay in scope until
     // the command list that references it has finished executing on the GPU.
     // We will flush the GPU at the end of this method to ensure the resource is not
     // prematurely destroyed.
-    ComPtr<ID3D12Resource> uploadBuffer;
+    static ComPtr<ID3D12Resource> uploadBuffer;
 
 	const float aspectRatio = static_cast<float>(m_windowWidth) / m_windowHeight;
 
@@ -238,13 +240,13 @@ void IndexRendering::CreateVertexDataBuffers ()
 	{
 		uint64 dstOffset = 0;
 		uint64 srcOffset = 0;
-		m_uploadCmdList->CopyBufferRegion (
+		uploadCmdList->CopyBufferRegion (
 			m_vertexBuffer.Get(), dstOffset, uploadBuffer.Get(), srcOffset, sizeof(vertices)
 		);
 
 		dstOffset = 0;
 		srcOffset = sizeof(vertices);
-		m_uploadCmdList->CopyBufferRegion (
+		uploadCmdList->CopyBufferRegion (
 			m_indexBuffer.Get(), dstOffset, uploadBuffer.Get(), srcOffset, sizeof(indices)
 		);
 	}
@@ -266,17 +268,8 @@ void IndexRendering::CreateVertexDataBuffers ()
 			)
 		};
 
-		m_uploadCmdList->ResourceBarrier(2, barriers);
+		uploadCmdList->ResourceBarrier(2, barriers);
 	}
-
-    // Close command list and execute it on the direct command queue. 
-    CHECK_D3D_RESULT (
-        m_uploadCmdList->Close()
-    );
-    ID3D12CommandList * commandLists[] = { m_uploadCmdList.Get() };
-    m_directCmdQueue->ExecuteCommandLists(_countof(commandLists), commandLists);
-
-	WaitForGpuCompletion(m_directCmdQueue.Get());
 }
 
 //---------------------------------------------------------------------------------------
