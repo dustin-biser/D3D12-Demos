@@ -25,8 +25,8 @@ public:
 	) override;
 
 	void OnMouseMove (
-		uint dx,
-		uint dy
+		int dx,
+		int dy
 	) override;
 
 	void Update() override;
@@ -56,6 +56,7 @@ private:
 	ComPtr<ID3D12Resource> m_constantBuffer_sceneConstant[NUM_BUFFERED_FRAMES];
 	DirectionalLight m_pointLightConstData[NUM_BUFFERED_FRAMES];
 	ComPtr<ID3D12Resource> m_constantBuffer_pointLight[NUM_BUFFERED_FRAMES];
+	DirectX::XMMATRIX m_rotationMatrix;
 
 	// Pipeline objects.
 	ComPtr<ID3D12RootSignature> m_rootSignature;

@@ -8,6 +8,15 @@
 #include "Common/DemoUtils.hpp"
 #include "Common/Win32Application.hpp"
 
+
+
+struct ScreenPosition {
+	uint x;
+	uint y;
+};
+
+
+
 /// Base class for all D3D12 demos.
 class D3D12DemoBase
 {
@@ -35,8 +44,8 @@ public:
 	);
 
 	virtual void OnMouseMove (
-		uint dx,
-		uint dy
+		int dx,
+		int dy
 	);
 
 	void UpdateMousePosition (
@@ -62,6 +71,8 @@ public:
 
 	const WCHAR * GetWindowTitle() const;
 
+	ScreenPosition GetMousePosition() const;
+
 
 protected:
 	template <typename T>
@@ -79,12 +90,9 @@ protected:
 	D3D12_VIEWPORT m_viewport;
 	D3D12_RECT m_scissorRect;
 
-	struct ScreenPosition {
-		uint x;
-		uint y;
-	};
 	ScreenPosition m_mousePosition;
 	bool m_mouseLButtonDown;
+
 
 	ComPtr<ID3D12Device> m_device;
 

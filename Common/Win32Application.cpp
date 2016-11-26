@@ -7,6 +7,9 @@
 #include "Win32Application.hpp"
 #include "D3D12DemoBase.hpp"
 
+#include "Windowsx.h"  // using GET_X_LPARAM
+					   // using GET_Y_LPARAM
+
 
 HWND Win32Application::m_hwnd = nullptr;
 
@@ -165,6 +168,9 @@ LRESULT CALLBACK Win32Application::WindowProc (
 	case WM_LBUTTONDOWN:
 	{
 		if (demo) {
+			const int xPos = GET_X_LPARAM(lParam);
+			const int yPos = GET_Y_LPARAM(lParam);
+			demo->UpdateMousePosition(xPos, yPos);
 			demo->MouseLButtonDown();
 		}
 
@@ -182,20 +188,24 @@ LRESULT CALLBACK Win32Application::WindowProc (
 
 	case WM_MOUSEMOVE:
 	{
-		POINT p;
-		GetCursorPos(&p); // Relative to desktop window.
-		ScreenToClient(hWnd, &p); // Transform to client window coordinates.
+		if (wParam & MK_LBUTTON) {
+			if (demo) {
+				ScreenPosition mousePos = demo->GetMousePosition();
 
-		if (demo) {
-			demo->UpdateMousePosition(p.x, p.y);
+				const int xPos = GET_X_LPARAM(lParam);
+				const int yPos = GET_Y_LPARAM(lParam);
+				demo->OnMouseMove(xPos - mousePos.x, yPos - mousePos.y);
+
+				demo->UpdateMousePosition(xPos, yPos);
+			}
 		}
 		return 0;
 	}
 
 	case WM_SIZE:
 		if (demo) {
-			const uint width(LOWORD(lParam));
-			const uint height(HIWORD(lParam));
+			const uint width = LOWORD(lParam);
+			const uint height = HIWORD(lParam);
 			demo->OnResize(width, height);
 		}
 		return 0;

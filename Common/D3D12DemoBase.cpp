@@ -547,9 +547,9 @@ void D3D12DemoBase::OnResize(uint windowWidth, uint windowHeight)
 }
 
 //---------------------------------------------------------------------------------------
-void D3D12DemoBase::OnMouseMove (
-	uint dx,
-	uint dy
+void D3D12DemoBase::OnMouseMove(
+	int dx,
+	int dy
 ) {
 
 }
@@ -559,9 +559,6 @@ void D3D12DemoBase::UpdateMousePosition (
 	uint x, 
 	uint y
 ) {
-	if ((m_mousePosition.x != x) || (m_mousePosition.y != y)) {
-		OnMouseMove(x - m_mousePosition.x, y - m_mousePosition.y);
-	}
 	m_mousePosition.x = x;
 	m_mousePosition.y = y;
 }
@@ -681,6 +678,12 @@ const WCHAR * D3D12DemoBase::GetWindowTitle() const {
 	return m_windowTitle.c_str();
 }
 
+
+//---------------------------------------------------------------------------------------
+ScreenPosition D3D12DemoBase::GetMousePosition() const
+{
+	return m_mousePosition;
+}
 
 //---------------------------------------------------------------------------------------
 std::wstring D3D12DemoBase::GetAssetPath (

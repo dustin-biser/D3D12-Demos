@@ -3,6 +3,7 @@
 
 ConstantBuffer<SceneConstants> sceneConstants : register(b0, space0);
 
+
 PSInput VSMain (
     float3 position : POSITION,
     float3 normal   : NORMAL,
@@ -11,8 +12,7 @@ PSInput VSMain (
 	PSInput psInput;
     psInput.texCoord = texCoord;
 
-    psInput.position_clipSpace = float4(position, 1.0) * float4(1.5, 1.5, 1, 1);
-    psInput.position_clipSpace.x *= sceneConstants.inv_aspectRatio;
+    psInput.position_clipSpace = mul(float4(position, 1.0), sceneConstants.MVPMatrix);
 
 	return psInput;
 }

@@ -50,14 +50,20 @@ void TextureDemo::InitializeDemo (
 	D3DReadFileToBlob(GetAssetPath(L"PixelShader.cso").c_str(), &pixelShaderBlob);
 
 	CreatePipelineState(vertexShaderBlob.Get(), pixelShaderBlob.Get());
+
+	m_rotationMatrix = XMMatrixIdentity();
 }
 
 
 //---------------------------------------------------------------------------------------
-void TextureDemo::OnMouseMove(uint dx, uint dy)
-{
+void TextureDemo::OnMouseMove(
+	int dx,
+	int dy
+) {
 	if (m_mouseLButtonDown) {
-		LOG_INFO("Mouse Move: dx: %d, dy: %d", dx, dy);
+		float angle = XMConvertToRadians((90.f * dx) / m_windowWidth);
+		XMMATRIX rotationDelta = XMMatrixRotationRollPitchYaw(0.f, angle, 0.f);
+		m_rotationMatrix = XMMatrixMultiply(rotationDelta, m_rotationMatrix);
 	}
 }
 
@@ -457,17 +463,10 @@ void TextureDemo::UpdateConstantBuffers()
 	const float inv_aspectRatio = static_cast<float>(m_windowHeight) / m_windowWidth;
 	m_sceneConstData[m_frameIndex].inv_aspectRatio = inv_aspectRatio;
 
+	XMMATRIX translationMatrix = XMMatrixTranslation(0.0f, 0.0f, -1.0f);
+	XMMATRIX modelMatrix = XMMatrixMultiply(m_rotationMatrix, translationMatrix);
 
-	static float rotationAngle(0.0f);
-	const float rotationDelta(1.2f);
-	rotationAngle += rotationDelta;
-
-	XMVECTOR axis = XMVectorSet(0.5f, 1.0f, 0.5f, 0.0f);
-	XMMATRIX rotate = XMMatrixRotationAxis(axis, XMConvertToRadians(rotationAngle));
-
-	XMMATRIX modelMatrix = XMMatrixMultiply(rotate, XMMatrixTranslation(0.0f, 0.0f, -4.0f));
-
-	XMMATRIX viewMatrix = XMMatrixLookAtRH(
+	XMMATRIX viewMatrix = XMMatrixLookAtRH (
 		XMVECTOR{ 0.0f, 0.0f, 0.0f, 1.0f },
 		XMVECTOR{ 0.0f, 0.0f, -100.0f, 1.0f },
 		XMVECTOR{ 0.0f, 1.0f, 0.0f, 0.0f }
@@ -488,9 +487,12 @@ void TextureDemo::UpdateConstantBuffers()
 		float fovy(XMConvertToRadians(30.0f));
 
 		float m11 = 1.0f / tan(fovy);
+
+		// Update projection matrix scale based on current window aspect ratio.
 		float inv_aspect = static_cast<float>(m_windowHeight) / m_windowWidth;
+
 		float m00 = m11 * inv_aspect;
-		projectMatrix = XMMatrixSet(
+		projectMatrix = XMMatrixSet (
 			m00, 0.0f, 0.0f, 0.0f,
 			0.0f, m11, 0.0f, 0.0f,
 			0.0f, 0.0f, far*inv_n_minus_f, -1.0f,
@@ -518,8 +520,6 @@ void TextureDemo::UpdateConstantBuffers()
 	m_pointLightConstData[m_frameIndex].color = XMFLOAT4{ 1.0f, 1.0f, 1.0f, 1.0f };
 
 
-
-
 	// Upload SceneConstants data to constant buffer.
 	{
 		void * p;
@@ -536,8 +536,6 @@ void TextureDemo::UpdateConstantBuffers()
 		memcpy(p, &m_sceneConstData[m_frameIndex], sizeof(DirectionalLight));
 		m_constantBuffer_pointLight[m_frameIndex]->Unmap (0, nullptr);
 	}
-
-
 }
 
 //---------------------------------------------------------------------------------------
