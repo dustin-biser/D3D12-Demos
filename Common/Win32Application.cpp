@@ -135,22 +135,22 @@ LRESULT CALLBACK Win32Application::WindowProc (
 	D3D12DemoBase * demo =
 		reinterpret_cast<D3D12DemoBase*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
 
-	switch (message)
-	{
+	switch (message) {
 	case WM_CREATE:
-		{
-			// Save the D3D12DemoBase ptr passed into CreateWindow and store it in the
-			// window's user data field so we can retrieve it later.
-			LPCREATESTRUCT pCreateStruct = reinterpret_cast<LPCREATESTRUCT>(lParam);
-			SetWindowLongPtr(hWnd, GWLP_USERDATA,
-                reinterpret_cast<LONG_PTR>(pCreateStruct->lpCreateParams));
-		}
+	{
+		// Save the D3D12DemoBase ptr passed into CreateWindow and store it in the
+		// window's user data field so we can retrieve it later.
+		LPCREATESTRUCT pCreateStruct = reinterpret_cast<LPCREATESTRUCT>(lParam);
+		SetWindowLongPtr(hWnd, GWLP_USERDATA,
+			reinterpret_cast<LONG_PTR>(pCreateStruct->lpCreateParams));
+
 		return 0;
+	}
 
 	case WM_KEYDOWN:
-        if (wParam == VK_ESCAPE) {
-            PostQuitMessage(0);
-        }
+		if (wParam == VK_ESCAPE) {
+			PostQuitMessage(0);
+		}
 		else if (demo) {
 			demo->OnKeyDown(static_cast<UINT8>(wParam));
 		}
@@ -162,12 +162,40 @@ LRESULT CALLBACK Win32Application::WindowProc (
 		}
 		return 0;
 
+	case WM_LBUTTONDOWN:
+	{
+		if (demo) {
+			demo->MouseLButtonDown();
+		}
+
+		return 0;
+	}
+
+	case WM_LBUTTONUP:
+	{
+		if (demo) {
+			demo->MouseLButtonUp();
+		}
+
+		return 0;
+	}
+
+	case WM_MOUSEMOVE:
+	{
+		POINT p;
+		GetCursorPos(&p); // Relative to desktop window.
+		ScreenToClient(hWnd, &p); // Transform to client window coordinates.
+
+		if (demo) {
+			demo->UpdateMousePosition(p.x, p.y);
+		}
+		return 0;
+	}
+
 	case WM_SIZE:
 		if (demo) {
 			const uint width(LOWORD(lParam));
 			const uint height(HIWORD(lParam));
-			//LOG_INFO("window width: %d", width);
-			//LOG_INFO("window height: %d", height);
 			demo->OnResize(width, height);
 		}
 		return 0;

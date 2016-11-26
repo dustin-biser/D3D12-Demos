@@ -24,6 +24,11 @@ public:
 		ID3D12GraphicsCommandList * uploadCmdList
 	) override;
 
+	void OnMouseMove (
+		uint dx,
+		uint dy
+	) override;
+
 	void Update() override;
 
 	void Render (

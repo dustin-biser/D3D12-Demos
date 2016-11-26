@@ -26,5 +26,4 @@ protected:
 
 private:
 	static HWND m_hwnd;
-
 };

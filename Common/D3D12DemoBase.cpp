@@ -547,6 +547,38 @@ void D3D12DemoBase::OnResize(uint windowWidth, uint windowHeight)
 }
 
 //---------------------------------------------------------------------------------------
+void D3D12DemoBase::OnMouseMove (
+	uint dx,
+	uint dy
+) {
+
+}
+
+//---------------------------------------------------------------------------------------
+void D3D12DemoBase::UpdateMousePosition (
+	uint x, 
+	uint y
+) {
+	if ((m_mousePosition.x != x) || (m_mousePosition.y != y)) {
+		OnMouseMove(x - m_mousePosition.x, y - m_mousePosition.y);
+	}
+	m_mousePosition.x = x;
+	m_mousePosition.y = y;
+}
+
+//---------------------------------------------------------------------------------------
+void D3D12DemoBase::MouseLButtonDown()
+{
+	m_mouseLButtonDown = true;
+}
+
+//---------------------------------------------------------------------------------------
+void D3D12DemoBase::MouseLButtonUp()
+{
+	m_mouseLButtonDown = false;
+}
+
+//---------------------------------------------------------------------------------------
 void D3D12DemoBase::PrepareRender (
 	ID3D12CommandAllocator * commandAllocator,
 	ID3D12GraphicsCommandList * drawCmdList

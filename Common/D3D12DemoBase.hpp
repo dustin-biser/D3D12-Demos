@@ -34,6 +34,20 @@ public:
 		uint windowHeight
 	);
 
+	virtual void OnMouseMove (
+		uint dx,
+		uint dy
+	);
+
+	void UpdateMousePosition (
+		uint x,
+		uint y
+	);
+	
+	void MouseLButtonDown();
+
+	void MouseLButtonUp();
+
 	void Initialize();
 
 	void BuildNextFrame();
@@ -64,6 +78,13 @@ protected:
 	uint m_windowHeight;
 	D3D12_VIEWPORT m_viewport;
 	D3D12_RECT m_scissorRect;
+
+	struct ScreenPosition {
+		uint x;
+		uint y;
+	};
+	ScreenPosition m_mousePosition;
+	bool m_mouseLButtonDown;
 
 	ComPtr<ID3D12Device> m_device;
 

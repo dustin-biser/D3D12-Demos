@@ -54,6 +54,14 @@ void TextureDemo::InitializeDemo (
 
 
 //---------------------------------------------------------------------------------------
+void TextureDemo::OnMouseMove(uint dx, uint dy)
+{
+	if (m_mouseLButtonDown) {
+		LOG_INFO("Mouse Move: dx: %d, dy: %d", dx, dy);
+	}
+}
+
+//---------------------------------------------------------------------------------------
 void TextureDemo::CreateRootSignature()
 {
 	// Root parameters:
