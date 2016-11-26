@@ -9,8 +9,10 @@ PSInput VSMain (
     float2 texCoord : TEXCOORD
 ) {
 	PSInput psInput;
+    psInput.texCoord = texCoord;
 
     psInput.position_clipSpace = float4(position, 1.0);
+    psInput.position_clipSpace.x *= sceneConstants.inv_aspectRatio;
 
 	return psInput;
 }

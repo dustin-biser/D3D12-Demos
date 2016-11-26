@@ -151,16 +151,24 @@ LRESULT CALLBACK Win32Application::WindowProc (
         if (wParam == VK_ESCAPE) {
             PostQuitMessage(0);
         }
-		else if (demo)
-		{
+		else if (demo) {
 			demo->OnKeyDown(static_cast<UINT8>(wParam));
 		}
 		return 0;
 
 	case WM_KEYUP:
-		if (demo)
-		{
+		if (demo) {
 			demo->OnKeyUp(static_cast<UINT8>(wParam));
+		}
+		return 0;
+
+	case WM_SIZE:
+		if (demo) {
+			const uint width(LOWORD(lParam));
+			const uint height(HIWORD(lParam));
+			//LOG_INFO("window width: %d", width);
+			//LOG_INFO("window height: %d", height);
+			demo->OnResize(width, height);
 		}
 		return 0;
 

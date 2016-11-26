@@ -540,6 +540,13 @@ void D3D12DemoBase::OnKeyUp(uint8 key)
 }
 
 //---------------------------------------------------------------------------------------
+void D3D12DemoBase::OnResize(uint windowWidth, uint windowHeight)
+{
+	m_windowWidth = windowWidth;
+	m_windowHeight = windowHeight;
+}
+
+//---------------------------------------------------------------------------------------
 void D3D12DemoBase::PrepareRender (
 	ID3D12CommandAllocator * commandAllocator,
 	ID3D12GraphicsCommandList * drawCmdList

@@ -8,6 +8,7 @@ struct SceneConstants
     mat4 modelViewMatrix;
     mat4 MVPMatrix;
     mat4 normalMatrix;
+	float inv_aspectRatio;
 };
 
 struct DirectionalLight

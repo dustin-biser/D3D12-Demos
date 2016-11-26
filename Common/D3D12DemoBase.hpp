@@ -24,8 +24,14 @@ public:
 	virtual void OnKeyDown (
 		uint8 key
 	);
+
 	virtual void OnKeyUp (
 		uint8 key
+	);
+
+	virtual void OnResize (
+		uint windowWidth,
+		uint windowHeight
 	);
 
 	void Initialize();

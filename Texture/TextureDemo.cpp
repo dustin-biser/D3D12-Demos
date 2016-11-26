@@ -120,9 +120,7 @@ void TextureDemo::CreateConstantBuffers()
 	//-- Create SceneConstant constant buffers within upload heap:
 	for (int i(0); i < NUM_BUFFERED_FRAMES; ++i) {
 		const auto uploadHeapProperties = CD3DX12_HEAP_PROPERTIES (D3D12_HEAP_TYPE_UPLOAD);
-		const auto constantBufferDesc = CD3DX12_RESOURCE_DESC::Buffer (
-			sizeof (SceneConstants)
-		);
+		const auto constantBufferDesc = CD3DX12_RESOURCE_DESC::Buffer (sizeof(SceneConstants));
 
 		m_device->CreateCommittedResource (
 			&uploadHeapProperties,
@@ -132,13 +130,7 @@ void TextureDemo::CreateConstantBuffers()
 			nullptr,
 			IID_PPV_ARGS (&m_constantBuffer_sceneConstant[i])
 		);
-
 		ZeroMemory(&m_sceneConstData[i], sizeof(SceneConstants));
-
-		void * p;
-		m_constantBuffer_sceneConstant[i]->Map (0, nullptr, &p);
-		::memcpy(p, &m_sceneConstData[i], sizeof (SceneConstants));
-		m_constantBuffer_sceneConstant[i]->Unmap (0, nullptr);
 	}
 
 	//-- Create PointLight constant buffers within upload heap:
@@ -158,11 +150,6 @@ void TextureDemo::CreateConstantBuffers()
 		);
 
 		ZeroMemory(&m_sceneConstData[i], sizeof(DirectionalLight));
-
-		void * p;
-		m_constantBuffer_pointLight[i]->Map (0, nullptr, &p);
-		::memcpy(p, &m_sceneConstData[i], sizeof(DirectionalLight));
-		m_constantBuffer_pointLight[i]->Unmap (0, nullptr);
 	}
 	
 }
@@ -171,18 +158,18 @@ void TextureDemo::CreateConstantBuffers()
 void TextureDemo::UploadVertexDataToGpu (
 	ID3D12GraphicsCommandList * uploadCmdList
 ) {
-	// TODO Dustin - Want to keep uploadBuffer resource alive until uploadCmdList completes execution.
-
 	// Create upload buffer for uploading vertex/index data to default heap.
     static ComPtr<ID3D12Resource> uploadBuffer_vertexData;
+
+	const float inv_aspectRatio = static_cast<float>(m_windowHeight) / m_windowWidth;
 
 	// Quad vertex data.
 	Vertex vertexArray[] = {
 		// Positions             Normals               TexCords
-		{ -0.5f, -0.5f,  0.0f,   0.0f,  1.0f,  0.0f,   0.0f, 0.0f}, // 0
-		{  0.5f, -0.5f,  0.0f,   0.0f,  1.0f,  0.0f,   1.0f, 0.0f}, // 1
-		{  0.5f,  0.5f,  0.0f,   0.0f,  1.0f,  0.0f,   1.0f, 1.0f}, // 2
-		{ -0.5f,  0.5f,  0.0f,   0.0f,  1.0f,  0.0f,   0.0f, 1.0f}  // 3
+		{ -0.5f, -0.5f,  0.0f,   0.0f,  1.0f,  0.0f,   0.0f, 1.0f}, // 0
+		{  0.5f, -0.5f,  0.0f,   0.0f,  1.0f,  0.0f,   1.0f, 1.0f}, // 1
+		{  0.5f,  0.5f,  0.0f,   0.0f,  1.0f,  0.0f,   1.0f, 0.0f}, // 2
+		{ -0.5f,  0.5f,  0.0f,   0.0f,  1.0f,  0.0f,   0.0f, 0.0f}  // 3
 	};
 
 	// Create index data
@@ -383,16 +370,17 @@ void TextureDemo::CreateTexture (
 	ImageDecoder::decodeImage(GetAssetPath(L"Textures\\uvgrid.jpg"), 1, &m_imageData);
 
 	const auto defaultHeapProperties = CD3DX12_HEAP_PROPERTIES (D3D12_HEAP_TYPE_DEFAULT);
-	const auto resourceDesc = CD3DX12_RESOURCE_DESC::Tex2D (
+	const auto textureResourceDesc = CD3DX12_RESOURCE_DESC::Tex2D (
 		DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, m_imageData.width, m_imageData.height, 1, 1
 	);
 
-	// Create resource within Default Heap that will hold image data.
+	// Create a texture resource within Default Heap that will hold the image data.
+	// The texture resource's state will begin as a Copy Destination.
 	CHECK_D3D_RESULT (
 		m_device->CreateCommittedResource (
 			&defaultHeapProperties,
 			D3D12_HEAP_FLAG_NONE,
-			&resourceDesc,
+			&textureResourceDesc,
 			D3D12_RESOURCE_STATE_COPY_DEST,
 			nullptr,
 			IID_PPV_ARGS(&m_imageTexture2d)
@@ -400,8 +388,7 @@ void TextureDemo::CreateTexture (
 	);
 
 	const auto uploadHeapProperties = CD3DX12_HEAP_PROPERTIES (D3D12_HEAP_TYPE_UPLOAD);
-	const auto uploadBufferSize = 
-		::GetRequiredIntermediateSize(m_imageTexture2d.Get(), 0, 1);
+	const auto uploadBufferSize = ::GetRequiredIntermediateSize (m_imageTexture2d.Get(), 0, 1);
 	const auto uploadBufferDesc = CD3DX12_RESOURCE_DESC::Buffer (uploadBufferSize);
 
 	// Create upload buffer for uploading image data to texture resource on GPU.
@@ -423,7 +410,10 @@ void TextureDemo::CreateTexture (
 	sourceData.RowPitch = m_imageData.width * bytesPerPixel;
 	sourceData.SlicePitch = m_imageData.width * m_imageData.height * bytesPerPixel;
 
-	::UpdateSubresources (
+	// Transfer source image data to upload buffer using CPU, then schedule a copy
+	// on GPU using upload command list to transfer data to texture resource in the
+	// default heap.
+	::UpdateSubresources<1> (
 		uploadCmdList, m_imageTexture2d.Get(), 
 		m_uploadBuffer.Get(), 0, 0, 1, &sourceData
 	);
@@ -445,80 +435,101 @@ void TextureDemo::CreateTexture (
 	shaderResourceViewDesc.Texture2D.MostDetailedMip = 0;
 	shaderResourceViewDesc.Texture2D.ResourceMinLODClamp = 0.0f;
 
+	// Create SRV for texture and place it in the SRV descriptor heap.
 	m_device->CreateShaderResourceView (
 		m_imageTexture2d.Get(),
 		&shaderResourceViewDesc,
 		m_srvDescriptorHeap->GetCPUDescriptorHandleForHeapStart()
 	);
-
-	// TODO Dustin - Finish this method
 }
 
 //---------------------------------------------------------------------------------------
 void TextureDemo::UpdateConstantBuffers()
 {
-	//-- Create and Upload SceneContants Data:
+	const float inv_aspectRatio = static_cast<float>(m_windowHeight) / m_windowWidth;
+	m_sceneConstData[m_frameIndex].inv_aspectRatio = inv_aspectRatio;
+
+
+	static float rotationAngle(0.0f);
+	const float rotationDelta(1.2f);
+	rotationAngle += rotationDelta;
+
+	XMVECTOR axis = XMVectorSet(0.5f, 1.0f, 0.5f, 0.0f);
+	XMMATRIX rotate = XMMatrixRotationAxis(axis, XMConvertToRadians(rotationAngle));
+
+	XMMATRIX modelMatrix = XMMatrixMultiply(rotate, XMMatrixTranslation(0.0f, 0.0f, -4.0f));
+
+	XMMATRIX viewMatrix = XMMatrixLookAtRH(
+		XMVECTOR{ 0.0f, 0.0f, 0.0f, 1.0f },
+		XMVECTOR{ 0.0f, 0.0f, -100.0f, 1.0f },
+		XMVECTOR{ 0.0f, 1.0f, 0.0f, 0.0f }
+	);
+
+	XMMATRIX modelViewMatrix = XMMatrixMultiply(modelMatrix, viewMatrix);
+
+	// Construct perspective projection matrix:
+	XMMATRIX projectMatrix;
 	{
-		static float rotationAngle(0.0f);
-		const float rotationDelta(1.2f);
-		rotationAngle += rotationDelta;
+		// Undefine Windows' dumb defines
+		#undef near
+		#undef far 
 
-		XMVECTOR axis = XMVectorSet(0.5f, 1.0f, 0.5f, 0.0f);
-		XMMATRIX rotate = XMMatrixRotationAxis(axis, XMConvertToRadians(rotationAngle));
+		float near(0.1f);
+		float far(200.0f);
+		float inv_n_minus_f = 1.0f / (near - far);
+		float fovy(XMConvertToRadians(30.0f));
 
-		XMMATRIX modelMatrix = XMMatrixMultiply(rotate, XMMatrixTranslation(0.0f, 0.0f, -4.0f));
-
-		XMMATRIX viewMatrix = XMMatrixLookAtRH(
-			XMVECTOR{ 0.0f, 0.0f, 0.0f, 1.0f },
-			XMVECTOR{ 0.0f, 0.0f, -100.0f, 1.0f },
-			XMVECTOR{ 0.0f, 1.0f, 0.0f, 0.0f }
+		float m11 = 1.0f / tan(fovy);
+		float inv_aspect = static_cast<float>(m_windowHeight) / m_windowWidth;
+		float m00 = m11 * inv_aspect;
+		projectMatrix = XMMatrixSet(
+			m00, 0.0f, 0.0f, 0.0f,
+			0.0f, m11, 0.0f, 0.0f,
+			0.0f, 0.0f, far*inv_n_minus_f, -1.0f,
+			0.0f, 0.0f, near*far*inv_n_minus_f, 0.0f
 		);
-
-		XMMATRIX modelViewMatrix = XMMatrixMultiply(modelMatrix, viewMatrix);
-
-		// Construct perspective projection matrix:
-		XMMATRIX projectMatrix;
-		{
-			// Undefine Windows' dumb defines
-			#undef near
-			#undef far 
-
-			float near(0.1f);
-			float far(200.0f);
-			float inv_n_minus_f = 1.0f / (near - far);
-			float fovy(XMConvertToRadians(30.0f));
-
-			float m11 = 1.0f / tan(fovy);
-			float inv_aspect = static_cast<float>(m_windowHeight) / m_windowWidth;
-			float m00 = m11 * inv_aspect;
-			projectMatrix = XMMatrixSet(
-				m00, 0.0f, 0.0f, 0.0f,
-				0.0f, m11, 0.0f, 0.0f,
-				0.0f, 0.0f, far*inv_n_minus_f, -1.0f,
-				0.0f, 0.0f, near*far*inv_n_minus_f, 0.0f
-			);
-		}
-
-		XMMATRIX MVPMatrix = XMMatrixMultiply(modelMatrix, viewMatrix);
-		MVPMatrix = XMMatrixMultiply(MVPMatrix, projectMatrix);
-
-		XMMATRIX invMatrix = XMMatrixInverse(nullptr, modelViewMatrix);
-		XMMATRIX normalMatrix = XMMatrixTranspose(invMatrix);
-
-		XMStoreFloat4x4(&m_sceneConstData[m_frameIndex].modelViewMatrix, XMMatrixTranspose(modelViewMatrix));
-		XMStoreFloat4x4(&m_sceneConstData[m_frameIndex].MVPMatrix, XMMatrixTranspose(MVPMatrix));
-		XMStoreFloat4x4(&m_sceneConstData[m_frameIndex].normalMatrix, XMMatrixTranspose(normalMatrix));
-
-
-		XMVECTOR lightDirection{ -5.0f, 5.0f,  5.0f, 1.0f };
-
-		// Transform lightPosition into View Space
-		lightDirection = XMVector4Transform(lightDirection, viewMatrix);
-		XMStoreFloat4(&m_pointLightConstData[m_frameIndex].direction, lightDirection);
-
-		// White light
-		m_pointLightConstData[m_frameIndex].color = XMFLOAT4{ 1.0f, 1.0f, 1.0f, 1.0f };
 	}
+
+	XMMATRIX MVPMatrix = XMMatrixMultiply(modelMatrix, viewMatrix);
+	MVPMatrix = XMMatrixMultiply(MVPMatrix, projectMatrix);
+
+	XMMATRIX invMatrix = XMMatrixInverse(nullptr, modelViewMatrix);
+	XMMATRIX normalMatrix = XMMatrixTranspose(invMatrix);
+
+	XMStoreFloat4x4(&m_sceneConstData[m_frameIndex].modelViewMatrix, XMMatrixTranspose(modelViewMatrix));
+	XMStoreFloat4x4(&m_sceneConstData[m_frameIndex].MVPMatrix, XMMatrixTranspose(MVPMatrix));
+	XMStoreFloat4x4(&m_sceneConstData[m_frameIndex].normalMatrix, XMMatrixTranspose(normalMatrix));
+
+	XMVECTOR lightDirection{ -5.0f, 5.0f,  5.0f, 1.0f };
+
+	// Transform lightPosition into View Space
+	lightDirection = XMVector4Transform(lightDirection, viewMatrix);
+	XMStoreFloat4(&m_pointLightConstData[m_frameIndex].direction, lightDirection);
+
+	// White light
+	m_pointLightConstData[m_frameIndex].color = XMFLOAT4{ 1.0f, 1.0f, 1.0f, 1.0f };
+
+
+
+
+	// Upload SceneConstants data to constant buffer.
+	{
+		void * p;
+		m_constantBuffer_sceneConstant[m_frameIndex]->Map (0, nullptr, &p);
+		memcpy(p, &m_sceneConstData[m_frameIndex], sizeof (SceneConstants));
+		m_constantBuffer_sceneConstant[m_frameIndex]->Unmap (0, nullptr);
+	}
+
+
+	// Upload Light data to constant buffer.
+	{
+		void * p;
+		m_constantBuffer_pointLight[m_frameIndex]->Map (0, nullptr, &p);
+		memcpy(p, &m_sceneConstData[m_frameIndex], sizeof(DirectionalLight));
+		m_constantBuffer_pointLight[m_frameIndex]->Unmap (0, nullptr);
+	}
+
+
 }
 
 //---------------------------------------------------------------------------------------
@@ -531,16 +542,30 @@ void TextureDemo::Update()
 void TextureDemo::Render (
 	ID3D12GraphicsCommandList * drawCmdList
 ) {
+	// Set the descriptor heap containing the texture srv
+	ID3D12DescriptorHeap* heaps[] = {m_srvDescriptorHeap.Get ()};
+	drawCmdList->SetDescriptorHeaps (1, heaps);
+
 	drawCmdList->SetPipelineState(m_pipelineState.Get());
 	drawCmdList->SetGraphicsRootSignature(m_rootSignature.Get());
 
-	//-- Set CBVs within root signature:
-	drawCmdList->SetGraphicsRootConstantBufferView (
-		0, m_constantBuffer_sceneConstant[m_frameIndex]->GetGPUVirtualAddress()
-	);
-	drawCmdList->SetGraphicsRootConstantBufferView (
-		1, m_constantBuffer_pointLight[m_frameIndex]->GetGPUVirtualAddress()
-	);
+	// Set root parameters
+	{
+		// Root Param 0
+		drawCmdList->SetGraphicsRootConstantBufferView (
+			0, m_constantBuffer_sceneConstant[m_frameIndex]->GetGPUVirtualAddress()
+		);
+
+		// Root Param 1
+		drawCmdList->SetGraphicsRootConstantBufferView (
+			1, m_constantBuffer_pointLight[m_frameIndex]->GetGPUVirtualAddress()
+		);
+
+		// Root Param 2
+		drawCmdList->SetGraphicsRootDescriptorTable (
+			2, m_srvDescriptorHeap->GetGPUDescriptorHandleForHeapStart()
+		);
+	}
 
 	drawCmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
