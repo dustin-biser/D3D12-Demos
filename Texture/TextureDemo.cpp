@@ -61,8 +61,9 @@ void TextureDemo::OnMouseMove(
 	int dy
 ) {
 	if (m_mouseLButtonDown) {
-		float angle = XMConvertToRadians((90.f * dx) / m_windowWidth);
-		XMMATRIX rotationDelta = XMMatrixRotationRollPitchYaw(0.f, angle, 0.f);
+		float angleX = XMConvertToRadians((135.f * dx) / m_windowWidth);
+		float angleY = XMConvertToRadians((135.f * dy) / m_windowWidth);
+		XMMATRIX rotationDelta = XMMatrixRotationRollPitchYaw(angleY, angleX, 0.f);
 		m_rotationMatrix = XMMatrixMultiply(rotationDelta, m_rotationMatrix);
 	}
 }
