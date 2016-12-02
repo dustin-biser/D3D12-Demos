@@ -44,14 +44,14 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
     <OutDir>bin\$(Platform)\$(Configuration)\</OutDir>
-    <IntDir>obj\$(Platform)\$(Configuration)\</IntDir>
+    <IntDir>build\$(Platform)\$(Configuration)\</IntDir>
     <IncludePath>$(IncludePath)</IncludePath>
     <SourcePath>$(SourcePath)</SourcePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>bin\$(Platform)\$(Configuration)\</OutDir>
-    <IntDir>obj\$(Platform)\$(Configuration)\</IntDir>
+    <IntDir>build\$(Platform)\$(Configuration)\</IntDir>
     <IncludePath>$(IncludePath)</IncludePath>
     <SourcePath>$(SourcePath)</SourcePath>
   </PropertyGroup>
