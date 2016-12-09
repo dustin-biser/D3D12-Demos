@@ -4,7 +4,6 @@
 using namespace DirectX;
 using Microsoft::WRL::ComPtr;
 
-#include <vector>
 #include <iostream>
 using namespace std;
 
@@ -44,12 +43,10 @@ void TextureDemo::InitializeDemo (
 	CreateTexture(uploadCmdList);
 
 	//-- Load shader byte code:
-	ComPtr<ID3DBlob> vertexShaderBlob;
-	ComPtr<ID3DBlob> pixelShaderBlob;
-	D3DReadFileToBlob(GetAssetPath(L"VertexShader.cso").c_str(), &vertexShaderBlob);
-	D3DReadFileToBlob(GetAssetPath(L"PixelShader.cso").c_str(), &pixelShaderBlob);
+	LoadCompiledShaderFromFile (GetAssetPath (L"VertexShader.cso").c_str (), m_vertexShader);
+	LoadCompiledShaderFromFile (GetAssetPath (L"PixelShader.cso").c_str (), m_pixelShader);
 
-	CreatePipelineState(vertexShaderBlob.Get(), pixelShaderBlob.Get());
+	CreatePipelineState(m_vertexShader, m_pixelShader);
 
 	m_rotationMatrix = XMMatrixIdentity();
 }
@@ -309,9 +306,9 @@ void TextureDemo::UploadVertexDataToGpu (
 }
 
 //---------------------------------------------------------------------------------------
-void TextureDemo::CreatePipelineState (
-    ID3DBlob * vertexShaderBlob,
-    ID3DBlob * pixelShaderBlob
+void TextureDemo::CreatePipelineState(
+    const ShaderSource & vertexShader,
+    const ShaderSource & pixelShader
 ) {
     // Define the vertex input layout.
     D3D12_INPUT_ELEMENT_DESC inputElementDescriptor[3];
@@ -356,8 +353,8 @@ void TextureDemo::CreatePipelineState (
     D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
     psoDesc.InputLayout = inputLayoutDesc;
     psoDesc.pRootSignature = m_rootSignature.Get();
-    psoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShaderBlob);
-    psoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShaderBlob);
+    psoDesc.VS = vertexShader.byteCode;
+    psoDesc.PS = pixelShader.byteCode;
     psoDesc.RasterizerState = rasterizerState;
     psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 	psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);

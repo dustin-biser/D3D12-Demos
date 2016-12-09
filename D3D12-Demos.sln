@@ -5,14 +5,6 @@ VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "IndexRendering", "IndexRendering\IndexRendering.vcxproj", "{A98A8BDD-A28C-4E88-A4C7-4DB0EA130651}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "External", "External", "{DBFF7590-696F-46ED-84B6-F0F8F0EB0827}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tinyobjloader", "tinyobjloader", "{43BD680A-C8F9-4C72-9352-954BD8EDEEEF}"
-	ProjectSection(SolutionItems) = preProject
-		External\tinyobjloader\tiny_obj_loader.cc = External\tinyobjloader\tiny_obj_loader.cc
-		External\tinyobjloader\tiny_obj_loader.h = External\tinyobjloader\tiny_obj_loader.h
-	EndProjectSection
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Assets", "Assets", "{9CAB38E3-2C88-40DF-812F-2AA93EBEE9EB}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Meshes", "Meshes", "{E6A1E252-C1C1-49F6-98B0-645DCEB115D6}"
@@ -53,7 +45,6 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-		{43BD680A-C8F9-4C72-9352-954BD8EDEEEF} = {DBFF7590-696F-46ED-84B6-F0F8F0EB0827}
 		{E6A1E252-C1C1-49F6-98B0-645DCEB115D6} = {9CAB38E3-2C88-40DF-812F-2AA93EBEE9EB}
 	EndGlobalSection
 EndGlobal

@@ -6,6 +6,7 @@
 
 #include "Common/D3D12DemoBase.hpp"
 #include "Common/ResourceUploadBuffer.hpp"
+#include "Common/ShaderUtils.hpp"
 
 #include "ConstantBufferDefines.hpp"
 
@@ -63,6 +64,9 @@ private:
 	D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
     uint m_indexCount;
 
+	ShaderSource m_vertexShader;
+	ShaderSource m_pixelShader;
+
 	void LoadPipelineDependencies();
 
 	void LoadAssets ();
@@ -72,8 +76,8 @@ private:
 	void UpdateConstantBuffers();
 
 	void CreatePipelineState (
-		ID3DBlob * vertexShaderBlob,
-		ID3DBlob * pixelShaderBlob
+		const ShaderSource & vertexShader,
+		const ShaderSource & pixelShader
 	);
 };
 

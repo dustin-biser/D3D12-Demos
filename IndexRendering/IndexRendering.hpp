@@ -2,6 +2,7 @@
 
 #include <memory>
 #include "Common/D3D12DemoBase.hpp"
+#include "Common/ShaderUtils.hpp"
 
 
 class IndexRendering : public D3D12DemoBase {
@@ -39,6 +40,10 @@ private:
 	D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
     uint m_indexCount;
 
+	ShaderSource m_vertexShader;
+	ShaderSource m_pixelShader;
+
+
 	void LoadAssets (
 		ID3D12GraphicsCommandList * uploadCmdList
 	);
@@ -47,14 +52,10 @@ private:
 
     void CreateVertexDataBuffers (ID3D12GraphicsCommandList * uploadCmdList);
 
-    void LoadShaders (
-        ComPtr<ID3DBlob> & vertexShaderBlob,
-        ComPtr<ID3DBlob> & pixelShaderBlob
-    );
     void CreatePipelineState (
-        ID3DBlob * vertexShaderBlob,
-        ID3DBlob * pixelShaderBlob
-    );
+		const ShaderSource & vertexShader,
+		const ShaderSource & pixelShader
+	);
 
 
 }; // end class IndexRendering

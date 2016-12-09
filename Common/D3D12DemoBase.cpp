@@ -41,7 +41,6 @@ static void GetHardwareAdapter (
 	// Call Detach() so that the ComPtr does not destroy the interface object when exiting
 	// the current scope.
 	*ppAdapter = adapter.Detach();
-
 }
 
 
@@ -692,7 +691,7 @@ std::wstring D3D12DemoBase::GetAssetPath (
     ASSERT(assetName);
 
     // Compiled shader code .cso files should be in the current working directory,
-    // where as other assets (e.g. textures, meshes, etc.) should be located in
+    // whereas other assets (e.g. textures, meshes, etc.) should be located in
     // the shared asset path.
     const wchar_t * stringMatch = wcsstr(assetName, L".cso");
     if (stringMatch) {

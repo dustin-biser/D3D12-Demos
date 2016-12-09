@@ -138,6 +138,7 @@
     <ClInclude Include="..\Common\NumericTypes.hpp" />
     <ClInclude Include="..\Common\pch.h" />
     <ClInclude Include="..\Common\ResourceUploadBuffer.hpp" />
+    <ClInclude Include="..\Common\ShaderUtils.hpp" />
     <ClInclude Include="..\Common\Win32Application.hpp" />
     <ClInclude Include="Assets\Shaders\ConstantBufferDefines.hpp" />
     <ClInclude Include="Assets\Shaders\HLSL_DirectXMath_Conversion.hpp" />
@@ -152,6 +153,7 @@
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">pch.h</PrecompiledHeaderFile>
     </ClCompile>
     <ClCompile Include="..\Common\ResourceUploadBuffer.cpp" />
+    <ClCompile Include="..\Common\ShaderUtils.cpp" />
     <ClCompile Include="..\Common\Win32Application.cpp" />
     <ClCompile Include="ConstantBufferDemo.cpp" />
     <ClCompile Include="Main.cpp" />
