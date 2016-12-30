@@ -14,7 +14,7 @@ using namespace std;
 TextureDemo::TextureDemo (
     uint windowWidth, 
     uint windowHeight,
-    std::wstring windowTitle
+    std::string windowTitle
 )   
     :   D3D12DemoBase(windowWidth, windowHeight, windowTitle)
 {
@@ -43,8 +43,8 @@ void TextureDemo::InitializeDemo (
 	CreateTexture(uploadCmdList);
 
 	//-- Load shader byte code:
-	LoadCompiledShaderFromFile (GetAssetPath (L"VertexShader.cso").c_str (), m_vertexShader);
-	LoadCompiledShaderFromFile (GetAssetPath (L"PixelShader.cso").c_str (), m_pixelShader);
+	LoadCompiledShaderFromFile (GetAssetPath ("VertexShader.cso").c_str (), m_vertexShader);
+	LoadCompiledShaderFromFile (GetAssetPath ("PixelShader.cso").c_str (), m_pixelShader);
 
 	CreatePipelineState(m_vertexShader, m_pixelShader);
 
@@ -379,7 +379,7 @@ void TextureDemo::CreatePipelineState(
 void TextureDemo::CreateTexture (
 	ID3D12GraphicsCommandList * uploadCmdList
 ) {
-	ImageDecoder::decodeImage(GetAssetPath(L"Textures\\uvgrid.jpg"), 1, &m_imageData);
+	ImageDecoder::decodeImage(GetAssetPath("Textures\\uvgrid.jpg"), 1, &m_imageData);
 
 	const auto defaultHeapProperties = CD3DX12_HEAP_PROPERTIES (D3D12_HEAP_TYPE_DEFAULT);
 	const auto textureResourceDesc = CD3DX12_RESOURCE_DESC::Tex2D (

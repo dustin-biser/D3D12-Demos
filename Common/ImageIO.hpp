@@ -6,7 +6,7 @@
 
 #include <vector>
 
-#include "Common\NumericTypes.hpp"
+#include "Common/Types.hpp"
 
 namespace ImageIO
 {

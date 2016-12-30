@@ -2,6 +2,8 @@
 
 #include "Common\ShaderUtils.hpp"
 
+#include <fstream>
+
 //---------------------------------------------------------------------------------------
 ShaderSource::~ShaderSource ()
 {
@@ -10,10 +12,8 @@ ShaderSource::~ShaderSource ()
 
 
 //---------------------------------------------------------------------------------------
-#include <fstream>
-
 void LoadCompiledShaderFromFile (
-	const wchar_t * csoFile,
+	const char * csoFile,
 	ShaderSource & shaderSource
 ) {
 	// Open file, and advance read position to end of file.
@@ -29,7 +29,7 @@ void LoadCompiledShaderFromFile (
 
 	// Read file into bytes array.
 	if (!(file.read (bytes, size))) {
-		ForceBreak ("Unable to read all bytes within shader .cos file.");
+		ForceBreak ("Unable to read all bytes from shader .cso file.");
 	}
 
 	shaderSource.byteCode.BytecodeLength = size;

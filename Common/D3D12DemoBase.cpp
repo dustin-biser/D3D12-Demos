@@ -58,8 +58,8 @@ void D3D12DemoBase::CreateHardwareDevice (
 
 	// Display hardware adapter name.
 	DXGI_ADAPTER_DESC1 adapterDesc = {};
-	hardwareAdapter->GetDesc1(&adapterDesc);
-	std::wcout << L"Adapter: " << adapterDesc.Description << std::endl;
+	hardwareAdapter->GetDesc1 (&adapterDesc);
+	LOG_INFO ("Adapter: %ls", adapterDesc.Description);
 
 	CHECK_D3D_RESULT (
 		D3D12CreateDevice(hardwareAdapter.Get(), featureLevel, IID_PPV_ARGS(&m_device))
@@ -164,7 +164,7 @@ void WaitForGpuFence (
 D3D12DemoBase::D3D12DemoBase (
 	uint windowWidth,
 	uint windowHeight,
-	std::wstring windowTitle
+	std::string windowTitle
 ) :
 	m_frameIndex(0),
 	m_windowWidth(windowWidth),
@@ -183,16 +183,16 @@ D3D12DemoBase::D3D12DemoBase (
 
     //-- Set working directory path:
     {
-        WCHAR pathBuffer[512];
+        char pathBuffer[512];
         GetWorkingDir(pathBuffer, _countof(pathBuffer));
-        m_workingDirPath = std::wstring(pathBuffer);
+        m_workingDirPath = std::string(pathBuffer);
     }
 
     //-- Set shared asset path:
     {
-        WCHAR pathBuffer[512];
+        char pathBuffer[512];
         GetSolutionDir(pathBuffer, _countof(pathBuffer));
-        m_sharedAssetPath = std::wstring(pathBuffer) + L"Assets\\";
+        m_sharedAssetPath = std::string(pathBuffer) + "Assets\\";
     }
 
 	// Check for DirectXMath support.
@@ -673,7 +673,7 @@ uint D3D12DemoBase::GetWindowHeight() const {
 
 
 //---------------------------------------------------------------------------------------
-const WCHAR * D3D12DemoBase::GetWindowTitle() const {
+const char * D3D12DemoBase::GetWindowTitle() const {
 	return m_windowTitle.c_str();
 }
 
@@ -685,51 +685,28 @@ ScreenPosition D3D12DemoBase::GetMousePosition() const
 }
 
 //---------------------------------------------------------------------------------------
-std::wstring D3D12DemoBase::GetAssetPath (
-	const wchar_t * assetName
+std::string D3D12DemoBase::GetAssetPath (
+	const char * assetName
 ) {
-    ASSERT(assetName);
+    assert(assetName);
 
     // Compiled shader code .cso files should be in the current working directory,
     // whereas other assets (e.g. textures, meshes, etc.) should be located in
     // the shared asset path.
-    const wchar_t * stringMatch = wcsstr(assetName, L".cso");
+    const char * stringMatch = strstr(assetName, ".cso");
     if (stringMatch) {
         return m_workingDirPath + assetName;
-    }
-
-    return m_sharedAssetPath + assetName;
-}
-
-
-//---------------------------------------------------------------------------------------
-std::string D3D12DemoBase::GetAssetPath(const char * assetName)
-{
-    const int BUFFER_LENGTH = 512;
-
-    wchar_t wcsBuffer[BUFFER_LENGTH]; // wide character string buffer.
-    size_t result = mbstowcs(wcsBuffer, assetName, BUFFER_LENGTH);
-    if (result == BUFFER_LENGTH) {
-        // assetName path is too long to fit in buffer.
-        throw;
-    }
-    std::wstring assetPath = this->GetAssetPath(wcsBuffer);
-
-    char mbsBuffer[BUFFER_LENGTH]; // multi-byte string buffer.
-    result = wcstombs(mbsBuffer, assetPath.c_str(), BUFFER_LENGTH);
-    if (result == BUFFER_LENGTH) {
-        // assetName path is too long to fit in buffer.
-        throw;
-    }
-
-    return std::string(mbsBuffer);
+	}
+	else {
+		return m_sharedAssetPath + assetName;
+	}
 }
 
 //---------------------------------------------------------------------------------------
 // Helper function for setting the window's title text.
 void D3D12DemoBase::SetCustomWindowText (
-	LPCWSTR text
+	LPCSTR text
 ) {
-	std::wstring windowText = m_windowTitle + L": " + text;
+	std::string windowText = m_windowTitle + ": " + text;
 	SetWindowText(Win32Application::GetHwnd(), windowText.c_str());
 }

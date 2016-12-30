@@ -31,8 +31,8 @@
 
 #include <string>
 #include <wrl.h>
-#include <shellapi.h>
 #include <cstdlib>
+#include <cassert>
 
-#include "Common/NumericTypes.hpp"
+#include "Common/Types.hpp"
 #include "Common/DemoUtils.hpp"

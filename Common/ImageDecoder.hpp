@@ -6,7 +6,7 @@
 
 #include <vector>
 
-#include "NumericTypes.hpp"
+#include "Common/Types.hpp"
 
 
 struct ImageData {
@@ -24,7 +24,7 @@ struct ImageData {
 namespace ImageDecoder {
 
 	void decodeImage (
-		const std::wstring & path,
+		const std::string & path,
 		int rowAlignment,
 		ImageData * imageData
 	);

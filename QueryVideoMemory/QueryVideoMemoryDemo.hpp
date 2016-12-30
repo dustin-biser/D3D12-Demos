@@ -11,7 +11,7 @@ public:
 	QueryVideoMemoryDemo (
         uint width,
         uint height,
-        std::wstring name
+        std::string name
     );
 
 	void InitializeDemo (

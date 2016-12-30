@@ -21,17 +21,6 @@ int Win32Application::Run (
 ) {
     assert(demo);
 
-    //-- Open a new console window and redirect std streams to it:
-    {
-        // Open a new console window
-        AllocConsole();
-
-        //-- Associate std input/output with newly opened console window:
-        FILE * file0 = freopen("CONIN$", "r", stdin);
-        FILE * file1 = freopen("CONOUT$", "w", stdout);
-        FILE * file2 = freopen("CONOUT$", "w", stderr);
-    }
-
 	//-- Initialize the window class:
 	WNDCLASSEX windowClass = { 0 };
 	windowClass.cbSize = sizeof(WNDCLASSEX);
@@ -39,7 +28,7 @@ int Win32Application::Run (
 	windowClass.lpfnWndProc = WindowProc;
 	windowClass.hInstance = hInstance;
 	windowClass.hCursor = LoadCursor(NULL, IDC_ARROW);
-	windowClass.lpszClassName = L"DXSampleClass";
+	windowClass.lpszClassName = "DXSampleClass";
 	RegisterClassEx(&windowClass);
 
     //-- Center window:
@@ -106,17 +95,17 @@ int Win32Application::Run (
 
         //-- Update window title only after so many milliseconds:
         if (fpsTimer > 400.0f) {
-			float msPerFrame = fpsTimer / float(frameCount);
-            float fps = float(frameCount) / fpsTimer * 1000.0f;
-            wchar_t buffer[256];
-			swprintf(buffer, _countof(buffer), L"%s - %.1f fps (%.2f ms)",
-				demo->GetWindowTitle(), fps, msPerFrame);
-            SetWindowText(m_hwnd, buffer);
+			float msPerFrame = fpsTimer / float (frameCount);
+			float fps = float (frameCount) / fpsTimer * 1000.0f;
+			char buffer[256];
+			sprintf (buffer, "%s - %.1f fps (%.2f ms)",
+				demo->GetWindowTitle (), fps, msPerFrame);
+			::SetWindowText (m_hwnd, buffer);
 
-            // Reset timing info.
-            fpsTimer = 0.0f;
-            frameCount = 0;
-        }
+			// Reset timing info.
+			fpsTimer = 0.0f;
+			frameCount = 0;
+		}
 	}
 
 	// Flush command-queue before releasing resources.

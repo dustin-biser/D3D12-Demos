@@ -15,6 +15,6 @@ public:
 
 /// Loads compiled shader object (cso) bytecode file into shaderSource.
 void LoadCompiledShaderFromFile (
-	const wchar_t * csoFile,
+	const char * csoFile,
 	ShaderSource & shaderSource
 );

@@ -6,18 +6,18 @@
 #include <debugapi.h>
 
 #define LOG_BUFFER_LENGTH 256
-#define LOG_LEVEL_INFO L"Log Info: "
-#define LOG_LEVEL_WARNING L"Log Warning: "
-#define LOG_LEVEL_ERROR L"Log Error: "
+#define LOG_LEVEL_INFO "Log Info: "
+#define LOG_LEVEL_WARNING "Log Warning: "
+#define LOG_LEVEL_ERROR "Log Error: "
 
 #if defined(_DEBUG)
 #define LOG(levelWString, format, ...) \
 	do { \
-		wchar_t buffer[LOG_BUFFER_LENGTH]; \
-		int wcharsWritten = swprintf(buffer, LOG_BUFFER_LENGTH, levelWString); \
-		wcharsWritten += swprintf(buffer + wcharsWritten, LOG_BUFFER_LENGTH, L##format, __VA_ARGS__); \
-		swprintf(buffer + wcharsWritten, LOG_BUFFER_LENGTH, L"\n"); \
-		OutputDebugStringW(buffer); \
+		char buffer[LOG_BUFFER_LENGTH]; \
+		int charsWritten = sprintf(buffer, levelWString); \
+		charsWritten += sprintf(buffer + charsWritten, format, __VA_ARGS__); \
+		sprintf(buffer + charsWritten, "\n"); \
+		OutputDebugString(buffer); \
 	} while(0)
 #else
 #define LOG(levelWString, format, ...)
@@ -48,13 +48,6 @@
 #define LOG_ERROR(format, ...) LOG(LOG_LEVEL_ERROR, format, __VA_ARGS__)
 #else
 #define LOG_ERROR(format, ...)
-#endif
-
-// Debug assert test.
-#if defined(_DEBUG)
-#define ASSERT(x) assert(x)
-#else
-#define ASSERT(x)
 #endif
 
 #if defined(_DEBUG)
@@ -104,8 +97,8 @@
 #define NAME_D3D12_OBJECT_ARRAY(x, n) \
 	do { \
 		for (unsigned int i(0); i < (n); ++i) { \
-			WCHAR buffer[256]; \
-			wsprintf(buffer, L"%ls[%u]", L#x, i); \
+			wchar_t buffer[256]; \
+			swprintf(buffer, 256, L"%ls[%u]", L#x, i); \
 			x[i]->SetName(buffer); \
 		} \
 	} while(0)
@@ -124,15 +117,18 @@
 #define D3D12_SET_NAME(x, name)
 #endif
 
+std::wstring toWString (
+	const std::string & str
+);
 
 void GetWorkingDir (
-	_Out_writes_(pathSize) WCHAR* path,
+	_Out_writes_(pathSize) char * path,
 	UINT pathSize
 );
 
 
 void GetSolutionDir (
-	_Out_writes_(pathSize) WCHAR* path,
+	_Out_writes_(pathSize) char * path,
 	UINT pathSize
 );
 
@@ -147,7 +143,7 @@ void QueryVideoMemoryInfo (
 // Force runtime to break with optional message.
 #define ForceBreak(message) \
 	do { \
-		OutputDebugStringA("Error: " message "\n"); \
+		LOG_ERROR(message); \
 		__debugbreak(); \
 	} while(0)
 

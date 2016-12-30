@@ -4,7 +4,7 @@
 #include <d3d12.h>
 #include <dxgi1_4.h>
 
-#include "Common/NumericTypes.hpp"
+#include "Common/Types.hpp"
 #include "Common/DemoUtils.hpp"
 #include "Common/Win32Application.hpp"
 
@@ -24,7 +24,7 @@ public:
 	D3D12DemoBase (
         uint windowWidth,
         uint windowHeight,
-        std::wstring windowTitle
+        std::string windowTitle
     );
 
 	virtual ~D3D12DemoBase();
@@ -69,7 +69,7 @@ public:
 
 	uint GetWindowHeight() const;
 
-	const WCHAR * GetWindowTitle() const;
+	const char * GetWindowTitle() const;
 
 	ScreenPosition GetMousePosition() const;
 
@@ -164,31 +164,24 @@ protected:
 		ID3D12CommandQueue * commandQueue
 	);
 
-
 	/// Helper function for resolving the full path of assets.
-	std::wstring GetAssetPath (
-		const wchar_t * assetName
-	);
-
-	/// Helper function for resolving the full path of assets.
-	/// Works with basic multi-byte strings.
 	std::string GetAssetPath (
 		const char * assetName
 	);
 
-	void SetCustomWindowText(
-		LPCWSTR text
+	void SetCustomWindowText (
+		LPCSTR text
 	);
 
 private:
 	/// Path of the demo's current working directory.
-	std::wstring m_workingDirPath;
+	std::string m_workingDirPath;
 
 	/// The shared solution asset path.
-	std::wstring m_sharedAssetPath;
+	std::string m_sharedAssetPath;
 
 	// Window title.
-	std::wstring m_windowTitle;
+	std::string m_windowTitle;
 
 	void CreateDirectCommandQueue ();
 

@@ -13,7 +13,7 @@ using namespace std;
 ConstantBufferDemo::ConstantBufferDemo (
     uint width, 
     uint height,
-    std::wstring name
+    std::string name
 )   
     :   D3D12DemoBase(width, height, name)
 {
@@ -89,8 +89,8 @@ void ConstantBufferDemo::LoadAssets ()
 	}
 
 	//-- Load shader byte code:
-	LoadCompiledShaderFromFile(GetAssetPath(L"VertexShader.cso").c_str(), m_vertexShader);
-	LoadCompiledShaderFromFile(GetAssetPath(L"PixelShader.cso").c_str(), m_pixelShader);
+	LoadCompiledShaderFromFile(GetAssetPath("VertexShader.cso").c_str(), m_vertexShader);
+	LoadCompiledShaderFromFile(GetAssetPath("PixelShader.cso").c_str(), m_pixelShader);
 
 	// Create the pipeline state object.
 	CreatePipelineState(m_vertexShader, m_pixelShader);

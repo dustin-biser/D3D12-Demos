@@ -7,7 +7,10 @@ using Microsoft::WRL::ComPtr;
 
 #include "DemoUtils.hpp"
 
+#include <cstdlib>
+#include <cwchar>
 #include <iostream>
+#include <vector>
 
 //---------------------------------------------------------------------------------------
 void QueryVideoMemoryInfo (
@@ -34,8 +37,21 @@ void QueryVideoMemoryInfo (
 
 
 //---------------------------------------------------------------------------------------
+std::wstring toWString (const std::string & str)
+{
+	const size_t STRING_LENGTH = str.length ();
+	std::vector<wchar_t> destBuffer (STRING_LENGTH + 1);
+
+	// Convert multi-byte string to wide character string.
+	mbstowcs (destBuffer.data (), str.data (), STRING_LENGTH);
+	destBuffer[STRING_LENGTH] = L'\0';
+
+	return std::wstring(destBuffer.data());
+}
+
+//---------------------------------------------------------------------------------------
 void GetWorkingDir (
-	_Out_writes_(pathSize) WCHAR * path,
+	_Out_writes_(pathSize) char * path,
 	UINT pathSize
 ) {
 	if (path == nullptr)
@@ -50,16 +66,16 @@ void GetWorkingDir (
 		throw;
 	}
 
-	WCHAR* lastSlash = wcsrchr(path, L'\\');
+	char * lastSlash = strrchr(path, '\\');
 	if (lastSlash)
 	{
-		*(lastSlash + 1) = L'\0';
+		*(lastSlash + 1) = '\0';
 	}
 }
 
 //---------------------------------------------------------------------------------------
 void GetSolutionDir (
-	_Out_writes_(pathSize) WCHAR* path,
+	_Out_writes_(pathSize) char * path,
 	UINT pathSize
 ) {
 	if (path == nullptr)
@@ -74,14 +90,14 @@ void GetSolutionDir (
 		throw;
 	}
 
-    WCHAR* lastMatch = wcsstr(path, L"\\bin");
+    char * lastMatch = strstr(path, "\\bin");
 	if (lastMatch)
 	{
-		*(lastMatch) = L'\0';
+		*(lastMatch) = '\0';
 	}
-    lastMatch = wcsrchr(path, L'\\');
+    lastMatch = strrchr(path, '\\');
 	if (lastMatch)
 	{
-		*(lastMatch + 1) = L'\0';
+		*(lastMatch + 1) = '\0';
 	}
 }

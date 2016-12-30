@@ -1,7 +1,7 @@
 /*
- * NumericTypes.hpp
+ * Types.hpp
  *
- * Type defines for commonly used numerical types.
+ * Basic type definitions.
  */
 
 #pragma once

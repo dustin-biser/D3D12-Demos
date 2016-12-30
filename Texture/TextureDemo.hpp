@@ -16,7 +16,7 @@ public:
 	TextureDemo (
         uint windowWidth,
         uint windowHeight,
-        std::wstring windowTitle 
+        std::string windowTitle 
     );
 
 	~TextureDemo();

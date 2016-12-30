@@ -119,11 +119,11 @@ static void decodeImageStream (
 
 //---------------------------------------------------------------------------------------
 void ImageDecoder::decodeImage(
-	const std::wstring & path,
+	const std::string & path,
 	int rowAlignment,
 	ImageData * imageData
 ) {
-	ASSERT(imageData);
+	assert(imageData);
 
 	ComPtr<IWICImagingFactory> factory;
 
@@ -142,8 +142,10 @@ void ImageDecoder::decodeImage(
 	CHECK_WIN_RESULT (
 		factory->CreateStream(&stream)
 	);
+
+	std::wstring pathWString = toWString (path);
 	CHECK_WIN_RESULT (
-		stream->InitializeFromFilename(path.c_str(), GENERIC_READ)
+		stream->InitializeFromFilename(pathWString.c_str(), GENERIC_READ)
 	);
 
 	decodeImageStream(factory.Get(), stream.Get(), rowAlignment, imageData);

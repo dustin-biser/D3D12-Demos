@@ -4,6 +4,7 @@
 _Use_decl_annotations_
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
 {
-	QueryVideoMemoryDemo demo(1024, 768, L"D3D12 Query Buffer Demo");
-	return Win32Application::Run(&demo, hInstance, nCmdShow);
+	// Allocate demo on the stack.
+	QueryVideoMemoryDemo demo(1024, 768, "D3D12 Query Buffer Demo");
+	return Win32Application::Run (&demo, hInstance, nCmdShow);
 }

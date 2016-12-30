@@ -1,7 +1,7 @@
 #pragma once
 
 #include <d3d12.h>
-#include "NumericTypes.hpp"
+#include "Common/Types.hpp"
 
 // Forward Declaration
 class ResourceUploadBufferImpl;
