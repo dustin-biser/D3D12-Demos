@@ -4,8 +4,6 @@
 
 struct PSInput {
     float4 position_clipSpace : SV_POSITION;
-    float4 position_eyeSpace : POSITION;
-    float3 normal_eyeSpace : NORMAL;
     float2 texCoord : TEXCOORD;
 };
 

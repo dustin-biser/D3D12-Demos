@@ -3,8 +3,6 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
 VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "IndexRendering", "IndexRendering\IndexRendering.vcxproj", "{A98A8BDD-A28C-4E88-A4C7-4DB0EA130651}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Assets", "Assets", "{9CAB38E3-2C88-40DF-812F-2AA93EBEE9EB}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Meshes", "Meshes", "{E6A1E252-C1C1-49F6-98B0-645DCEB115D6}"
@@ -12,11 +10,20 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Meshes", "Meshes", "{E6A1E2
 		Assets\Meshes\cube.obj = Assets\Meshes\cube.obj
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ConstantBuffer", "ConstantBuffer\ConstantBuffer.vcxproj", "{6CD9FF56-E775-4F72-A0BF-D764B76F64E6}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{0063EAAE-1078-4B25-9F5D-C23E857499D7}"
+	ProjectSection(SolutionItems) = preProject
+		.gitignore = .gitignore
+	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "QueryVideoMemory", "QueryVideoMemory\QueryVideoMemory.vcxproj", "{4D2C1C99-98C6-4C1A-BAF6-A469495FB3F2}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "IndexRendering", "Demos\IndexRendering\IndexRendering.vcxproj", "{A98A8BDD-A28C-4E88-A4C7-4DB0EA130651}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Texture", "Texture\Texture.vcxproj", "{2366B8F0-2F2A-49A8-93CC-0EF679E55E61}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ConstantBuffer", "Demos\ConstantBuffer\ConstantBuffer.vcxproj", "{6CD9FF56-E775-4F72-A0BF-D764B76F64E6}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "QueryVideoMemory", "Demos\QueryVideoMemory\QueryVideoMemory.vcxproj", "{4D2C1C99-98C6-4C1A-BAF6-A469495FB3F2}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Texture", "Demos\Texture\Texture.vcxproj", "{2366B8F0-2F2A-49A8-93CC-0EF679E55E61}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Mesh", "Demos\Mesh\Mesh.vcxproj", "{77485B07-EBDB-438F-A000-8D831B344F67}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -40,6 +47,10 @@ Global
 		{2366B8F0-2F2A-49A8-93CC-0EF679E55E61}.Debug|x64.Build.0 = Debug|x64
 		{2366B8F0-2F2A-49A8-93CC-0EF679E55E61}.Release|x64.ActiveCfg = Release|x64
 		{2366B8F0-2F2A-49A8-93CC-0EF679E55E61}.Release|x64.Build.0 = Release|x64
+		{77485B07-EBDB-438F-A000-8D831B344F67}.Debug|x64.ActiveCfg = Debug|x64
+		{77485B07-EBDB-438F-A000-8D831B344F67}.Debug|x64.Build.0 = Debug|x64
+		{77485B07-EBDB-438F-A000-8D831B344F67}.Release|x64.ActiveCfg = Release|x64
+		{77485B07-EBDB-438F-A000-8D831B344F67}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

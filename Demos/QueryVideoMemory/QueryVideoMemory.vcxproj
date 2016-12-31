@@ -11,10 +11,10 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{A98A8BDD-A28C-4E88-A4C7-4DB0EA130651}</ProjectGuid>
+    <ProjectGuid>{4D2C1C99-98C6-4C1A-BAF6-A469495FB3F2}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>D3D12HelloTriangle</RootNamespace>
-    <ProjectName>IndexRendering</ProjectName>
+    <ProjectName>QueryVideoMemory</ProjectName>
     <WindowsTargetPlatformVersion>10.0.10240.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -45,13 +45,15 @@
     <LinkIncremental>true</LinkIncremental>
     <OutDir>bin\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>build\$(Platform)\$(Configuration)\</IntDir>
-    <IncludePath>$(SolutionDir)\External\;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)External\;$(IncludePath)</IncludePath>
+    <SourcePath>$(SourcePath)</SourcePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>bin\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>build\$(Platform)\$(Configuration)\</IntDir>
-    <IncludePath>$(SolutionDir)\External\;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)External\;$(IncludePath)</IncludePath>
+    <SourcePath>$(SourcePath)</SourcePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -60,9 +62,11 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(SolutionDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Assets\Shaders;$(SolutionDir)Demos;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <CompileAsWinRT>false</CompileAsWinRT>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <MultiProcessorCompilation>false</MultiProcessorCompilation>
+      <MinimalRebuild>true</MinimalRebuild>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -80,9 +84,11 @@
     <FxCompile>
       <EntryPointName>VSMain</EntryPointName>
       <ShaderModel>5.1</ShaderModel>
+      <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </FxCompile>
     <PostBuildEvent>
-      <Command>Copy /Y "$(ProjectDir)Assets\Shaders\*.hlsl" "$(TargetDir)"</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -94,9 +100,13 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(SolutionDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Assets\Shaders;$(SolutionDir)Demos;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <CompileAsWinRT>false</CompileAsWinRT>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <MultiProcessorCompilation>false</MultiProcessorCompilation>
+      <EnableEnhancedInstructionSet>
+      </EnableEnhancedInstructionSet>
+      <FloatingPointModel>Fast</FloatingPointModel>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -116,20 +126,21 @@
     <FxCompile>
       <EntryPointName>VSMain</EntryPointName>
       <ShaderModel>5.1</ShaderModel>
+      <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </FxCompile>
     <PostBuildEvent>
-      <Command>Copy /Y "$(ProjectDir)Assets\Shaders\*.hlsl" "$(TargetDir)"</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\Common\d3dx12.h" />
-    <ClInclude Include="..\Common\D3D12DemoBase.h" />
+    <ClInclude Include="..\Common\D3D12DemoBase.hpp" />
     <ClInclude Include="..\Common\DemoUtils.hpp" />
     <ClInclude Include="..\Common\NumericTypes.hpp" />
     <ClInclude Include="..\Common\pch.h" />
-    <ClInclude Include="..\Common\ShaderUtils.hpp" />
     <ClInclude Include="..\Common\Win32Application.hpp" />
-    <ClInclude Include="IndexRendering.hpp" />
+    <ClInclude Include="QueryVideoMemoryDemo.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Common\D3D12DemoBase.cpp" />
@@ -139,25 +150,9 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">pch.h</PrecompiledHeaderFile>
     </ClCompile>
-    <ClCompile Include="..\Common\ShaderUtils.cpp" />
     <ClCompile Include="..\Common\Win32Application.cpp" />
-    <ClCompile Include="IndexRendering.cpp" />
+    <ClCompile Include="QueryVideoMemoryDemo.cpp" />
     <ClCompile Include="Main.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <FxCompile Include="Assets\Shaders\PixelShader.hlsl">
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
-      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">PSMain</EntryPointName>
-      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">PSMain</EntryPointName>
-    </FxCompile>
-    <FxCompile Include="Assets\Shaders\VertexShader.hlsl">
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
-    </FxCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Assets\Shaders\PSInput.hlsli" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

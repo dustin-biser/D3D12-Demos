@@ -11,7 +11,6 @@ PSInput VSMain (
 ) {
 	PSInput psInput;
     psInput.texCoord = texCoord;
-
     psInput.position_clipSpace = mul(float4(position, 1.0), sceneConstants.MVPMatrix);
 
 	return psInput;

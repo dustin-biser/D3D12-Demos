@@ -192,7 +192,7 @@ D3D12DemoBase::D3D12DemoBase (
     {
         char pathBuffer[512];
         GetSolutionDir(pathBuffer, _countof(pathBuffer));
-        m_sharedAssetPath = std::string(pathBuffer) + "Assets\\";
+        m_sharedAssetPath = std::string(pathBuffer) + "\\Assets\\";
     }
 
 	// Check for DirectXMath support.

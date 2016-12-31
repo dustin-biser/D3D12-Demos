@@ -90,14 +90,9 @@ void GetSolutionDir (
 		throw;
 	}
 
-    char * lastMatch = strstr(path, "\\bin");
+    char * lastMatch = strstr(path, "\\Demos");
 	if (lastMatch)
 	{
 		*(lastMatch) = '\0';
-	}
-    lastMatch = strrchr(path, '\\');
-	if (lastMatch)
-	{
-		*(lastMatch + 1) = '\0';
 	}
 }
