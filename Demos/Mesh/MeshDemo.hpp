@@ -1,5 +1,5 @@
 //
-// BumpMapDemo.hpp
+// MeshDemo.hpp
 //
 #pragma once
 

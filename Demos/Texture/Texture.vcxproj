@@ -138,13 +138,13 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\Common\BasicTypes.hpp" />
     <ClInclude Include="..\Common\d3dx12.h" />
     <ClInclude Include="..\Common\D3D12DemoBase.hpp" />
     <ClInclude Include="..\Common\DemoUtils.hpp" />
     <ClInclude Include="..\Common\ImageDecoder.hpp" />
     <ClInclude Include="..\Common\pch.h" />
     <ClInclude Include="..\Common\ShaderUtils.hpp" />
-    <ClInclude Include="..\Common\Types.hpp" />
     <ClInclude Include="..\Common\Win32Application.hpp" />
     <ClInclude Include="ConstantBufferDefines.hpp" />
     <ClInclude Include="HLSL_DirectXMath_Conversion.hpp" />

@@ -6,7 +6,7 @@
 
 #include <vector>
 
-#include "Common/Types.hpp"
+#include "Common/BasicTypes.hpp"
 
 
 struct ImageData {

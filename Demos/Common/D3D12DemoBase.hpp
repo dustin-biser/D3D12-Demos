@@ -4,7 +4,7 @@
 #include <d3d12.h>
 #include <dxgi1_4.h>
 
-#include "Common/Types.hpp"
+#include "Common/BasicTypes.hpp"
 #include "Common/DemoUtils.hpp"
 #include "Common/Win32Application.hpp"
 
@@ -197,6 +197,7 @@ private:
 	void CreateDeviceAndSwapChain ();
 
 	void CreateHardwareDevice (
+		ID3D12Device ** deviceToCreate,
 		IDXGIFactory4 * dxgiFactory,
 		D3D_FEATURE_LEVEL featureLevel
 	);

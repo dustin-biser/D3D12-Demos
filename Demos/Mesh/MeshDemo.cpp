@@ -11,6 +11,7 @@ using Microsoft::WRL::ComPtr;
 using namespace std;
 
 #include "Common/ImageIO.hpp"
+#include "Common/MeshFileLoader.hpp"
 
 
 //---------------------------------------------------------------------------------------
@@ -40,6 +41,12 @@ void MeshDemo::InitializeDemo (
 	CreateConstantBuffers();
 
 	CreateDescriptorHeap();
+
+	/////////////////////////////////////////////////////////////////////////////
+	//TODO Dustin - Finish this section:
+	//Mesh mesh;
+	//MeshFileLoader::loadObjAsset (GetAssetPath (MESH, "low_poly_ship.obj"), mesh);
+	/////////////////////////////////////////////////////////////////////////////
 
 	UploadVertexDataToGpu(uploadCmdList);
 
@@ -77,14 +84,24 @@ void MeshDemo::CreateRootSignature()
 	// Parameter 2 : Descriptor table containing SRV for texture
 	CD3DX12_ROOT_PARAMETER rootParameters[3];
 
-	const uint b0 = 0;
+	const uint register_b0 = 0;
 	const uint space0 = 0;
 	const uint space1 = 1;
-	rootParameters[0].InitAsConstantBufferView(b0, space0, D3D12_SHADER_VISIBILITY_VERTEX);
-	rootParameters[1].InitAsConstantBufferView(b0, space1, D3D12_SHADER_VISIBILITY_PIXEL);
+	rootParameters[0].InitAsConstantBufferView (
+		register_b0, space0,
+		D3D12_SHADER_VISIBILITY_VERTEX
+	);
+	rootParameters[1].InitAsConstantBufferView(
+		register_b0, space1,
+		D3D12_SHADER_VISIBILITY_PIXEL
+	);
 
 	// Create a descriptor table with a single entry in the descriptor heap.
-	CD3DX12_DESCRIPTOR_RANGE range (D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
+	const uint numDescriptors = 1;
+	const uint baseRegister = 0;
+	CD3DX12_DESCRIPTOR_RANGE range (
+		D3D12_DESCRIPTOR_RANGE_TYPE_SRV, numDescriptors, baseRegister
+	);
 	rootParameters[2].InitAsDescriptorTable(1, &range);
 
 	// We don't use another descriptor heap for the sampler, instead we use a

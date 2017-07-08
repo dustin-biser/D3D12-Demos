@@ -1,8 +1,8 @@
-/*
- * Types.hpp
- *
- * Basic type definitions.
- */
+//
+// BasicTypes.hpp
+//
+// Basic type definitions.
+//
 
 #pragma once
 #include <cstdint>

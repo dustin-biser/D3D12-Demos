@@ -125,7 +125,7 @@ LRESULT CALLBACK Win32Application::WindowProc (
     // Retrieve a pointer to the D3D12DemoBase instance held by the user data field of our 
     // window instance.
 	D3D12DemoBase * demo =
-		reinterpret_cast<D3D12DemoBase*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
+		reinterpret_cast<D3D12DemoBase *>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
 
 	switch (message) {
 	case WM_CREATE:

@@ -142,9 +142,10 @@
     <ClInclude Include="..\Common\D3D12DemoBase.hpp" />
     <ClInclude Include="..\Common\DemoUtils.hpp" />
     <ClInclude Include="..\Common\ImageDecoder.hpp" />
+    <ClInclude Include="..\Common\MeshFileLoader.hpp" />
     <ClInclude Include="..\Common\pch.h" />
     <ClInclude Include="..\Common\ShaderUtils.hpp" />
-    <ClInclude Include="..\Common\Types.hpp" />
+    <ClInclude Include="..\Common\BasicTypes.hpp" />
     <ClInclude Include="..\Common\Win32Application.hpp" />
     <ClInclude Include="ConstantBufferDefines.hpp" />
     <ClInclude Include="HLSL_DirectXMath_Conversion.hpp" />
@@ -154,6 +155,7 @@
     <ClCompile Include="..\Common\D3D12DemoBase.cpp" />
     <ClCompile Include="..\Common\DemoUtils.cpp" />
     <ClCompile Include="..\Common\ImageDecoder.cpp" />
+    <ClCompile Include="..\Common\MeshFileLoader.cpp" />
     <ClCompile Include="..\Common\pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>

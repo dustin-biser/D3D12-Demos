@@ -34,5 +34,5 @@
 #include <cstdlib>
 #include <cassert>
 
-#include "Common/Types.hpp"
+#include "Common/BasicTypes.hpp"
 #include "Common/DemoUtils.hpp"

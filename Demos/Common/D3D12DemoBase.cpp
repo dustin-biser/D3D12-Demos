@@ -46,6 +46,7 @@ static void GetHardwareAdapter (
 
 //---------------------------------------------------------------------------------------
 void D3D12DemoBase::CreateHardwareDevice (
+	ID3D12Device ** deviceToCreate,
 	IDXGIFactory4 * dxgiFactory,
 	D3D_FEATURE_LEVEL featureLevel
 ) {
@@ -62,9 +63,8 @@ void D3D12DemoBase::CreateHardwareDevice (
 	LOG_INFO ("Adapter: %ls", adapterDesc.Description);
 
 	CHECK_D3D_RESULT (
-		D3D12CreateDevice(hardwareAdapter.Get(), featureLevel, IID_PPV_ARGS(&m_device))
+		D3D12CreateDevice(hardwareAdapter.Get(), featureLevel, IID_PPV_ARGS(deviceToCreate))
 	);
-	SET_D3D12_DEBUG_NAME(m_device);
 }
 
 //---------------------------------------------------------------------------------------
@@ -85,7 +85,7 @@ void D3D12DemoBase::CreateDeviceAndSwapChain()
 	);
 
 
-	CreateHardwareDevice(dxgiFactory, D3D_FEATURE_LEVEL_11_0);
+	CreateHardwareDevice( m_device.ReleaseAndGetAddressOf(), dxgiFactory, D3D_FEATURE_LEVEL_11_0 );
 
 
 	// Describe and create the direct command queue.
@@ -226,7 +226,7 @@ D3D12DemoBase::~D3D12DemoBase()
 //---------------------------------------------------------------------------------------
 void D3D12DemoBase::Initialize()
 {
-#if defined(_DEBUG)
+#ifdef _DEBUG
 	// Enable the D3D12 debug layer.
 	ComPtr<ID3D12Debug> debugController;
 	if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)))) {
@@ -235,6 +235,31 @@ void D3D12DemoBase::Initialize()
 #endif
 
 	CreateDeviceAndSwapChain();
+
+#ifdef _DEBUG
+	ComPtr<ID3D12InfoQueue> pInfoQueue;
+	if ( SUCCEEDED( m_device.As( &pInfoQueue ) ) )
+	{
+		D3D12_INFO_QUEUE_FILTER NewFilter= {};
+
+		// Suppress messages based on their severity level
+		D3D12_MESSAGE_SEVERITY Severities[] =
+		{
+			D3D12_MESSAGE_SEVERITY_INFO
+		};
+
+		NewFilter.DenyList.NumSeverities = _countof (Severities);
+		NewFilter.DenyList.pSeverityList = Severities;
+
+		pInfoQueue->PushStorageFilter( &NewFilter );
+
+		pInfoQueue->SetBreakOnSeverity ( D3D12_MESSAGE_SEVERITY_INFO, false );
+		pInfoQueue->SetBreakOnSeverity ( D3D12_MESSAGE_SEVERITY_CORRUPTION, true );
+		pInfoQueue->SetBreakOnSeverity ( D3D12_MESSAGE_SEVERITY_ERROR, true );
+		pInfoQueue->SetBreakOnSeverity ( D3D12_MESSAGE_SEVERITY_WARNING, true );
+	}
+#endif
+
 
 	CreateDrawCommandLists();
 

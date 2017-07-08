@@ -141,9 +141,9 @@ void QueryVideoMemoryInfo (
 );
 
 // Force runtime to break with optional message.
-#define ForceBreak(message) \
+#define ForceBreak(message, ...) \
 	do { \
-		LOG_ERROR(message); \
+		LOG_ERROR(message, __VA_ARGS__); \
 		__debugbreak(); \
 	} while(0)
 

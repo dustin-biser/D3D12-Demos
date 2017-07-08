@@ -349,6 +349,12 @@ void TextureDemo::CreatePipelineState(
 	D3D12_INPUT_LAYOUT_DESC
 		inputLayoutDesc = { inputElementDescriptor, _countof(inputElementDescriptor) };
 
+
+	D3D12_BLEND_DESC blendState = {};
+	blendState.AlphaToCoverageEnable = false;
+	blendState.IndependentBlendEnable = false;
+	blendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+
     // Describe and create the graphics pipeline state object (PSO).
     D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
     psoDesc.InputLayout = inputLayoutDesc;
@@ -356,7 +362,7 @@ void TextureDemo::CreatePipelineState(
     psoDesc.VS = vertexShader.byteCode;
     psoDesc.PS = pixelShader.byteCode;
     psoDesc.RasterizerState = rasterizerState;
-    psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+    psoDesc.BlendState = blendState;
 	psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 	psoDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
     psoDesc.SampleMask = UINT_MAX;
