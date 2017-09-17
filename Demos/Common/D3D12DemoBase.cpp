@@ -70,10 +70,10 @@ void D3D12DemoBase::CreateHardwareDevice (
 //---------------------------------------------------------------------------------------
 void D3D12DemoBase::CreateDeviceAndSwapChain()
 {
-	IDXGIFactory4 * dxgiFactory;
+	IDXGIFactory4* dxgiFactory;
 
-	CHECK_D3D_RESULT (
-		::CreateDXGIFactory1(IID_PPV_ARGS(&dxgiFactory))
+	CHECK_D3D_RESULT(
+		::CreateDXGIFactory1( __uuidof(IDXGIFactory1), (void**)(&dxgiFactory) )
 	);
 
 	// Prevent full screen transitions for now.
@@ -124,6 +124,8 @@ void D3D12DemoBase::CreateDeviceAndSwapChain()
 				&swapChain1
 			)
 		);
+		RELEASE_NULLIFY( dxgiFactory );
+
 
 		ComPtr<IDXGISwapChain2> swapChain2;
 		CHECK_D3D_RESULT (
@@ -228,10 +230,11 @@ void D3D12DemoBase::Initialize()
 {
 #ifdef _DEBUG
 	// Enable the D3D12 debug layer.
-	ComPtr<ID3D12Debug> debugController;
+	ID3D12Debug* debugController;
 	if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)))) {
 		debugController->EnableDebugLayer();
 	}
+	RELEASE_NULLIFY( debugController );
 #endif
 
 	CreateDeviceAndSwapChain();

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <cassert>
+#include <intrin.h>
 #include <cwchar>
 #include <iostream>
 #include <debugapi.h>
@@ -50,6 +50,14 @@
 #define LOG_ERROR(format, ...)
 #endif
 
+
+#if defined(_DEBUG)
+#define	Assert( x )  do { if ( !(x) ) { LOG_ERROR("Assert Failed. Expression '" #x "' is false or 0."); __debugbreak(); } } while (false)
+#else
+#define	Assert( x )  (void)x;
+#endif // #if defined(_DEBUG)
+
+
 #if defined(_DEBUG)
 #define CHECK_RESULT(x, str)					\
 	do {										\
@@ -57,10 +65,10 @@
 		if ( FAILED(result) ) {					\
 			std::cout << str << __FILE__ <<     \
 				":" << __LINE__ << std::endl;	\
-			assert(result == S_OK);				\
+			Assert(result == S_OK);				\
 		}										\
 	}											\
-	while(0)
+	while (false)
 #else
 #define CHECK_D3D_RESULT(x) x;
 #endif
@@ -116,6 +124,14 @@
 #else
 #define D3D12_SET_NAME(x, name)
 #endif
+
+
+#define RELEASE_NULLIFY( pComObject )  do { \
+	Assert( pComObject ); \
+	pComObject->Release(); \
+	pComObject = nullptr; \
+} while (false)
+
 
 std::wstring toWString (
 	const std::string & str
