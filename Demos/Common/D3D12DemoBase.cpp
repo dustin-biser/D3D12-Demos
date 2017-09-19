@@ -5,88 +5,58 @@ using namespace Microsoft::WRL;
 
 
 //---------------------------------------------------------------------------------------
-// Helper function for acquiring the first available hardware adapter that supports
-// the given feature level. If no such adapter can be found, *ppAdapter will be set to
-// nullptr.
-static void GetHardwareAdapter (
-	_In_ IDXGIFactory2 * pFactory,
-	_In_ D3D_FEATURE_LEVEL featureLevel,
-	_Out_ IDXGIAdapter1 ** ppAdapter
-) {
-	ComPtr<IDXGIAdapter1> adapter;
-	*ppAdapter = nullptr;
+void D3D12DemoBase::CreateHardwareDevice (
+	ID3D12Device** deviceToCreate,
+	IDXGIFactory4* dxgiFactory,
+	D3D_FEATURE_LEVEL featureLevel ) 
+{
+	IDXGIAdapter1* hardwareAdapter = nullptr;
+	DXGI_ADAPTER_DESC1 adapterDesc = {};
 
-	uint adapterIndex(0);
-	while (DXGI_ERROR_NOT_FOUND != pFactory->EnumAdapters1(adapterIndex, &adapter)) {
-		DXGI_ADAPTER_DESC1 desc;
-		adapter->GetDesc1(&desc);
+	for (uint adapterIndex(0); DXGI_ERROR_NOT_FOUND != dxgiFactory->EnumAdapters1( adapterIndex, &hardwareAdapter ); ++adapterIndex )
+	{
+		hardwareAdapter->GetDesc1(&adapterDesc);
 
-		if (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) {
+		if (adapterDesc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) {
 			// Don't select the Basic Render Driver adapter.
-			// If you want a software adapter, pass in "/warp" on the command line.
 			continue;
 		}
 
-		// Check to see if the adapter supports Direct3D 12, but don't create the
-		// actual device yet.
-		if (SUCCEEDED(D3D12CreateDevice(adapter.Get(),
-				featureLevel, _uuidof(ID3D12Device), nullptr))) {
+		// Check if adapter supports Direct3D 12, but don't create the actual device yet.
+		if ( SUCCEEDED(D3D12CreateDevice( hardwareAdapter, featureLevel, _uuidof(ID3D12Device), nullptr )))
 			break;
-		}
-
-		++adapterIndex;
 	}
 
-	// Return first hardware adapter found, that supports the specified D3D feature set.
-	// Call Detach() so that the ComPtr does not destroy the interface object when exiting
-	// the current scope.
-	*ppAdapter = adapter.Detach();
-}
-
-
-//---------------------------------------------------------------------------------------
-void D3D12DemoBase::CreateHardwareDevice (
-	ID3D12Device ** deviceToCreate,
-	IDXGIFactory4 * dxgiFactory,
-	D3D_FEATURE_LEVEL featureLevel
-) {
-	ComPtr<IDXGIAdapter1> hardwareAdapter;
-	::GetHardwareAdapter(dxgiFactory, featureLevel, &hardwareAdapter);
-
-	if (!hardwareAdapter) {
-		ForceBreak("No hardware adapter found that supports the given feature level");
-	}
+	if (!hardwareAdapter)
+		ForceBreak("No hardware adapter found that supports the minimum D3D12 feature level.");
 
 	// Display hardware adapter name.
-	DXGI_ADAPTER_DESC1 adapterDesc = {};
-	hardwareAdapter->GetDesc1 (&adapterDesc);
-	LOG_INFO ("Adapter: %ls", adapterDesc.Description);
+	LOG_INFO ("Creating Hardware Adapter: %ls", adapterDesc.Description);
 
 	CHECK_D3D_RESULT (
-		D3D12CreateDevice(hardwareAdapter.Get(), featureLevel, IID_PPV_ARGS(deviceToCreate))
+		D3D12CreateDevice( hardwareAdapter, featureLevel, __uuidof( ID3D12Device ), (void**)(deviceToCreate) )
 	);
+
+
+	RELEASE_NULLIFY( hardwareAdapter );
 }
 
 //---------------------------------------------------------------------------------------
 void D3D12DemoBase::CreateDeviceAndSwapChain()
 {
-	IDXGIFactory4* dxgiFactory;
+	IDXGIFactory4* dxgiFactory = nullptr;
 
 	CHECK_D3D_RESULT(
-		::CreateDXGIFactory1( __uuidof(IDXGIFactory1), (void**)(&dxgiFactory) )
+		CreateDXGIFactory1( __uuidof(IDXGIFactory1), (void**)(&dxgiFactory) )
 	);
 
 	// Prevent full screen transitions for now.
 	CHECK_D3D_RESULT (
-		dxgiFactory->MakeWindowAssociation (
-			Win32Application::GetHwnd(),
-			DXGI_MWA_NO_ALT_ENTER
-		)
+		dxgiFactory->MakeWindowAssociation ( Win32Application::GetHwnd(), DXGI_MWA_NO_ALT_ENTER )
 	);
 
-
-	CreateHardwareDevice( m_device.ReleaseAndGetAddressOf(), dxgiFactory, D3D_FEATURE_LEVEL_11_0 );
-
+	RELEASE_NULLIFY( m_device );
+	CreateHardwareDevice( &m_device, dxgiFactory, D3D_FEATURE_LEVEL_11_0 );
 
 	// Describe and create the direct command queue.
 	{
@@ -94,11 +64,10 @@ void D3D12DemoBase::CreateDeviceAndSwapChain()
 		queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
 		queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
 		CHECK_D3D_RESULT (
-			m_device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&m_directCmdQueue))
+			m_device->CreateCommandQueue( &queueDesc, IID_PPV_ARGS(&m_directCmdQueue) )
 		);
 		SET_D3D12_DEBUG_NAME(m_directCmdQueue);
 	}
-
 
 	// Describe and create the swap chain.
 	{
@@ -112,24 +81,24 @@ void D3D12DemoBase::CreateDeviceAndSwapChain()
 		swapChainDesc.SampleDesc.Count = 1;
 		swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
 
-		ComPtr<IDXGISwapChain1> swapChain1;
+		IDXGISwapChain1* swapChain1;
 		CHECK_D3D_RESULT (
 			dxgiFactory->CreateSwapChainForHwnd (
 				m_directCmdQueue.Get(), // Swap chain needs the command queue so that 
 				                        // it can force a flush on it.
 				Win32Application::GetHwnd(),
 				&swapChainDesc,
-				nullptr,
-				nullptr,
+				nullptr,  // TODO - Set fullscreen descriptor here.
+				nullptr,  
 				&swapChain1
 			)
 		);
 		RELEASE_NULLIFY( dxgiFactory );
 
 
-		ComPtr<IDXGISwapChain2> swapChain2;
+		IDXGISwapChain2* swapChain2;
 		CHECK_D3D_RESULT (
-			swapChain1.As(&swapChain2)
+			swapChain1->QueryInterface( __uuidof( IDXGISwapChain2 ), (void**)(&swapChain2) ) // Refcount++
 		);
 		swapChain2->SetMaximumFrameLatency(NUM_BUFFERED_FRAMES);
 
@@ -137,10 +106,13 @@ void D3D12DemoBase::CreateDeviceAndSwapChain()
 		m_frameLatencyWaitableObject = swapChain2->GetFrameLatencyWaitableObject();
 
 		// Assign interface object to m_swapChain so it persists past current scope.
-		CHECK_D3D_RESULT (
-			swapChain1.As(&m_swapChain)
+		CHECK_D3D_RESULT(
+			swapChain1->QueryInterface( __uuidof( IDXGISwapChain3 ), (void**)(&m_swapChain) ) // Refcount++
 		);
+
+		RELEASE_UNTIL_REFCOUNT( swapChain1, 1 );
 	}
+	
 
 	// Set the current frame index to correspond with the current back buffer index.
 	m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
@@ -221,6 +193,8 @@ D3D12DemoBase::~D3D12DemoBase()
 		CloseHandle(event);
 	}
 
+	RELEASE_NULLIFY( m_device );
+
 	// Uninitialize COM library.
 	CoUninitialize();
 }
@@ -240,8 +214,8 @@ void D3D12DemoBase::Initialize()
 	CreateDeviceAndSwapChain();
 
 #ifdef _DEBUG
-	ComPtr<ID3D12InfoQueue> pInfoQueue;
-	if ( SUCCEEDED( m_device.As( &pInfoQueue ) ) )
+	ID3D12InfoQueue* pInfoQueue;
+	if (SUCCEEDED( m_device->QueryInterface( __uuidof( ID3D12InfoQueue ), (void**)(&pInfoQueue) ) ))
 	{
 		D3D12_INFO_QUEUE_FILTER NewFilter= {};
 

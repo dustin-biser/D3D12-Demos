@@ -9,6 +9,9 @@
 #include "Common/Win32Application.hpp"
 
 
+// Number of rendered frames to pre-flight for execution on the GPU.
+#define NUM_BUFFERED_FRAMES  3
+
 
 struct ScreenPosition {
 	uint x;
@@ -17,7 +20,7 @@ struct ScreenPosition {
 
 
 
-/// Base class for all D3D12 demos.
+// Base class for all D3D12 demos.
 class D3D12DemoBase
 {
 public:
@@ -80,8 +83,6 @@ protected:
 
 	bool m_vsyncEnabled = true;
 
-	// Number of rendered frames to pre-flight for execution on the GPU.
-	static const uint NUM_BUFFERED_FRAMES = 3;
 	uint m_frameIndex;
 
 	// Window and viewport dimensions.
@@ -94,7 +95,7 @@ protected:
 	bool m_mouseLButtonDown;
 
 
-	ComPtr<ID3D12Device> m_device;
+	ID3D12Device* m_device;
 
 	// Direct Command Queue Related
 	ComPtr<ID3D12CommandQueue> m_directCmdQueue;

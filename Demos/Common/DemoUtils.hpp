@@ -6,9 +6,9 @@
 #include <debugapi.h>
 
 #define LOG_BUFFER_LENGTH 256
-#define LOG_LEVEL_INFO "Log Info: "
-#define LOG_LEVEL_WARNING "Log Warning: "
-#define LOG_LEVEL_ERROR "Log Error: "
+#define LOG_LEVEL_INFO    "Info: "
+#define LOG_LEVEL_WARNING "Warning: "
+#define LOG_LEVEL_ERROR   "Error: "
 
 #if defined(_DEBUG)
 #define LOG(levelWString, format, ...) \
@@ -125,11 +125,23 @@
 #define D3D12_SET_NAME(x, name)
 #endif
 
+#define RELEASE_UNTIL_REFCOUNT( pComObject, refCount ) do { \
+	Assert( refCount >= 0 ); \
+	if( pComObject ) \
+		while (pComObject->Release() > refCount) { } \
+} while (false)
+
+#define RELEASE_ASSERT_REFCOUNT( pComObject, refCount ) do { \
+	if( pComObject ) \
+		Assert( pComObject->Release() == refCount ); \
+} while (false)
 
 #define RELEASE_NULLIFY( pComObject )  do { \
-	Assert( pComObject ); \
-	pComObject->Release(); \
-	pComObject = nullptr; \
+	if( pComObject ) \
+	{ \
+		pComObject->Release(); \
+		pComObject = nullptr; \
+	} \
 } while (false)
 
 
