@@ -7,7 +7,7 @@ using namespace Microsoft::WRL;
 //---------------------------------------------------------------------------------------
 void D3D12DemoBase::CreateHardwareDevice (
 	ID3D12Device** deviceToCreate,
-	IDXGIFactory4* dxgiFactory,
+	IDXGIFactory1* dxgiFactory,
 	D3D_FEATURE_LEVEL featureLevel ) 
 {
 	IDXGIAdapter1* hardwareAdapter = nullptr;
@@ -41,81 +41,49 @@ void D3D12DemoBase::CreateHardwareDevice (
 	RELEASE_NULLIFY( hardwareAdapter );
 }
 
+
 //---------------------------------------------------------------------------------------
-void D3D12DemoBase::CreateDeviceAndSwapChain()
+static void CreateSwapChain( 
+	IDXGISwapChain3** swapChain,  
+	uint width, 
+	uint height, 
+	IDXGIFactory2* dxgiFactory,
+	ID3D12CommandQueue* commandQueue )
 {
-	IDXGIFactory4* dxgiFactory = nullptr;
+	DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
+	swapChainDesc.BufferCount = NUM_BUFFERED_FRAMES;
+	swapChainDesc.Width = width;
+	swapChainDesc.Height = height;
+	swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+	swapChainDesc.SampleDesc.Count = 1;
+	swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
 
-	CHECK_D3D_RESULT(
-		CreateDXGIFactory1( __uuidof(IDXGIFactory1), (void**)(&dxgiFactory) )
-	);
-
-	// Prevent full screen transitions for now.
+	IDXGISwapChain1* swapChain1;
 	CHECK_D3D_RESULT (
-		dxgiFactory->MakeWindowAssociation ( Win32Application::GetHwnd(), DXGI_MWA_NO_ALT_ENTER )
+		dxgiFactory->CreateSwapChainForHwnd (
+			commandQueue, // Swap chain needs the command queue so that it can force a flush on it.
+			Win32Application::GetHwnd(),
+			&swapChainDesc,
+			nullptr, // Fullscreen descriptor
+			nullptr,  
+			&swapChain1
+		)
 	);
 
-	RELEASE_NULLIFY( m_device );
-	CreateHardwareDevice( &m_device, dxgiFactory, D3D_FEATURE_LEVEL_11_0 );
+	IDXGISwapChain2* swapChain2;
+	CHECK_D3D_RESULT (
+		swapChain1->QueryInterface( __uuidof( IDXGISwapChain2 ), (void**)(&swapChain2) ) // Refcount++
+	);
+	swapChain2->SetMaximumFrameLatency(NUM_BUFFERED_FRAMES);
 
-	// Describe and create the direct command queue.
-	{
-		D3D12_COMMAND_QUEUE_DESC queueDesc = {};
-		queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
-		queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
-		CHECK_D3D_RESULT (
-			m_device->CreateCommandQueue( &queueDesc, IID_PPV_ARGS(&m_directCmdQueue) )
-		);
-		SET_D3D12_DEBUG_NAME(m_directCmdQueue);
-	}
+	// Assign interface object to m_swapChain so it persists past current scope.
+	CHECK_D3D_RESULT(
+		swapChain1->QueryInterface( __uuidof( IDXGISwapChain3 ), (void**)(swapChain) ) // Refcount++
+	);
 
-	// Describe and create the swap chain.
-	{
-		DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
-		swapChainDesc.BufferCount = NUM_BUFFERED_FRAMES;
-		swapChainDesc.Width = m_windowWidth;
-		swapChainDesc.Height = m_windowHeight;
-		swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-		swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-		swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
-		swapChainDesc.SampleDesc.Count = 1;
-		swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
-
-		IDXGISwapChain1* swapChain1;
-		CHECK_D3D_RESULT (
-			dxgiFactory->CreateSwapChainForHwnd (
-				m_directCmdQueue.Get(), // Swap chain needs the command queue so that 
-				                        // it can force a flush on it.
-				Win32Application::GetHwnd(),
-				&swapChainDesc,
-				nullptr,  // TODO - Set fullscreen descriptor here.
-				nullptr,  
-				&swapChain1
-			)
-		);
-		RELEASE_NULLIFY( dxgiFactory );
-
-
-		IDXGISwapChain2* swapChain2;
-		CHECK_D3D_RESULT (
-			swapChain1->QueryInterface( __uuidof( IDXGISwapChain2 ), (void**)(&swapChain2) ) // Refcount++
-		);
-		swapChain2->SetMaximumFrameLatency(NUM_BUFFERED_FRAMES);
-
-		// Acquire handle to frame latency waitable object.
-		m_frameLatencyWaitableObject = swapChain2->GetFrameLatencyWaitableObject();
-
-		// Assign interface object to m_swapChain so it persists past current scope.
-		CHECK_D3D_RESULT(
-			swapChain1->QueryInterface( __uuidof( IDXGISwapChain3 ), (void**)(&m_swapChain) ) // Refcount++
-		);
-
-		RELEASE_UNTIL_REFCOUNT( swapChain1, 1 );
-	}
-	
-
-	// Set the current frame index to correspond with the current back buffer index.
-	m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
+	RELEASE_UNTIL_REFCOUNT( swapChain1, 1 );
 }
 
 //---------------------------------------------------------------------------------------
@@ -194,6 +162,7 @@ D3D12DemoBase::~D3D12DemoBase()
 	}
 
 	RELEASE_NULLIFY( m_device );
+	RELEASE_NULLIFY( m_swapChain );
 
 	// Uninitialize COM library.
 	CoUninitialize();
@@ -211,11 +180,53 @@ void D3D12DemoBase::Initialize()
 	RELEASE_NULLIFY( debugController );
 #endif
 
-	CreateDeviceAndSwapChain();
+
+	IDXGIFactory1* dxgiFactory = nullptr;
+	CHECK_D3D_RESULT(
+		CreateDXGIFactory1( __uuidof(IDXGIFactory1), (void**)(&dxgiFactory) )
+	);
+
+
+	// Create the D3D12 Device
+	RELEASE_NULLIFY( m_device );
+	CreateHardwareDevice( &m_device, dxgiFactory, D3D_FEATURE_LEVEL_11_0 );
+
+
+	// Describe and create the direct command queue.
+	{
+		D3D12_COMMAND_QUEUE_DESC queueDesc = {};
+		queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
+		queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
+		CHECK_D3D_RESULT(
+			m_device->CreateCommandQueue( &queueDesc, IID_PPV_ARGS( &m_directCmdQueue ) )
+		);
+		SET_D3D12_DEBUG_NAME( m_directCmdQueue );
+	}
+
+	// Prevent full screen transitions for now.
+	CHECK_D3D_RESULT(
+		dxgiFactory->MakeWindowAssociation( Win32Application::GetHwnd(), DXGI_MWA_NO_ALT_ENTER )
+	);
+
+	// Create the Swap Chain
+	IDXGIFactory2* dxgiFactory2 = nullptr;
+	dxgiFactory->QueryInterface( __uuidof(IDXGIFactory2), (void**)(&dxgiFactory2) ); // RefCount++
+	CreateSwapChain( &m_swapChain, m_windowWidth, m_windowHeight, dxgiFactory2, m_directCmdQueue.Get() );
+
+	RELEASE_NULLIFY( dxgiFactory );
+	RELEASE_NULLIFY( dxgiFactory2 );
+
+
+	// Acquire handle to frame latency waitable object.
+	m_frameLatencyWaitableObject = m_swapChain->GetFrameLatencyWaitableObject();
+
+	// Set the current frame index to correspond with the current back buffer index.
+	m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
+
 
 #ifdef _DEBUG
-	ID3D12InfoQueue* pInfoQueue;
-	if (SUCCEEDED( m_device->QueryInterface( __uuidof( ID3D12InfoQueue ), (void**)(&pInfoQueue) ) ))
+	ID3D12InfoQueue* infoQueue;
+	if (SUCCEEDED( m_device->QueryInterface( __uuidof( ID3D12InfoQueue ), (void**)(&infoQueue) ) )) // RefCount++
 	{
 		D3D12_INFO_QUEUE_FILTER NewFilter= {};
 
@@ -228,13 +239,14 @@ void D3D12DemoBase::Initialize()
 		NewFilter.DenyList.NumSeverities = _countof (Severities);
 		NewFilter.DenyList.pSeverityList = Severities;
 
-		pInfoQueue->PushStorageFilter( &NewFilter );
+		infoQueue->PushStorageFilter( &NewFilter );
 
-		pInfoQueue->SetBreakOnSeverity ( D3D12_MESSAGE_SEVERITY_INFO, false );
-		pInfoQueue->SetBreakOnSeverity ( D3D12_MESSAGE_SEVERITY_CORRUPTION, true );
-		pInfoQueue->SetBreakOnSeverity ( D3D12_MESSAGE_SEVERITY_ERROR, true );
-		pInfoQueue->SetBreakOnSeverity ( D3D12_MESSAGE_SEVERITY_WARNING, true );
+		infoQueue->SetBreakOnSeverity ( D3D12_MESSAGE_SEVERITY_INFO, false );
+		infoQueue->SetBreakOnSeverity ( D3D12_MESSAGE_SEVERITY_CORRUPTION, true );
+		infoQueue->SetBreakOnSeverity ( D3D12_MESSAGE_SEVERITY_ERROR, true );
+		infoQueue->SetBreakOnSeverity ( D3D12_MESSAGE_SEVERITY_WARNING, true );
 	}
+	RELEASE_NULLIFY( infoQueue );
 #endif
 
 

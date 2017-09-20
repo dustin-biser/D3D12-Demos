@@ -128,7 +128,7 @@
 #define RELEASE_UNTIL_REFCOUNT( pComObject, refCount ) do { \
 	Assert( refCount >= 0 ); \
 	if( pComObject ) \
-		while (pComObject->Release() > refCount) { } \
+		while ( pComObject->Release() > refCount ) { } \
 } while (false)
 
 #define RELEASE_ASSERT_REFCOUNT( pComObject, refCount ) do { \

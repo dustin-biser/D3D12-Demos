@@ -103,7 +103,7 @@ protected:
 	ComPtr<ID3D12GraphicsCommandList> m_drawCmdList[NUM_BUFFERED_FRAMES];
 
 
-	ComPtr<IDXGISwapChain3> m_swapChain;
+	IDXGISwapChain3* m_swapChain;
 	HANDLE m_frameLatencyWaitableObject;
 
 	// Resources that are referenced by descriptor handles (a.k.a. resource views).
@@ -193,13 +193,11 @@ private:
 		ComPtr<ID3D12CommandAllocator> & cmdAllocator
 	);
 
-	void CreateDepthStencilBuffer ();
-
-	void CreateDeviceAndSwapChain ();
+	void CreateDepthStencilBuffer();
 
 	void CreateHardwareDevice (
 		ID3D12Device ** deviceToCreate,
-		IDXGIFactory4 * dxgiFactory,
+		IDXGIFactory1 * dxgiFactory,
 		D3D_FEATURE_LEVEL featureLevel
 	);
 
